@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LogiSync Web (Next.js)
 
-## Getting Started
+## Overview
 
-First, run the development server:
+Web frontend for LogiSync managed by the root pnpm workspace and Turbo.
+
+## Prerequisites
+
+- Node.js and pnpm (see root workspace requirements)
+
+## Install dependencies
+
+Run from the repo root so pnpm workspace links are created:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a local env file from the template:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+copy apps\web\.env.example apps\web\.env.local
+```
 
-## Learn More
+## Development
 
-To learn more about Next.js, take a look at the following resources:
+From the repo root:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev:web
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This runs `turbo dev --filter @logisync/web` and starts the Next.js dev server
+on http://localhost:3000 by default.
 
-## Deploy on Vercel
+You can also run directly with Turbo:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm turbo dev --filter @logisync/web
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Build
+
+From the repo root:
+
+```bash
+pnpm turbo build --filter @logisync/web
+```
+
+## Lint
+
+From the repo root:
+
+```bash
+pnpm lint
+```
+
+## Structure
+
+- `src/app` for routes (Next.js App Router)
+- `src/features` for domain modules (Platform, Supplier, Carrier, Buyer, HR, Infrastructure)
+- `src/lib` for API and client utilities
+- `src/config/env.ts` for runtime env validation
