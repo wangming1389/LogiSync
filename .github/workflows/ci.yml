@@ -9,10 +9,44 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: read
+  pull-requests: write
+  packages: write
+
 jobs:
-  # 1. BUILD & QUALITY CHECK
-  build-and-quality:
-    name: Build & Quality
+  # 1. AUTO LABEL PR
+  # Automatically categorizes PRs based on changed files
+  labeler:
+    name: Auto Label PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/labeler@v5
+
+  # 2. DETECT CHANGES
+  # Checks if backend-related files were modified
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+
+  # 3. GLOBAL QUALITY
+  # Runs Biome linting for the entire monorepo to ensure project-wide standards
+  lint-all:
+    name: Global Lint (Biome)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,10 +64,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Code Quality (Biome)
-        run: pnpm biome ci .
+      - name: Lint Everything
+        run: pnpm turbo lint
 
-      - name: Build Project
+  # 4. BACKEND BUILD & SIZE
+  # Triggered only when API or Shared Packages change
+  build-api:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: [changes, lint-all]
+    if: ${{ needs.changes.outputs.api == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build API
         run: pnpm turbo build --filter=@logisync/api...
 
       - name: Build Size Report
@@ -45,24 +102,13 @@ jobs:
             echo "| Backend (API) | $(du -sh apps/api/dist | cut -f1) | ✅ |" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # 2. PERFORMANCE TARGETS
-  performance-check:
-    name: Performance Targets
+  # 5. DOCKER & PERFORMANCE
+  # Validates Dockerfile integrity and documents Performance SLAs
+  docker-and-perf:
+    name: Docker & Performance
     runs-on: ubuntu-latest
-    steps:
-      - name: Summary
-        run: |
-          echo "### API Performance Targets" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ General API Response: < 500ms" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Business Operations: 3-5 seconds" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Search Operations: 2-3 seconds" >> $GITHUB_STEP_SUMMARY
-
-  # 3. DOCKER VALIDATION
-  docker-check:
-    name: Docker Build Check
-    runs-on: ubuntu-latest
-    needs: build-and-quality
+    needs: [changes, build-api]
+    if: ${{ needs.changes.outputs.api == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,34 +129,41 @@ jobs:
 
       - name: Analyze Image Size
         run: |
-          # Get size and format it
           RAW_SIZE=$(docker images --format "{{.Size}}" logisync-api:latest)
-          
           echo "### 🐳 Docker Optimization Report" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Final Image Size** | $RAW_SIZE |" >> $GITHUB_STEP_SUMMARY
-          
-          # Basic optimization hint based on size
-          # Assuming a typical NestJS production image should be < 300MB
-          SIZE_MB=$(docker images --format "{{.Size}}" logisync-api:latest | sed 's/MB//')
+
+          # Optimization check (Threshold: 300MB)
+          SIZE_MB=$(docker images --format "{{.Size}}" logisync-api:latest | sed 's/MB//' | sed 's/GB/000/')
           if (( $(echo "$SIZE_MB < 300" | bc -l) )); then
-            echo "| **Optimization Check** | ✅ Lean (Under 300MB) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Optimization Check** | ✅ Lean |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| **Optimization Check** | ⚠️ Heavy (Check for node_modules or large base image) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Optimization Check** | ⚠️ Heavy |" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # 4. FINAL NOTIFICATION
+      - name: Performance Targets
+        run: |
+          echo "### API Performance Targets" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ General API Response: < 500ms" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Business Operations: 3-5 seconds" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Search Operations: 2-3 seconds" >> $GITHUB_STEP_SUMMARY
+
+  # 6. FINAL NOTIFICATION
+  # Reports final status based on the success of individual jobs
   notify:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [build-and-quality, docker-check]
+    needs: [labeler, lint-all, docker-and-perf]
     if: always()
     steps:
-      - name: Success
-        if: success()
-        run: echo "🎉 Build and Quality checks passed!"
-
-      - name: Failure
-        if: failure()
-        run: echo "🚨 CI failed - please check the logs."
+      - name: Check Final Status
+        run: |
+          if [[ "${{ needs.lint-all.result }}" == "success" && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
+            echo "🎉 Build and Quality checks passed!"
+          else
+            echo "🚨 CI failed - please check the logs."
+            exit 1
+          fi
