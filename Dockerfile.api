@@ -1,60 +1,82 @@
 # ==========================================
-# STAGE 1: PRUNER (Tách riêng code của API)
+# STAGE 1: PRUNER
+# Tách package cần thiết bằng Turbo
 # ==========================================
 FROM node:20-alpine AS pruner
+
 RUN apk add --no-cache libc6-compat
-RUN npm i -g turbo
+
+RUN npm install -g turbo@2
+
 WORKDIR /app
+
 COPY . .
+
 RUN turbo prune --scope=@logisync/api --docker
 
 # ==========================================
-# STAGE 2: BUILDER (Cài đặt & Build)
+# STAGE 2: BUILDER
+# Install dependencies + build app
 # ==========================================
 FROM node:20-alpine AS builder
-RUN apk add --no-cache libc6-compat python3 make g++
-RUN npm i -g pnpm turbo
+
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++
+
+RUN npm install -g pnpm@10 turbo@2
+
 WORKDIR /app
 
-# 1. Copy package.json và lockfile (cache layer)
-COPY .gitignore .gitignore
+# Copy dependency graph trước để tận dụng Docker cache
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# 2. Copy source code
+# Copy source code
 COPY --from=pruner /app/out/full/ .
 
-# 3. Build API
+# Build API
 RUN turbo run build --filter=@logisync/api...
 
-# 4. Prune dev dependencies
-RUN pnpm prune --prod --no-optional
-
 # ==========================================
-# STAGE 3: RUNNER (Môi trường Production)
+# STAGE 3: RUNNER
+# Production image
 # ==========================================
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache dumb-init
+
 WORKDIR /app
 
-# Environment
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=512"
 
-# Security: Non-root user
+# Security: non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-	adduser --system --uid 1001 nestjs
+    adduser --system --uid 1001 nestjs
 
-# Copy artifacts from builder
-COPY --from=builder --chown=nestjs:nodejs /app .
+# Copy build artifacts
+COPY --from=builder --chown=nestjs:nodejs /app ./
 
 USER nestjs
-WORKDIR /app/apps/api
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-	CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+WORKDIR /app/apps/api
 
 EXPOSE 3000
 
+# Health check
+HEALTHCHECK --interval=30s \
+    --timeout=10s \
+    --start-period=40s \
+    --retries=3 \
+CMD node -e "const http=require('http');const req=http.get('http://localhost:3000/health',res=>process.exit(res.statusCode===200?0:1));req.on('error',()=>process.exit(1));req.setTimeout(5000,()=>process.exit(1));"
+
+# Proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start NestJS app
 CMD ["node", "dist/main.js"]
