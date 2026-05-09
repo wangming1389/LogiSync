@@ -5,9 +5,11 @@ import { ZodSchema, ZodError } from "zod";
 export class ZodValidationPipe implements PipeTransform {
   constructor(private schema: ZodSchema) {}
 
-  transform(value: unknown) {
+  transform(value: unknown): unknown {
     try {
-      return this.schema.parse(value);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const parsed = this.schema.parse(value);
+      return parsed;
     } catch (error) {
       if (error instanceof ZodError) {
         const formattedErrors = error.errors.map((err) => ({

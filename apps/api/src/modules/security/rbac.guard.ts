@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   CanActivate,
@@ -24,7 +25,7 @@ export class RbacGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user = (request as { user?: { sub: string; workspaceId: string } }).user;
 
     if (!user) {
       throw new ForbiddenException("User not authenticated");

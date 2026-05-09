@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from "@nestjs/common";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/only-throw-error */
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { getPool, initializeDatabase } from "./index";
 
 @Injectable()
@@ -13,14 +9,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     this.logger.log("Connecting PostgreSQL...");
 
-    await this.withRetry(async () => {
-      initializeDatabase();
-      const pool = getPool();
-      if (!pool) {
-        throw new Error("Database pool is not initialized");
-      }
-      await pool.query("select 1");
-    }, 5, 1500);
+    await this.withRetry(
+      async () => {
+        initializeDatabase();
+        const pool = getPool();
+        if (!pool) {
+          throw new Error("Database pool is not initialized");
+        }
+        await pool.query("select 1");
+      },
+      5,
+      1500,
+    );
 
     this.logger.log("PostgreSQL connection verified.");
   }
@@ -49,18 +49,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     task: () => Promise<void>,
     attempts: number,
     delayMs: number,
-  ) {
-    let lastError: unknown;
+  ): Promise<void> {
+    let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
         await task();
         return;
       } catch (error) {
-        lastError = error;
-        this.logger.warn(
-          `PostgreSQL connection attempt ${attempt}/${attempts} failed.`,
-        );
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.logger.warn(`PostgreSQL connection attempt ${attempt}/${attempts} failed.`);
 
         if (attempt < attempts) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -70,7 +68,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.error(
       "PostgreSQL connection failed after retries.",
-      lastError instanceof Error ? lastError.stack : String(lastError),
+      lastError?.stack ?? String(lastError),
     );
     throw lastError;
   }

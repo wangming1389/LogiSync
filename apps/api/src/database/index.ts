@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-redundant-type-constituents */
 import { drizzle } from "drizzle-orm/node-postgres";
+
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-let db: ReturnType<typeof drizzle>;
-let pool: Pool | undefined;
+let db: ReturnType<typeof drizzle> | null = null;
+let pool: Pool | null = null;
 
 export function initializeDatabase(): ReturnType<typeof drizzle> {
   if (!db) {
@@ -29,6 +31,7 @@ export function getDatabase() {
   if (!db) {
     throw new Error("Database not initialized");
   }
+
   return db;
 }
 

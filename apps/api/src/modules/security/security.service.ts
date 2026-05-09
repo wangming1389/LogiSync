@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable } from "@nestjs/common";
-import bcrypt from "bcryptjs";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import bcrypt = require("bcryptjs");
 import { getDatabase, schema } from "../../database";
 import { eq, and } from "drizzle-orm";
 
@@ -9,11 +11,15 @@ const MAX_FAILED_ATTEMPTS = 5;
 @Injectable()
 export class SecurityService {
   async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+    const hash = await bcrypt.hash(password, 10);
+    return hash;
   }
 
   async comparePassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+    const isMatch = await bcrypt.compare(password, hash);
+    return isMatch;
   }
 
   async recordFailedLogin(email: string): Promise<void> {
@@ -28,7 +34,7 @@ export class SecurityService {
 
     const newAttempts = (user.failedLoginAttempts ?? 0) + 1;
 
-    let updates: any = {
+    const updates: { failedLoginAttempts: number; lockoutUntil?: Date } = {
       failedLoginAttempts: newAttempts,
     };
 

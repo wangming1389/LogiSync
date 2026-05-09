@@ -1,11 +1,21 @@
 backend:
-  - apps/api/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'apps/api/**/*'
+
 frontend:
-  - apps/web/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'apps/web/**/*'
+
 mobile:
-  - apps/mobile/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'apps/mobile/**/*'
+
 shared:
-  - packages/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'packages/**/*'
+
 infrastructure:
-  - docker-compose.yml
-  - .github/workflows/*
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docker-compose.yml'
+          - '.github/workflows/*'

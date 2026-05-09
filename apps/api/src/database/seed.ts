@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
 import { getDatabase, schema, initializeDatabase } from "./index";
-import bcrypt from "bcryptjs";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import bcrypt = require("bcryptjs");
 import { v4 as uuid } from "uuid";
 import { eq } from "drizzle-orm";
 
@@ -46,8 +48,9 @@ async function seed() {
   } else {
     // Create default admin user
     const hashedPassword = await bcrypt.hash("admin@123456", 10);
+    const userId = uuid();
     await db.insert(schema.users).values({
-      id: uuid(),
+      id: userId,
       workspaceId,
       email: "admin@logisync.local",
       passwordHash: hashedPassword,

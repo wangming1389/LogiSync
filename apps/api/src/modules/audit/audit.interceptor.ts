@@ -13,22 +13,19 @@ import { Request } from "express";
 export class AuditInterceptor implements NestInterceptor {
   constructor(private auditLoggerService: AuditLoggerService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
-    const startTime = Date.now();
 
     // Extract metadata
-    const user = (request as any).user;
+    const user = (request as { user?: { sub: string; workspaceId: string } }).user;
     const ipAddress = this.getClientIp(request);
-    const userAgent = request.get("user-agent");
+    const userAgent = request.get("user-agent") ?? "";
 
     return next.handle().pipe(
-      tap((data) => {
-        const responseTime = Date.now() - startTime;
-
+      tap(() => {
         // Only audit important operations (POST, PUT, DELETE, PATCH)
         if (user && ["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
-          this.auditLoggerService.log({
+          void this.auditLoggerService.log({
             actorId: user.sub,
             workspaceId: user.workspaceId,
             action: `${request.method}_${request.path}`,
@@ -40,11 +37,9 @@ export class AuditInterceptor implements NestInterceptor {
           });
         }
       }),
-      catchError((error) => {
-        const responseTime = Date.now() - startTime;
-
+      catchError((error: Error) => {
         if (user) {
-          this.auditLoggerService.log({
+          void this.auditLoggerService.log({
             actorId: user.sub,
             workspaceId: user.workspaceId,
             action: `${request.method}_${request.path}`,

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
@@ -28,10 +23,7 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
 
   constructor(private readonly configService: ConfigService) {
-    this.redisUrl = this.configService.get<string>(
-      "REDIS_URL",
-      "redis://localhost:6379",
-    );
+    this.redisUrl = this.configService.get<string>("REDIS_URL", "redis://localhost:6379");
   }
 
   async onModuleInit() {
@@ -45,7 +37,7 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    this.redisClient.on("error", (error) => {
+    this.redisClient.on("error", (error: Error) => {
       this.logger.error("Redis error", error.stack);
     });
 
@@ -80,10 +72,7 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
       ttl,
       JSON.stringify(sessionData),
     );
-    await this.redisClient.sAdd(
-      `workspace:${data.workspaceId}:sessions`,
-      sessionId,
-    );
+    await this.redisClient.sAdd(`workspace:${data.workspaceId}:sessions`, sessionId);
 
     const db = getDatabase();
     const tokenHash = this.hashToken(sessionId);
@@ -104,7 +93,11 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 
   async getSession(sessionId: string): Promise<SessionData | null> {
     const data = await this.redisClient.get(`session:${sessionId}`);
-    return data ? JSON.parse(data) : null;
+    if (!data) {
+      return null;
+    }
+    const parsed = JSON.parse(data) as SessionData;
+    return parsed;
   }
 
   async revokeSession(sessionId: string): Promise<void> {
@@ -114,10 +107,7 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
     }
 
     await this.redisClient.del(`session:${sessionId}`);
-    await this.redisClient.sRem(
-      `workspace:${session.workspaceId}:sessions`,
-      sessionId,
-    );
+    await this.redisClient.sRem(`workspace:${session.workspaceId}:sessions`, sessionId);
 
     const db = getDatabase();
     const tokenHash = this.hashToken(sessionId);
@@ -138,9 +128,7 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
     await Promise.all(sessionIds.map((sessionId) => this.revokeSession(sessionId)));
     await this.redisClient.del(`workspace:${workspaceId}:sessions`);
 
-    this.logger.log(
-      `Revoked ${sessionIds.length} sessions for workspace ${workspaceId}`,
-    );
+    this.logger.log(`Revoked ${sessionIds.length} sessions for workspace ${workspaceId}`);
   }
 
   async revokeUserSessions(userId: string, workspaceId: string): Promise<void> {

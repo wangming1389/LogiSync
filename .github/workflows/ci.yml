@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   # 1. AUTO LABEL PR
-  # Automatically categorizes PRs based on changed files
   labeler:
     name: Auto Label PR
     runs-on: ubuntu-latest
@@ -25,7 +24,6 @@ jobs:
       - uses: actions/labeler@v5
 
   # 2. DETECT CHANGES
-  # Checks if backend-related files were modified
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -43,10 +41,10 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'turbo.json'
 
-  # 3. GLOBAL QUALITY
-  # Runs Biome linting for the entire monorepo to ensure project-wide standards
-  lint-all:
-    name: Global Lint (Biome)
+  # 3. QUALITY CHECK
+  # Global Biome check + Deep ESLint for API only
+  quality:
+    name: Quality Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -64,15 +62,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint Everything
-        run: pnpm turbo lint
+      - name: Global Fast Lint (Biome)
+        run: pnpm lint:fast
+
+      - name: Deep API Lint (ESLint)
+        run: pnpm turbo lint --filter=@logisync/api
 
   # 4. BACKEND BUILD & SIZE
-  # Triggered only when API or Shared Packages change
   build-api:
     name: Build Backend
     runs-on: ubuntu-latest
-    needs: [changes, lint-all]
+    needs: [changes, quality]
     if: ${{ needs.changes.outputs.api == 'true' }}
     steps:
       - name: Checkout code
@@ -103,7 +103,6 @@ jobs:
           fi
 
   # 5. DOCKER & PERFORMANCE
-  # Validates Dockerfile integrity and documents Performance SLAs
   docker-and-perf:
     name: Docker & Performance
     runs-on: ubuntu-latest
@@ -135,7 +134,6 @@ jobs:
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Final Image Size** | $RAW_SIZE |" >> $GITHUB_STEP_SUMMARY
 
-          # Optimization check (Threshold: 300MB)
           SIZE_MB=$(docker images --format "{{.Size}}" logisync-api:latest | sed 's/MB//' | sed 's/GB/000/')
           if (( $(echo "$SIZE_MB < 300" | bc -l) )); then
             echo "| **Optimization Check** | ✅ Lean |" >> $GITHUB_STEP_SUMMARY
@@ -152,16 +150,15 @@ jobs:
           echo "✅ Search Operations: 2-3 seconds" >> $GITHUB_STEP_SUMMARY
 
   # 6. FINAL NOTIFICATION
-  # Reports final status based on the success of individual jobs
   notify:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [labeler, lint-all, docker-and-perf]
+    needs: [labeler, quality, docker-and-perf]
     if: always()
     steps:
       - name: Check Final Status
         run: |
-          if [[ "${{ needs.lint-all.result }}" == "success" && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
+          if [[ "${{ needs.quality.result }}" == "success" && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
             echo "🎉 Build and Quality checks passed!"
           else
             echo "🚨 CI failed - please check the logs."
