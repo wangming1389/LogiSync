@@ -1,15 +1,18 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: logisync-db
-    ports:
-      - "${POSTGRES_PORT}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - postgres-audit-data:/var/lib/postgresql/audit
+    networks:
+      - logisync-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -21,7 +24,9 @@ services:
     image: redis:7-alpine
     container_name: logisync-redis
     ports:
-      - "${REDIS_PORT}:6379"
+      - "6379:6379"
+    networks:
+      - logisync-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -32,15 +37,17 @@ services:
   minio:
     image: minio/minio
     container_name: logisync-minio
-    ports:
-      - "${MINIO_API_PORT}:9000" # S3 API
-      - "${MINIO_CONSOLE_PORT}:9001" # Web Console
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio-data:/data
+    networks:
+      - logisync-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -48,6 +55,34 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: logisync-broker
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - logisync-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Định nghĩa thêm API, Worker, và GPS Ingestion sau
+
+networks:
+  logisync-network:
+    driver: bridge
+
 volumes:
   postgres-data:
+  postgres-audit-data:
   minio-data:
+  rabbitmq-data:

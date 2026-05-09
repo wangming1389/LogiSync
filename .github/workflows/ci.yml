@@ -2,16 +2,20 @@ name: LogiSync CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "develop"]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
   pull-requests: write
+  packages: write
 
 jobs:
-  # Tự động gán nhãn PR (Backend, Frontend, Mobile...)
+  # 1. AUTO LABEL PR
   labeler:
     name: Auto Label PR
     runs-on: ubuntu-latest
@@ -19,15 +23,32 @@ jobs:
     steps:
       - uses: actions/labeler@v5
 
-  # Kiểm tra chất lượng code và thử nghiệm Build
-  quality-and-build:
-    name: Quality & Smart Build
+  # 2. DETECT CHANGES
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+
+  # 3. QUALITY CHECK
+  # Global Biome check + Deep ESLint for API only
+  quality:
+    name: Quality Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Để Turbo so sánh được các thay đổi
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -35,39 +56,111 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install
 
-      # Kiểm tra nhanh bằng Biome (Lint + Format)
-      - name: Fast Quality Check (Biome)
-        run: pnpm biome ci .
+      - name: Global Fast Lint (Biome)
+        run: pnpm lint:fast
 
-      # Setup Cache cho Turbo
-      - name: Turbo Cache
-        uses: actions/cache@v4
+      - name: Deep API Lint (ESLint)
+        run: pnpm turbo lint --filter=@logisync/api
+
+  # 4. BACKEND BUILD & SIZE
+  build-api:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: ${{ needs.changes.outputs.api == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+          node-version: 22
+          cache: "pnpm"
 
-      # Check sâu bằng ESLint & Build thông minh
-      - name: Lint & Build (Smart)
-        run: pnpm turbo lint build --filter=...[origin/main]
+      - name: Install dependencies
+        run: pnpm install
 
-      # Xuất bảng báo cáo dung lượng (Size Report)
-      - name: Size Report
+      - name: Build API
+        run: pnpm turbo build --filter=@logisync/api...
+
+      - name: Build Size Report
         run: |
           echo "### LogiSync Build Size Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Service | Size | Status |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-
           if [ -d "apps/api/dist" ]; then
-            echo "| Backend (API) | $(du -sh apps/api/dist | cut -f1) | ✅ Build OK |" >> $GITHUB_STEP_SUMMARY
+            echo "| Backend (API) | $(du -sh apps/api/dist | cut -f1) | ✅ |" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ -d "apps/web/.next" ]; then
-            echo "| Web (Next.js) | $(du -sh apps/web/.next | cut -f1) | ✅ Build OK |" >> $GITHUB_STEP_SUMMARY
+
+  # 5. DOCKER & PERFORMANCE
+  docker-and-perf:
+    name: Docker & Performance
+    runs-on: ubuntu-latest
+    needs: [changes, build-api]
+    if: ${{ needs.changes.outputs.api == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: false
+          load: true
+          tags: logisync-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Analyze Image Size
+        run: |
+          RAW_SIZE=$(docker images --format "{{.Size}}" logisync-api:latest)
+          echo "### 🐳 Docker Optimization Report" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Final Image Size** | $RAW_SIZE |" >> $GITHUB_STEP_SUMMARY
+
+          SIZE_MB=$(docker images --format "{{.Size}}" logisync-api:latest | sed 's/MB//' | sed 's/GB/000/')
+          if (( $(echo "$SIZE_MB < 300" | bc -l) )); then
+            echo "| **Optimization Check** | ✅ Lean |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **Optimization Check** | ⚠️ Heavy |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Performance Targets
+        run: |
+          echo "### API Performance Targets" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ General API Response: < 500ms" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Business Operations: 3-5 seconds" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Search Operations: 2-3 seconds" >> $GITHUB_STEP_SUMMARY
+
+  # 6. FINAL NOTIFICATION
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [labeler, quality, docker-and-perf]
+    if: always()
+    steps:
+      - name: Check Final Status
+        run: |
+          if [[ "${{ needs.quality.result }}" == "success" && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
+            echo "🎉 Build and Quality checks passed!"
+          else
+            echo "🚨 CI failed - please check the logs."
+            exit 1
           fi

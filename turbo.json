@@ -1,9 +1,38 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "out/**"]
+    },
+    "test": {
+      "cache": true,
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "db:generate": {
+      "cache": true,
+      "inputs": ["src/database/schema.ts", "drizzle.config.ts"],
+      "outputs": ["src/drizzle/migrations/**"]
+    },
+    "db:migrate": {
+      "cache": false,
+      "dependsOn": ["db:generate"]
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:setup": {
+      "cache": false,
+      "dependsOn": ["db:generate"]
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
     },
     "dev": {
       "cache": false,
