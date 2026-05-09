@@ -1,9 +1,9 @@
-import { Module } from "@nestjs/common";
-import { SecurityService } from "./security.service";
-import { RbacGuard } from "./rbac.guard";
+import { Module } from '@nestjs/common';
+import { RbacGuard } from './rbac.guard';
+import { SecurityService } from './security.service';
 
 @Module({
-  providers: [SecurityService, RbacGuard],
-  exports: [SecurityService, RbacGuard],
+	providers: [SecurityService, RbacGuard],
+	exports: [SecurityService, RbacGuard],
 })
 export class SecurityModule {}
