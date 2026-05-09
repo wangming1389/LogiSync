@@ -1,0 +1,60 @@
+# ==========================================
+# STAGE 1: PRUNER (Tách riêng code của API)
+# ==========================================
+FROM node:20-alpine AS pruner
+RUN apk add --no-cache libc6-compat
+RUN npm i -g turbo
+WORKDIR /app
+COPY . .
+RUN turbo prune --scope=@logisync/api --docker
+
+# ==========================================
+# STAGE 2: BUILDER (Cài đặt & Build)
+# ==========================================
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat python3 make g++
+RUN npm i -g pnpm turbo
+WORKDIR /app
+
+# 1. Copy package.json và lockfile (cache layer)
+COPY .gitignore .gitignore
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
+
+# 2. Copy source code
+COPY --from=pruner /app/out/full/ .
+
+# 3. Build API
+RUN turbo run build --filter=@logisync/api...
+
+# 4. Prune dev dependencies
+RUN pnpm prune --prod --no-optional
+
+# ==========================================
+# STAGE 3: RUNNER (Môi trường Production)
+# ==========================================
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Environment
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=512"
+
+# Security: Non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+	adduser --system --uid 1001 nestjs
+
+# Copy artifacts from builder
+COPY --from=builder --chown=nestjs:nodejs /app .
+
+USER nestjs
+WORKDIR /app/apps/api
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+	CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

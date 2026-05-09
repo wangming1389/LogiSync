@@ -8,6 +8,10 @@
     "dev:api": "turbo dev --filter @logisync/api",
     "dev:web": "turbo dev --filter @logisync/web",
     "dev:mobile": "pnpm --filter @logisync/mobile dev",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:studio": "turbo db:studio --filter=@logisync/api",
+    "db:setup": "turbo db:setup --filter=@logisync/api",
     "dev:all": "turbo dev",
     "build": "turbo build",
     "lint": "pnpm lint:fast && pnpm lint:deep",
@@ -37,6 +41,7 @@
     "biome": "^0.3.3",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
+    "dotenv-cli": "^11.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "turbo": "^2.8.20"

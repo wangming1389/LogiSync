@@ -1,110 +1,120 @@
 # LogiSync - Hệ thống hỗ trợ hoạt động Logistics
 
----
+Nền tảng logistics toàn diện dành cho Supplier, Buyer và Carrier - từ quản lý đơn hàng, vận chuyển, theo dõi GPS đến thanh toán.
 
-## Giới thiệu
+## 🚀 Quick Start
 
-LogiSync là nền tảng quản lý logistics toàn diện dành cho Supplier, Buyer và Carrier, hỗ trợ toàn bộ quy trình từ đặt hàng, vận chuyển, theo dõi GPS đến thanh toán và đối soát.
-
----
-
-## Tính năng chính
-
-- Quản lý Workspace đa vai trò (Supplier / Buyer / Carrier)
-- Quản lý sản phẩm & catalog
-- Quản lý đơn hàng & thương lượng nhiều vòng
-- Điều phối vận chuyển & theo dõi GPS real-time
-- ETA & tracking lộ trình
-- e-POD (chứng từ giao hàng điện tử)
-- Quản lý công nợ, hóa đơn & thanh toán
-- Dashboard & báo cáo doanh thu
-- Thông báo real-time (Email + Push)
-- Audit log & bảo mật dữ liệu
-
----
-
-## Cài đặt nhanh
-
-### 1. Chuẩn bị môi trường
+### 1. Chuẩn bị
 
 ```bash
 pnpm install
 pnpm prepare
 ```
 
----
-
-### 2. Chạy hạ tầng (Database / Redis / MinIO)
+### 2. Database & Infrastructure
 
 ```bash
-docker compose up -d
+pnpm db:up
+pnpm db:setup
+pnpm db:studio
 ```
 
-Chạy ở chế độ nền (background)
-
----
-
-### 3. Chạy ứng dụng (Development)
+### 3. Development
 
 ```bash
-pnpm dev           # Chạy toàn bộ hệ thống (nặng)
-pnpm dev:api       # Backend (NestJS)
-pnpm dev:web       # Frontend (Next.js)
-pnpm dev:mobile    # Mobile (React Native)
+pnpm dev           # Tất cả services
+pnpm dev:api       # NestJS Backend
+pnpm dev:web       # Next.js Frontend
+pnpm dev:mobile    # React Native Mobile
+```
+
+### 4. Verify Installation
+
+```bash
+curl http://localhost:3000/health/ready
+curl http://localhost:3000/health
 ```
 
 ---
 
-## Quy trình Commit
+## Commit Convention
 
-Dự án sử dụng **Conventional Commits**.
-
-❌ Không dùng:
+Always use `pnpm commit` to create commits with proper format:
 
 ```bash
-git commit -m "..."
-```
-
-✅ Quy trình đúng:
-
-```bash
-git add .
 pnpm commit
-git push
 ```
 
-Sử dụng giao diện chọn loại commit: `feat`, `fix`, `chore`,...
+### Format: `<type>(<scope>): <subject>`
+
+**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`
+
+**Scopes**: `api`, `web`, `mobile`, `db`, `auth`, `validation`, `config`, etc.
+
+### Examples
+
+```
+feat(auth): add OAuth2 support
+fix(validation): handle null values in schemas
+docs(api): update validation guide
+```
+
+### Rules
+
+- Use imperative mood ("add" not "added")
+- No period at the end
+- Max 50 characters for subject
+- Reference issues: `Closes #123`
 
 ---
 
-## Code Quality
+## 📖 Documentation
 
-### Lint
-
-```bash
-pnpm lint
-```
-
-### Format
-
-```bash
-pnpm format
-```
-
-Sử dụng **Biome** để kiểm tra và format code
+| Topic                   | Location                               |
+| ----------------------- | -------------------------------------- |
+| **Setup & Environment** | [docs/setup/](docs/setup/)             |
+| **Development Guide**   | [docs/development/](docs/development/) |
+| **API & Validation**    | [docs/api/](docs/api/)                 |
+| **Deployment**          | [docs/deployment/](docs/deployment/)   |
+| **CI/CD Pipeline**      | [docs/ci-cd/](docs/ci-cd/)             |
 
 ---
 
-## Docker Commands
+## ✨ Key Features
 
-### Start
+- ✅ Multi-tenant Workspace (Supplier/Buyer/Carrier)
+- ✅ Product & Order Management
+- ✅ Real-time GPS Tracking & ETA
+- ✅ e-POD (Electronic Proof of Delivery)
+- ✅ Invoice & Payment Management
+- ✅ **Audit Logging** (Append-only, tamper-proof)
+- ✅ **Security** (RBAC, Bcrypt, RLS)
+- ✅ **Health Checks** & Monitoring
+- ✅ **Background Workers** (Scheduled tasks)
 
-```bash
-docker compose up -d
+---
+
+## 🛠️ Project Structure
+
+```
+logisync/
+├── apps/
+│   ├── api/          # NestJS Backend
+│   ├── web/          # Next.js Frontend
+│   └── mobile/       # React Native
+├── packages/
+│   ├── constants/
+│   └── shared-types/
+└── docs/             # Documentation
 ```
 
-### Stop
+---
 
-```bash
-docker compose down
-```
+## 📞 Need Help?
+
+- 📚 **Setup Issues?** → [docs/setup/](docs/setup/)
+- 💻 **Development?** → [docs/development/](docs/development/)
+- 🚀 **Deployment?** → [docs/deployment/](docs/deployment/)
+- 🔧 **API Questions?** → [docs/api/](docs/api/)
+
+---

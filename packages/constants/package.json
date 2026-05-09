@@ -1,0 +1,13 @@
+{
+  "name": "@logisync/constants",
+  "version": "1.0.0",
+  "description": "Shared constants for LogiSync",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  }
+}
