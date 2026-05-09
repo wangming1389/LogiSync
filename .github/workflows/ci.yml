@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -37,6 +38,12 @@ jobs:
           filters: |
             api:
               - 'apps/api/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            frontend:
+              - 'apps/web/**'
+              - 'apps/mobile/**'
               - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'turbo.json'
@@ -91,7 +98,7 @@ jobs:
         run: pnpm install
 
       - name: Build API
-        run: pnpm turbo build --filter=@logisync/api...
+        run: pnpm turbo build --filter="@logisync/api..."
 
       - name: Build Size Report
         run: |
@@ -134,11 +141,12 @@ jobs:
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Final Image Size** | $RAW_SIZE |" >> $GITHUB_STEP_SUMMARY
 
-          SIZE_MB=$(docker images --format "{{.Size}}" logisync-api:latest | sed 's/MB//' | sed 's/GB/000/')
-          if (( $(echo "$SIZE_MB < 300" | bc -l) )); then
-            echo "| **Optimization Check** | ✅ Lean |" >> $GITHUB_STEP_SUMMARY
+          SIZE_BYTES=$(docker inspect logisync-api:latest --format='{{.Size}}')
+          SIZE_MB=$((SIZE_BYTES / 1048576))
+          if (( SIZE_MB < 300 )); then
+            echo "| **Optimization Check** | ✅ Lean ($SIZE_MB MB) |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| **Optimization Check** | ⚠️ Heavy |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Optimization Check** | ⚠️ Heavy ($SIZE_MB MB) |" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Performance Targets
