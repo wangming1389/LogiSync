@@ -1,5 +1,5 @@
-import { ZodSchema, ZodError } from "zod";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException } from '@nestjs/common';
+import { ZodError, ZodSchema } from 'zod';
 
 /**
  * Validates data against a Zod schema
@@ -9,24 +9,24 @@ import { BadRequestException } from "@nestjs/common";
  * @throws BadRequestException if validation fails
  */
 export function validateWithZod<T>(schema: ZodSchema, data: unknown): T {
-  try {
-    return schema.parse(data) as T;
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const formattedErrors = error.errors.map((err) => ({
-        path: err.path.join(".") || "root",
-        message: err.message,
-        code: err.code,
-      }));
+	try {
+		return schema.parse(data) as T;
+	} catch (error) {
+		if (error instanceof ZodError) {
+			const formattedErrors = error.errors.map((err) => ({
+				path: err.path.join('.') || 'root',
+				message: err.message,
+				code: err.code,
+			}));
 
-      throw new BadRequestException({
-        statusCode: 400,
-        message: "Validation failed",
-        errors: formattedErrors,
-      });
-    }
-    throw error;
-  }
+			throw new BadRequestException({
+				statusCode: 400,
+				message: 'Validation failed',
+				errors: formattedErrors,
+			});
+		}
+		throw error;
+	}
 }
 
 /**
@@ -36,23 +36,23 @@ export function validateWithZod<T>(schema: ZodSchema, data: unknown): T {
  * @returns Object with success flag and either parsed data or errors
  */
 export function safeValidateWithZod<T>(schema: ZodSchema, data: unknown) {
-  const result = schema.safeParse(data);
+	const result = schema.safeParse(data);
 
-  if (!result.success) {
-    return {
-      success: false,
-      errors: result.error.errors.map((err) => ({
-        path: err.path.join(".") || "root",
-        message: err.message,
-        code: err.code,
-      })),
-    };
-  }
+	if (!result.success) {
+		return {
+			success: false,
+			errors: result.error.errors.map((err) => ({
+				path: err.path.join('.') || 'root',
+				message: err.message,
+				code: err.code,
+			})),
+		};
+	}
 
-  return {
-    success: true,
-    data: result.data as T,
-  };
+	return {
+		success: true,
+		data: result.data as T,
+	};
 }
 
 /**
@@ -61,7 +61,7 @@ export function safeValidateWithZod<T>(schema: ZodSchema, data: unknown) {
  * @returns Function that validates data
  */
 export function createValidator<T>(schema: ZodSchema) {
-  return (data: unknown): T => validateWithZod<T>(schema, data);
+	return (data: unknown): T => validateWithZod<T>(schema, data);
 }
 
 /**
@@ -70,5 +70,5 @@ export function createValidator<T>(schema: ZodSchema) {
  * @returns Function that safely validates data
  */
 export function createSafeValidator<T>(schema: ZodSchema) {
-  return (data: unknown) => safeValidateWithZod<T>(schema, data);
+	return (data: unknown) => safeValidateWithZod<T>(schema, data);
 }

@@ -1,20 +1,26 @@
--- ==========================================
--- PostgreSQL Row-Level Security (RLS) Setup
--- ==========================================
--- Bảo vệ dữ liệu multi-tenant ở mức database
+CREATE OR REPLACE FUNCTION prevent_audit_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Audit log is immutable. Operation % is forbidden.', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
 
--- 1. Enable RLS on tables
+CREATE TRIGGER audit_logs_immutable
+BEFORE UPDATE OR DELETE ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+
+-- Enable RLS on tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_registry ENABLE ROW LEVEL SECURITY;
 
--- 2. Create policy for users table
+-- Create policy for users table
 -- Mỗi user chỉ thấy user trong cùng workspace
 CREATE POLICY users_workspace_isolation ON users
     FOR SELECT
     USING (workspace_id = current_setting('app.workspace_id')::uuid);
 
--- 3. Create policy for audit_logs
+-- Create policy for audit_logs
 -- Append-only: User chỉ thấy logs trong workspace của họ
 CREATE POLICY audit_logs_workspace_isolation ON audit_logs
     FOR SELECT
@@ -29,12 +35,12 @@ CREATE POLICY audit_logs_no_delete ON audit_logs
     FOR DELETE
     USING (false);
 
--- 4. Create policy for session_registry
+-- Create policy for session_registry
 CREATE POLICY session_registry_workspace_isolation ON session_registry
     FOR SELECT
     USING (workspace_id = current_setting('app.workspace_id')::uuid);
 
--- 5. Database triggers to prevent audit log manipulation
+-- Database triggers to prevent audit log manipulation
 CREATE OR REPLACE FUNCTION prevent_audit_log_manipulation()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -50,7 +56,7 @@ CREATE TRIGGER audit_logs_immutable
     FOR EACH ROW
     EXECUTE FUNCTION prevent_audit_log_manipulation();
 
--- 6. Audit trigger to log all changes
+-- Audit trigger to log all changes
 CREATE OR REPLACE FUNCTION log_all_changes()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -72,7 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. Apply audit trigger to important tables
+-- Apply audit trigger to important tables
 -- CREATE TRIGGER users_audit AFTER INSERT OR UPDATE OR DELETE ON users FOR EACH ROW EXECUTE FUNCTION log_all_changes();
 
 -- ==========================================
