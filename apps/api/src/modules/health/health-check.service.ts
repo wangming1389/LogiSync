@@ -7,16 +7,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { DatabaseService } from '../../database/database.service';
+import { MessageQueueService } from '../message-queue/message-queue.service';
+import { ObjectStorageService } from '../object-storage/object-storage.service';
 import { SessionRegistryService } from '../session/session-registry.service';
 
 export interface HealthStatus {
 	database: boolean;
 	redis: boolean;
-	fileStorage: boolean;
+	objectStorage: boolean;
+	messageQueue: boolean;
 	timestamp: number;
 }
 
-// now just check database and redis
 @Injectable()
 export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(HealthCheckService.name);
@@ -27,13 +29,16 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 	private status: HealthStatus = {
 		database: false,
 		redis: false,
-		fileStorage: true,
+		objectStorage: false,
+		messageQueue: false,
 		timestamp: Date.now(),
 	};
 
 	constructor(
 		private readonly databaseService: DatabaseService,
 		private readonly sessionRegistryService: SessionRegistryService,
+		private readonly objectStorageService: ObjectStorageService,
+		private readonly messageQueueService: MessageQueueService,
 		private readonly configService: ConfigService,
 	) {}
 
@@ -72,7 +77,24 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 			this.logger.error('Redis health check failed');
 		}
 
-		this.status.fileStorage = true;
+		try {
+			await this.objectStorageService.ping();
+			this.status.objectStorage = true;
+		} catch {
+			this.status.objectStorage = false;
+			failed.push('objectStorage');
+			this.logger.error('ObjectStorage health check failed');
+		}
+
+		try {
+			await this.messageQueueService.ping();
+			this.status.messageQueue = true;
+		} catch {
+			this.status.messageQueue = false;
+			failed.push('messageQueue');
+			this.logger.error('MessageQueue health check failed');
+		}
+
 		this.status.timestamp = Date.now();
 
 		if (failed.length > 0) {
@@ -134,6 +156,11 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	isHealthy(): boolean {
-		return this.status.database && this.status.redis && this.status.fileStorage;
+		return (
+			this.status.database &&
+			this.status.redis &&
+			this.status.objectStorage &&
+			this.status.messageQueue
+		);
 	}
 }
