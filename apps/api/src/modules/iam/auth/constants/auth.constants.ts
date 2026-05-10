@@ -1,0 +1,8 @@
+export const SESSION_TTL_SECONDS = 1800;
+export const JWT_EXPIRATION_SECONDS = 1800;
+export const CLOCK_SKEW_TOLERANCE_SECONDS = 30;
+export const SESSION_WARNING_SECONDS = 120;
+export const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+export const MAX_FAILED_ATTEMPTS = 5;
+export const OTP_TTL_SECONDS = 300;
+export const SIGNED_URL_TTL_SECONDS = 3600;
