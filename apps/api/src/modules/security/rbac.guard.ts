@@ -6,7 +6,7 @@ import {
 	Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PermissionService } from '../auth/services/permission.service';
+import { PermissionService } from '../iam/auth/permission.service';
 
 export const Permissions = Reflector.createDecorator<string[]>();
 
