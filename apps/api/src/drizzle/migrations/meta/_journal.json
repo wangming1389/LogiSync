@@ -15,6 +15,13 @@
       "when": 1778401480210,
       "tag": "0001_dusty_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778403248636,
+      "tag": "0002_steep_caretaker",
+      "breakpoints": true
     }
   ]
 }
