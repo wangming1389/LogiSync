@@ -32,6 +32,8 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^4.1.1",
+    "@nestjs/swagger": "^11.4.2",
+    "@scalar/nestjs-api-reference": "^1.1.14",
     "amqplib": "^1.2.0",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.2",
