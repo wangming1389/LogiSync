@@ -6,7 +6,7 @@ import {
 	Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { SecurityService } from './security.service';
+import { PermissionService } from '../auth/services/permission.service';
 
 export const Permissions = Reflector.createDecorator<string[]>();
 
@@ -14,7 +14,7 @@ export const Permissions = Reflector.createDecorator<string[]>();
 export class RbacGuard implements CanActivate {
 	constructor(
 		private reflector: Reflector,
-		private securityService: SecurityService,
+		private permissionService: PermissionService,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -36,7 +36,7 @@ export class RbacGuard implements CanActivate {
 		}
 
 		for (const permission of requiredPermissions) {
-			const hasPermission = await this.securityService.hasPermission(
+			const hasPermission = await this.permissionService.hasPermission(
 				user.sub,
 				user.workspaceId,
 				permission,

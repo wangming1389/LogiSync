@@ -5,7 +5,6 @@ import { v4 as uuid } from 'uuid';
 import { getDatabase, schema } from '../../database';
 import * as schemaTypes from '../../database/schema';
 
-// Type cho Drizzle transaction
 export type DrizzleTransaction = NodePgDatabase<typeof schemaTypes>;
 
 export interface AuditLogPayload {
@@ -25,7 +24,7 @@ export interface AuditLogPayload {
 export class AuditLoggerService {
 	private readonly logger = new Logger(AuditLoggerService.name);
 
-	// Dùng NGOÀI transaction — không throw nếu fail (fire-and-forget)
+	// Logs an audit event to the database
 	async log(payload: AuditLogPayload): Promise<void> {
 		try {
 			const db = getDatabase();
@@ -41,7 +40,7 @@ export class AuditLoggerService {
 		}
 	}
 
-	// Dùng TRONG transaction — throw nếu fail → rollback toàn bộ business transaction
+	// Logs an audit event within an existing transaction
 	async logInTx(
 		tx: DrizzleTransaction,
 		payload: AuditLogPayload,
@@ -50,7 +49,6 @@ export class AuditLoggerService {
 			id: uuid(),
 			...payload,
 		});
-		// Không có try/catch — lỗi sẽ bubble up → transaction rollback
 	}
 
 	async getWorkspaceLogs(workspaceId: string, limit = 100, offset = 0) {
