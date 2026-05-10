@@ -16,9 +16,11 @@ export const workspaces = pgTable('workspaces', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	name: varchar('name', { length: 255 }).notNull(),
 	slug: varchar('slug', { length: 255 }).notNull().unique(),
-	type: varchar('type', { length: 50 }).notNull(), // "supplier" | "buyer" | "carrier" | "platform"
+	type: varchar('type', { length: 50 }).notNull(),
+	// "supplier" | "buyer" | "carrier" | "platform"
 	taxId: varchar('tax_id', { length: 20 }).notNull(),
-	status: varchar('status', { length: 20 }).notNull().default('pending'), // "pending" | "active" | "suspended" | "revoked"
+	status: varchar('status', { length: 20 }).notNull().default('pending'),
+	// "pending" | "active" | "suspended" | "revoked"
 	registeredIpAddress: varchar('registered_ip_address', {
 		length: 45,
 	}).notNull(),
@@ -47,7 +49,10 @@ export const users = pgTable('users', {
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
 	firstName: varchar('first_name', { length: 100 }),
 	lastName: varchar('last_name', { length: 100 }),
-	role: varchar('role', { length: 50 }).notNull(), // e.g. "platform_admin", "supplier_manager", "buyer_staff"
+	role: varchar('role', { length: 50 }).notNull(),
+	// "platform_admin" | "company_admin" | "supplier_manager" | "supplier_staff"
+	// "supplier_accountant" | "buyer_manager" | "buyer_staff"
+	// "carrier_dispatcher" | "driver" | "hr_manager"
 	isActive: boolean('is_active').default(true),
 	lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
 	lockoutUntil: timestamp('lockout_until', { withTimezone: true }),
@@ -86,7 +91,8 @@ export const auditLogs = pgTable('audit_logs', {
 	changes: jsonb('changes'),
 	ipAddress: varchar('ip_address', { length: 45 }).notNull(),
 	userAgent: text('user_agent'),
-	status: varchar('status', { length: 50 }).notNull(), // "success" | "failure"
+	status: varchar('status', { length: 50 }).notNull(),
+	// "success" | "failure"
 	errorMessage: text('error_message'),
 	timestamp: timestamp('timestamp', { withTimezone: true, precision: 6 })
 		.notNull()
@@ -193,7 +199,8 @@ export const products = pgTable(
 		description: text('description'),
 		unitPrice: integer('unit_price').notNull(),
 		minOrderQty: integer('min_order_qty').notNull().default(1),
-		status: varchar('status', { length: 20 }).notNull().default('draft'), // "draft" | "active" | "inactive"
+		status: varchar('status', { length: 20 }).notNull().default('draft'),
+		// "draft" | "active" | "inactive"
 		imageUrls: jsonb('image_urls'),
 		attributes: jsonb('attributes'),
 		createdBy: uuid('created_by')
@@ -239,7 +246,8 @@ export const rfqs = pgTable('rfqs', {
 		.notNull()
 		.references(() => users.id),
 	status: varchar('status', { length: 30 }).notNull().default('draft'),
-	// "draft" | "pending_response" | "responded" | "closed" | "cancelled note: text('note'),
+	// "draft" | "pending_response" | "responded" | "closed" | "cancelled"
+	note: text('note'),
 	submittedAt: timestamp('submitted_at', { withTimezone: true }),
 	createdAt: timestamp('created_at', { withTimezone: true })
 		.notNull()
@@ -290,7 +298,8 @@ export const quotations = pgTable('quotations', {
 		.notNull()
 		.references(() => users.id),
 	status: varchar('status', { length: 20 }).notNull().default('draft'),
-	// "draft" | "submitted" | "selected" | "rejected" totalPrice: integer('total_price').notNull(),
+	// "draft" | "submitted" | "selected" | "rejected"
+	totalPrice: integer('total_price').notNull(),
 	deliveryDays: integer('delivery_days').notNull(),
 	note: text('note'),
 	isLocked: boolean('is_locked').notNull().default(false),
@@ -331,32 +340,39 @@ export const purchaseOrders = pgTable('purchase_orders', {
 		.references(() => workspaces.id),
 	status: varchar('status', { length: 30 })
 		.notNull()
-		.default('pending_approval'), // "pending_approval" | "approved" | "rejected" | "goods_received" | "completed"
+		.default('pending_approval'),
+	// "pending_approval" | "approved" | "rejected" | "goods_received" | "completed"
 	totalPrice: integer('total_price').notNull(),
 	isLocked: boolean('is_locked').notNull().default(true),
 	rejectionReason: text('rejection_reason'),
-	autoConfirmAt: timestamp('auto_confirm_at', { withTimezone: true }), // approvedAt + 48h
+	autoConfirmAt: timestamp('auto_confirm_at', { withTimezone: true }),
+	// Set = approvedAt + 48h khi supplier approve
 	approvedAt: timestamp('approved_at', { withTimezone: true }),
 	createdAt: timestamp('created_at', { withTimezone: true })
 		.notNull()
 		.defaultNow(),
 });
 
-// ==================== GOODS RECEIPTS (3-Way Matching) ====================
+// ==================== GOODS RECEIPTS ====================
+// Tách riêng để lưu vết: ai xác nhận, thủ công hay tự động
 export const goodsReceipts = pgTable('goods_receipts', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	purchaseOrderId: uuid('purchase_order_id')
 		.notNull()
 		.unique()
+		// 1 PO chỉ có đúng 1 goods receipt
 		.references(() => purchaseOrders.id),
-	confirmedBy: uuid('confirmed_by').references(() => users.id), // null for AUTO confirmation
-	confirmationType: varchar('confirmation_type', { length: 10 }).notNull(), // "MANUAL" | "AUTO"
-	note: text('note'), // Buyer's notes on confirmation
-	isLocked: boolean('is_locked').notNull().default(false), // Locked after 3-way matching passed
+	confirmedBy: uuid('confirmed_by').references(() => users.id),
+	confirmationType: varchar('confirmation_type', { length: 10 }).notNull(),
+	// "MANUAL" | "AUTO"
+	isLocked: boolean('is_locked').notNull().default(false),
+	note: text('note'),
+	// Buyer có thể ghi chú khi confirm thủ công
 	confirmedAt: timestamp('confirmed_at', { withTimezone: true })
 		.notNull()
 		.defaultNow(),
 });
+
 // ==================== RELATIONS ====================
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
@@ -554,5 +570,10 @@ export const goodsReceiptsRelations = relations(goodsReceipts, ({ one }) => ({
 	purchaseOrder: one(purchaseOrders, {
 		fields: [goodsReceipts.purchaseOrderId],
 		references: [purchaseOrders.id],
+	}),
+	// Relation về user xác nhận (null nếu auto)
+	confirmedByUser: one(users, {
+		fields: [goodsReceipts.confirmedBy],
+		references: [users.id],
 	}),
 }));
