@@ -23,7 +23,8 @@ export class PermissionService {
 
 		if (!user || !user.isActive) return false;
 
-		const permissions = ROLE_PERMISSIONS[user.role] ?? [];
+		const permissions: string[] =
+			ROLE_PERMISSIONS[user.role as keyof typeof ROLE_PERMISSIONS] ?? [];
 		return permissions.includes('*') || permissions.includes(action);
 	}
 }

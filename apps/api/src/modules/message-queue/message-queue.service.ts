@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import {
 	Injectable,
 	Logger,
@@ -10,9 +11,9 @@ import * as amqp from 'amqplib';
 @Injectable()
 export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(MessageQueueService.name);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	private connection: any;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	private channel: any;
 	private isConnected = false;
 

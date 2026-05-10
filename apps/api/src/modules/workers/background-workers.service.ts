@@ -10,6 +10,7 @@ export class BackgroundWorkersService {
 
 	// Run every 15 minutes - Auto settle confirmations after 48 hours
 	@Cron('0 */15 * * * *')
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async settleConfirmations(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: Auto-settle confirmations...');
@@ -22,6 +23,7 @@ export class BackgroundWorkersService {
 
 	// Run every hour - Calculate reputation scores
 	@Cron('0 0 * * * *')
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async calculateReputationScores(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: Reputation score calculation...');
@@ -38,6 +40,7 @@ export class BackgroundWorkersService {
 
 	// Run every 6 hours - Compress e-POD images
 	@Cron('0 0 */6 * * *')
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async compressEPodImages(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: e-POD image compression...');
@@ -50,6 +53,7 @@ export class BackgroundWorkersService {
 
 	// Run daily at 2 AM - Clean up expired sessions
 	@Cron('0 2 * * *')
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async cleanExpiredSessions(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: Session cleanup...');
