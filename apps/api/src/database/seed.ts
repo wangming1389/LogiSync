@@ -461,23 +461,7 @@ async function seed() {
 	}
 
 	// 5. Summary
-	console.log('\n═══════════════════════════════════════════');
 	console.log('✅ Database seed completed!');
-	console.log('\nLogin credentials:');
-	console.log('   Platform Admin : platform@logisync.local  / Admin@123456');
-	console.log(
-		'   Supplier Admin : supplier.admin@logisync.local / Supplier@123456',
-	);
-	console.log(
-		'   Supplier Staff : supplier.staff@logisync.local / Supplier@123456',
-	);
-	console.log(
-		'   Buyer Admin    : buyer.admin@logisync.local    / Buyer@123456',
-	);
-	console.log(
-		'   Buyer Staff    : buyer.staff@logisync.local    / Buyer@123456',
-	);
-	console.log('═══════════════════════════════════════════\n');
 
 	process.exit(0);
 }
