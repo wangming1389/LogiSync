@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { getDatabase, schema } from '../../../database';
-import { ROLE_PERMISSIONS } from '../constants/role-permissions.const';
+import { ROLE_PERMISSIONS } from './constants/role-permissions.const';
 
 @Injectable()
 export class PermissionService {

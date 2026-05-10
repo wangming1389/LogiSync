@@ -102,14 +102,14 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      API_PORT: 3000
+      API_PORT: 9571
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
       MINIO_ENDPOINT: http://minio:9000
       MINIO_CONSOLE_URL: http://minio:9001
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
     ports:
-      - "3000:3000"
+      - "9571:9571"
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,7 +129,7 @@ services:
           "--quiet",
           "--tries=1",
           "--spider",
-          "http://localhost:3000/health",
+          "http://localhost:9571/health",
         ]
       interval: 30s
       timeout: 10s
