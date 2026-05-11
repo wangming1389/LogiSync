@@ -6,9 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { DatabaseService } from '../../database/database.service';
-import { MessageQueueService } from '../message-queue/message-queue.service';
-import { ObjectStorageService } from '../object-storage/object-storage.service';
+import { formatTimestamp } from '../../common/utils/format-timestamp.utils';
+import { DatabaseService } from '../../infrastructure/database/database.service';
+import { MessageQueueService } from '../../infrastructure/message-queue/message-queue.service';
+import { ObjectStorageService } from '../../infrastructure/object-storage/object-storage.service';
 import { SessionRegistryService } from '../session/session-registry.service';
 
 export interface HealthStatus {
@@ -16,6 +17,7 @@ export interface HealthStatus {
 	redis: boolean;
 	objectStorage: boolean;
 	messageQueue: boolean;
+	degraded: boolean;
 	timestamp: number;
 }
 
@@ -23,10 +25,11 @@ export interface HealthStatus {
 export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(HealthCheckService.name);
 	private readonly checkIntervalMs = 15_000; // 15 seconds
+	private readonly pingTimeoutMs = 3_000; // 3 seconds per ping
 	private timer?: NodeJS.Timeout;
 	private lastAlertSentAt = 0;
 	private readonly alertCooldownMs = 2 * 60 * 1000; // 2 minutes
-	private status: HealthStatus = {
+	private status: Omit<HealthStatus, 'degraded'> = {
 		database: false,
 		redis: false,
 		objectStorage: false,
@@ -60,7 +63,11 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 		const failed: string[] = [];
 
 		try {
-			await this.databaseService.ping();
+			await this.withTimeout(
+				this.databaseService.ping(),
+				this.pingTimeoutMs,
+				'database',
+			);
 			this.status.database = true;
 		} catch {
 			this.status.database = false;
@@ -69,30 +76,42 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		try {
-			await this.sessionRegistryService.ping();
+			await this.withTimeout(
+				this.sessionRegistryService.ping(),
+				this.pingTimeoutMs,
+				'redis',
+			);
 			this.status.redis = true;
 		} catch {
 			this.status.redis = false;
 			failed.push('redis');
-			this.logger.error('Redis health check failed');
+			this.logger.warn('Redis health check failed');
 		}
 
 		try {
-			await this.objectStorageService.ping();
+			await this.withTimeout(
+				this.objectStorageService.ping(),
+				this.pingTimeoutMs,
+				'objectStorage',
+			);
 			this.status.objectStorage = true;
 		} catch {
 			this.status.objectStorage = false;
 			failed.push('objectStorage');
-			this.logger.error('ObjectStorage health check failed');
+			this.logger.warn('ObjectStorage health check failed');
 		}
 
 		try {
-			await this.messageQueueService.ping();
+			await this.withTimeout(
+				this.messageQueueService.ping(),
+				this.pingTimeoutMs,
+				'messageQueue',
+			);
 			this.status.messageQueue = true;
 		} catch {
 			this.status.messageQueue = false;
 			failed.push('messageQueue');
-			this.logger.error('MessageQueue health check failed');
+			this.logger.warn('MessageQueue health check failed');
 		}
 
 		this.status.timestamp = Date.now();
@@ -134,9 +153,10 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 			await transporter.sendMail({
 				from: smtpUser,
 				to: adminEmail,
-				subject: `🚨 [LogiSync] Critical: Service failure detected`,
+				subject: `🚨 [LogiSync] Critical System Alert`,
 				text: [
-					`CRITICAL ALERT - ${new Date().toISOString()}`,
+					`CRITICAL ALERT`,
+					`Time: ${formatTimestamp(new Date())}`,
 					`Failed services: ${failedServices.join(', ')}`,
 					`Please check the system immediately.`,
 				].join('\n'),
@@ -152,15 +172,34 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	getStatus(): HealthStatus {
-		return { ...this.status };
+		return {
+			...this.status,
+			// degraded = optional services down, but app is still running
+			degraded:
+				!this.status.redis ||
+				!this.status.objectStorage ||
+				!this.status.messageQueue,
+		};
 	}
 
+	// only PostgreSQL is required - app is unhealthy only if DB is down
 	isHealthy(): boolean {
-		return (
-			this.status.database &&
-			this.status.redis &&
-			this.status.objectStorage &&
-			this.status.messageQueue
-		);
+		return this.status.database;
+	}
+
+	private withTimeout<T>(
+		promise: Promise<T>,
+		ms: number,
+		label: string,
+	): Promise<T> {
+		return Promise.race([
+			promise,
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new Error(`${label} ping timed out after ${ms}ms`)),
+					ms,
+				),
+			),
+		]);
 	}
 }

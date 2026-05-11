@@ -57,20 +57,18 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 
 			if (!bucketExists) {
 				await this.minioClient.makeBucket(this.bucketName);
-
 				this.logger.log(`Bucket created successfully: ${this.bucketName}`);
 			}
 
 			this.isConnected = true;
-
 			this.logger.log('MinIO connected successfully.');
 		} catch (error) {
-			this.logger.error(
-				'Failed to connect to MinIO',
+			// MinIO is optional
+			this.isConnected = false;
+			this.logger.warn(
+				'MinIO unavailable at startup - object storage degraded.',
 				error instanceof Error ? error.stack : String(error),
 			);
-
-			throw error;
 		}
 	}
 
