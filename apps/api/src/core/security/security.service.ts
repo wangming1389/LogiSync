@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { getDatabase, schema } from '../../database';
+import { getDatabase, schema } from '../../infrastructure/database';
 import { SessionRegistryService } from '../session/session-registry.service';
 
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;

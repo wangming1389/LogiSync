@@ -17,7 +17,7 @@ async function runMigrations(): Promise<void> {
 
 	// Run migrations from drizzle folder
 	await migrate(db, {
-		migrationsFolder: path.join(__dirname, '../drizzle/migrations'),
+		migrationsFolder: path.join(__dirname, '../../drizzle/migrations'),
 	});
 
 	console.log('✅ Migrations completed');
