@@ -37,21 +37,36 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 	async onModuleInit() {
 		this.logger.log('Connecting Redis...');
 
-		this.redisClient = createClient({
-			url: this.redisUrl,
-			socket: {
-				connectTimeout: 2000,
-				reconnectStrategy: (retries) => Math.min(retries * 50, 5000),
-			},
-		});
+		try {
+			this.redisClient = createClient({
+				url: this.redisUrl,
+				socket: {
+					connectTimeout: 2000,
+					reconnectStrategy: (retries) => Math.min(retries * 50, 5000),
+				},
+			});
 
-		this.redisClient.on('error', (error: Error) => {
-			this.logger.error('Redis error', error.stack);
-		});
+			this.redisClient.on('error', (error: Error) => {
+				this.logger.error('Redis error', error.stack);
+				this.isConnected = false;
+			});
 
-		await this.redisClient.connect();
-		this.isConnected = true;
-		this.logger.log('Redis connected for Session Registry.');
+			this.redisClient.on('ready', () => {
+				this.isConnected = true;
+				this.logger.log('Redis reconnected.');
+			});
+
+			await this.redisClient.connect();
+			this.isConnected = true;
+			this.logger.log('Redis connected for Session Registry.');
+		} catch (error) {
+			// Redis is optional
+			this.isConnected = false;
+			this.logger.warn(
+				'Redis unavailable at startup - session features degraded.',
+				error instanceof Error ? error.message : String(error),
+			);
+		}
 	}
 
 	async onModuleDestroy() {

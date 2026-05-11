@@ -44,11 +44,12 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 
 			this.logger.log('RabbitMQ connected successfully.');
 		} catch (error) {
-			this.logger.error(
-				'Failed to connect to RabbitMQ',
+			// RabbitMQ is optional
+			this.isConnected = false;
+			this.logger.warn(
+				'RabbitMQ unavailable at startup - message queue degraded.',
 				error instanceof Error ? error.message : String(error),
 			);
-			throw error;
 		}
 	}
 
@@ -68,7 +69,6 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 			throw new Error('RabbitMQ is not connected');
 		}
 
-		// Verify connection by asserting a test queue
 		await this.channel.assertQueue('healthcheck:test', { durable: false });
 	}
 

@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import {
 	HealthResponseDto,
 	LivenessResponseDto,
@@ -23,12 +24,21 @@ export class HealthController {
 		type: HealthResponseDto,
 	})
 	@Get()
-	getHealth() {
-		return {
-			status: this.healthCheckService.isHealthy() ? 'healthy' : 'degraded',
-			details: this.healthCheckService.getStatus(),
-			timestamp: new Date().toISOString(),
-		};
+	getHealth(@Res() res: Response) {
+		const status = this.healthCheckService.getStatus();
+		const healthy = this.healthCheckService.isHealthy();
+
+		return res
+			.status(healthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+			.json({
+				status: healthy
+					? 'healthy'
+					: status.degraded
+						? 'degraded'
+						: 'unhealthy',
+				details: status,
+				timestamp: new Date().toISOString(),
+			});
 	}
 
 	@ApiOperation({
@@ -42,11 +52,15 @@ export class HealthController {
 		type: ReadinessResponseDto,
 	})
 	@Get('ready')
-	getReadiness() {
-		return {
-			ready: this.healthCheckService.isHealthy(),
-			timestamp: new Date().toISOString(),
-		};
+	getReadiness(@Res() res: Response) {
+		const ready = this.healthCheckService.isHealthy();
+
+		return res
+			.status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+			.json({
+				ready,
+				timestamp: new Date().toISOString(),
+			});
 	}
 
 	@ApiOperation({
