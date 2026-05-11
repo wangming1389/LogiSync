@@ -7,9 +7,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { formatTimestamp } from '../../common/utils/format-timestamp.utils';
-import { DatabaseService } from '../../database/database.service';
-import { MessageQueueService } from '../message-queue/message-queue.service';
-import { ObjectStorageService } from '../object-storage/object-storage.service';
+import { DatabaseService } from '../../infrastructure/database/database.service';
+import { MessageQueueService } from '../../infrastructure/message-queue/message-queue.service';
+import { ObjectStorageService } from '../../infrastructure/object-storage/object-storage.service';
 import { SessionRegistryService } from '../session/session-registry.service';
 
 export interface HealthStatus {

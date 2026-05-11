@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { SessionRegistryService } from '../../session/session-registry.service';
+import { SessionRegistryService } from '../../../core/session/session-registry.service';
 import { type JwtPayload } from './auth.dto';
 import { CLOCK_SKEW_TOLERANCE_SECONDS } from './constants/auth.constants';
 
