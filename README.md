@@ -1,7 +1,5 @@
 # LogiSync - Hệ thống hỗ trợ hoạt động Logistics
 
-Nền tảng logistics toàn diện dành cho Supplier, Buyer và Carrier - từ quản lý đơn hàng, vận chuyển, theo dõi GPS đến thanh toán.
-
 ## 🚀 Quick Start
 
 ### 1. Chuẩn bị
@@ -68,18 +66,6 @@ docs(api): update validation guide
 
 ---
 
-## 📖 Documentation
-
-| Topic                   | Location                               |
-| ----------------------- | -------------------------------------- |
-| **Setup & Environment** | [docs/setup/](docs/setup/)             |
-| **Development Guide**   | [docs/development/](docs/development/) |
-| **API & Validation**    | [docs/api/](docs/api/)                 |
-| **Deployment**          | [docs/deployment/](docs/deployment/)   |
-| **CI/CD Pipeline**      | [docs/ci-cd/](docs/ci-cd/)             |
-
----
-
 ## ✨ Key Features
 
 - ✅ Multi-tenant Workspace (Supplier/Buyer/Carrier)
@@ -91,30 +77,3 @@ docs(api): update validation guide
 - ✅ **Security** (RBAC, Bcrypt, RLS)
 - ✅ **Health Checks** & Monitoring
 - ✅ **Background Workers** (Scheduled tasks)
-
----
-
-## 🛠️ Project Structure
-
-```
-logisync/
-├── apps/
-│   ├── api/          # NestJS Backend
-│   ├── web/          # Next.js Frontend
-│   └── mobile/       # React Native
-├── packages/
-│   ├── constants/
-│   └── shared-types/
-└── docs/             # Documentation
-```
-
----
-
-## 📞 Need Help?
-
-- 📚 **Setup Issues?** → [docs/setup/](docs/setup/)
-- 💻 **Development?** → [docs/development/](docs/development/)
-- 🚀 **Deployment?** → [docs/deployment/](docs/deployment/)
-- 🔧 **API Questions?** → [docs/api/](docs/api/)
-
----

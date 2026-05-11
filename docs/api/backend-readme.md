@@ -28,7 +28,7 @@ Backend `apps/api` là lõi vận hành của LogiSync, xây bằng NestJS theo 
 
 ### Audit Logger
 
-- module riêng: `src/modules/audit`
+- module riêng
 - interceptor được gắn global qua `APP_INTERCEPTOR`
 - mọi thao tác quan trọng ở tầng HTTP có thể được ghi audit
 - bảng `audit_logs` lưu:
@@ -56,7 +56,7 @@ Backend `apps/api` là lõi vận hành của LogiSync, xây bằng NestJS theo 
 
 ### Session Registry
 
-- module riêng: `src/modules/session`
+- module riêng
 - dùng Redis cho session active tốc độ cao
 - dùng bảng `session_registry` để lưu persistence/audit trail cho session
 - hỗ trợ:
@@ -77,7 +77,7 @@ Backend `apps/api` là lõi vận hành của LogiSync, xây bằng NestJS theo 
 
 ### Background workers
 
-- module riêng: `src/modules/workers`
+- module riêng
 - đã scaffold các job nền chính:
   - auto-settle confirmations mỗi 15 phút
   - tính reputation score mỗi giờ
@@ -97,26 +97,6 @@ Backend `apps/api` là lõi vận hành của LogiSync, xây bằng NestJS theo 
   - cross-tenant isolation
 - CI ở `.github/workflows/ci.yml` chạy lint, build, test, cross-tenant test, coverage, Docker build và security scan
 - `turbo.json` đã track `.env` để tránh cache sai khi thay đổi cấu hình
-
-## Cấu trúc backend
-
-```text
-apps/api
-├── src
-│   ├── config
-│   ├── database
-│   ├── modules
-│   │   ├── audit
-│   │   ├── health
-│   │   ├── security
-│   │   ├── session
-│   │   └── workers
-│   ├── app.module.ts
-│   └── main.ts
-├── test
-├── package.json
-└── ENTERPRISE_SETUP.md
-```
 
 ## Yêu cầu enterprise đang được đáp ứng ra sao
 
@@ -288,21 +268,3 @@ Production stack:
 ```bash
 docker compose -f docker-compose.prod.yml up -d
 ```
-
-## File liên quan nên đọc tiếp
-
-- [Enterprise Setup](./enterprise-setup.md)
-- [Docs Index](../README.md)
-- [API Docs Index](./README.md)
-- [CI/CD Docs](../ci-cd/README.md)
-
-## Ghi chú thực tế
-
-Backend hiện đã có nền tảng enterprise khá rõ cho audit, security, session và health. Tuy nhiên một số phần vẫn là scaffold hoặc contract kiến trúc, chưa phải business flow hoàn chỉnh:
-
-- chưa có auth module đầy đủ với JWT issue/refresh flow hoàn chỉnh
-- worker business logic vẫn là TODO
-- email alert, backup automation thật, search SLA benchmark và monitoring integration vẫn cần nối tiếp
-- RLS cần được apply và verify trên môi trường DB thật
-
-Nếu cần một tài liệu triển khai chi tiết hơn theo checklist vận hành, dùng file `enterprise-setup.md`.
