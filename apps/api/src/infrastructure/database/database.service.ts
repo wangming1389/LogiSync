@@ -5,11 +5,14 @@ import {
 	OnModuleDestroy,
 	OnModuleInit,
 } from '@nestjs/common';
-import { getPool, initializeDatabase } from './index';
+import { ClsService } from 'nestjs-cls';
+import { getDatabase, getPool, initializeDatabase } from './index';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(DatabaseService.name);
+
+	constructor(private readonly cls: ClsService) {}
 
 	async onModuleInit() {
 		this.logger.log('Connecting PostgreSQL...');
@@ -78,5 +81,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 			lastError?.stack ?? String(lastError),
 		);
 		throw lastError;
+	}
+
+	async withTransaction<T>(callback: (tx: any) => Promise<T>): Promise<T> {
+		const db = getDatabase();
+		return db.transaction(async (tx) => {
+			return callback(tx);
+		});
 	}
 }

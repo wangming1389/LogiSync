@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 import { createClient, RedisClientType } from 'redis';
-import { getDatabase, schema } from '../../database';
+import { getDatabase, schema } from '../../infrastructure/database';
 
 export interface SessionData {
 	userId: string;

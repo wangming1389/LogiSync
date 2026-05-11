@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 import {
 	ForbiddenException,
 	Injectable,
@@ -6,18 +7,18 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { eq } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { getDatabase, schema } from '../../../database';
-import { AuditLoggerService } from '../../audit/audit-logger.service';
-import { SecurityService } from '../../security/security.service';
-import { SessionRegistryService } from '../../session/session-registry.service';
+import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import { SecurityService } from '../../../core/security/security.service';
+import { SessionRegistryService } from '../../../core/session/session-registry.service';
 import {
 	JWT_EXPIRATION_SECONDS,
 	SESSION_TTL_SECONDS,
 	SESSION_WARNING_SECONDS,
 } from '../auth/constants/auth.constants';
+import { WorkspaceRepository } from '../workspace/workspace.repository';
 import { type JwtPayload } from './auth.dto';
+import { UserRepository } from './user.repository';
 
 /**
  * AuthService — Handles complete IAM authentication flow
@@ -34,10 +35,11 @@ export class AuthService {
 
 	constructor(
 		private readonly jwtService: JwtService,
-		// private readonly configService: ConfigService,
 		private readonly sessionRegistryService: SessionRegistryService,
 		private readonly securityService: SecurityService,
 		private readonly auditLoggerService: AuditLoggerService,
+		private readonly userRepository: UserRepository,
+		private readonly workspaceRepository: WorkspaceRepository,
 	) {}
 
 	async login(
@@ -46,23 +48,15 @@ export class AuthService {
 		ipAddress: string,
 		userAgent?: string,
 	) {
-		const db = getDatabase();
-
 		// 1. Find user by email
-		const [user] = await db
-			.select()
-			.from(schema.users)
-			.where(eq(schema.users.email, email));
+		const user = await this.userRepository.findByEmailForAuth(email);
 
 		if (!user || !user.isActive) {
 			throw new UnauthorizedException('Email or password is incorrect');
 		}
 
 		// 2. Check workspace must be active
-		const [workspace] = await db
-			.select()
-			.from(schema.workspaces)
-			.where(eq(schema.workspaces.id, user.workspaceId));
+		const workspace = await this.workspaceRepository.findById(user.workspaceId);
 
 		if (!workspace || workspace.status !== 'active') {
 			throw new ForbiddenException(
@@ -91,7 +85,7 @@ export class AuthService {
 		}
 
 		// 4. Verify password with bcrypt
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+
 		const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
 		if (!isPasswordValid) {
@@ -235,20 +229,14 @@ export class AuthService {
 		ipAddress: string,
 		userAgent?: string,
 	) {
-		const db = getDatabase();
-
 		// 1. Get user from DB
-		const [user] = await db
-			.select()
-			.from(schema.users)
-			.where(eq(schema.users.id, payload.sub));
+		const user = await this.userRepository.findById(payload.sub);
 
 		if (!user) {
 			throw new UnauthorizedException('User does not exist');
 		}
 
 		// 2. Verify current password
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 		const isCurrentValid = await bcrypt.compare(
 			currentPassword,
 			user.passwordHash,
@@ -270,18 +258,12 @@ export class AuthService {
 		}
 
 		// 3. Hash new password
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 		const newHash = await bcrypt.hash(newPassword, 12);
 
 		// 4. Update DB
-		await db
-			.update(schema.users)
-			.set({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				passwordHash: newHash,
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.users.id, payload.sub));
+		await this.userRepository.update(payload.sub, {
+			passwordHash: newHash,
+		});
 
 		// 5. Invalidate all sessions (Redis + DB)
 		await this.securityService.invalidateAllSessions(
@@ -330,20 +312,7 @@ export class AuthService {
 	}
 
 	async getMe(userId: string) {
-		const db = getDatabase();
-
-		const [user] = await db
-			.select({
-				id: schema.users.id,
-				email: schema.users.email,
-				firstName: schema.users.firstName,
-				lastName: schema.users.lastName,
-				role: schema.users.role,
-				workspaceId: schema.users.workspaceId,
-				lastLoginAt: schema.users.lastLoginAt,
-			})
-			.from(schema.users)
-			.where(eq(schema.users.id, userId));
+		const user = await this.userRepository.findById(userId);
 
 		if (!user) {
 			throw new UnauthorizedException('User does not exist');
@@ -356,7 +325,6 @@ export class AuthService {
 	}
 
 	async hashPassword(password: string): Promise<string> {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
 		return await bcrypt.hash(password, 12);
 	}
 

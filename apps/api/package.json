@@ -19,8 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
-    "db:migrate": "dotenv -e ../../.env -- tsx src/database/migrate.ts",
-    "db:seed": "dotenv -e ../../.env -- tsx src/database/seed.ts",
+    "db:migrate": "dotenv -e ../../.env -- tsx src/infrastructure/database/migrate.ts",
+    "db:seed": "dotenv -e ../../.env -- tsx src/infrastructure/database/seed.ts",
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "db:studio": "dotenv -e ../../.env -- drizzle-kit studio"
   },
@@ -38,6 +38,7 @@
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.2",
     "minio": "^8.0.7",
+    "nestjs-cls": "^6.2.0",
     "nestjs-zod": "^5.3.0",
     "nodemailer": "^8.0.7",
     "passport": "^0.7.0",

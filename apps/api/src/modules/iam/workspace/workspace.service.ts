@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import {
 	ConflictException,
 	Injectable,
@@ -5,10 +6,10 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { and, eq, sql } from 'drizzle-orm';
-import { getDatabase, schema } from '../../../database';
-import { AuditLoggerService } from '../../audit/audit-logger.service';
-import { SessionRegistryService } from '../../session/session-registry.service';
+import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import { SessionRegistryService } from '../../../core/session/session-registry.service';
+import { getDatabase } from '../../../infrastructure/database';
+import { UserRepository } from '../auth/user.repository';
 import type {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
@@ -16,17 +17,8 @@ import type {
 	UpdateWorkspaceDto,
 	WorkspaceFilterDto,
 } from './workspace.dto';
+import { WorkspaceRepository } from './workspace.repository';
 
-/**
- * WorkspaceService — Manage workspaces (multi-tenant)
- *
- * Business logic:
- * - register: validate taxId, check duplicate → insert pending + admin user (atomic)
- * - approve: pending → active
- * - reject: pending → rejected (rejectionReason required)
- * - suspend: → suspended + force logout all sessions (Redis)
- * - enableRole: add role to workspace
- */
 @Injectable()
 export class WorkspaceService {
 	private readonly logger = new Logger(WorkspaceService.name);
@@ -34,51 +26,33 @@ export class WorkspaceService {
 	constructor(
 		private readonly sessionRegistryService: SessionRegistryService,
 		private readonly auditLoggerService: AuditLoggerService,
+		private readonly workspaceRepository: WorkspaceRepository,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async register(dto: RegisterWorkspaceDto, ipAddress: string) {
-		const db = getDatabase();
-
-		// Check duplicate taxId
-		const [existingTax] = await db
-			.select({ id: schema.workspaces.id })
-			.from(schema.workspaces)
-			.where(eq(schema.workspaces.taxId, dto.taxId));
-
+		const existingTax = await this.workspaceRepository.findByTaxId(dto.taxId);
 		if (existingTax) {
 			throw new ConflictException('Tax ID already registered');
 		}
 
-		// Check duplicate slug
-		const [existingSlug] = await db
-			.select({ id: schema.workspaces.id })
-			.from(schema.workspaces)
-			.where(eq(schema.workspaces.slug, dto.slug));
-
+		const existingSlug = await this.workspaceRepository.findBySlug(dto.slug);
 		if (existingSlug) {
 			throw new ConflictException('Slug already in use');
 		}
 
-		// Check duplicate admin email
-		const [existingEmail] = await db
-			.select({ id: schema.users.id })
-			.from(schema.users)
-			.where(eq(schema.users.email, dto.adminEmail));
-
+		const existingEmail = await this.userRepository.findByEmailForAuth(
+			dto.adminEmail,
+		);
 		if (existingEmail) {
 			throw new ConflictException('Admin email already in use');
 		}
 
-		// Hash admin password
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 		const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
 
-		// Transaction: insert workspace + admin user + audit log
-		const result = await db.transaction(async (tx) => {
-			// Insert workspace
-			const [workspace] = await tx
-				.insert(schema.workspaces)
-				.values({
+		const result = await getDatabase().transaction(async (tx) => {
+			const workspace = await this.workspaceRepository.create(
+				{
 					name: dto.name,
 					slug: dto.slug,
 					type: dto.type,
@@ -86,25 +60,24 @@ export class WorkspaceService {
 					status: 'pending',
 					registeredIpAddress: ipAddress,
 					acceptedTermsVersion: dto.acceptedTermsVersion,
-				})
-				.returning();
+				},
+				tx,
+			);
 
-			// Insert admin user
-			const [adminUser] = await tx
-				.insert(schema.users)
-				.values({
+			const adminUser = await this.userRepository.create(
+				{
 					workspaceId: workspace.id,
 					email: dto.adminEmail,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					passwordHash,
 					firstName: dto.adminFirstName ?? null,
 					lastName: dto.adminLastName ?? null,
 					role: 'company_admin',
 					isActive: true,
-				})
-				.returning();
+				},
+				tx,
+			);
 
-			// Audit log in transaction
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId: adminUser.id,
@@ -128,57 +101,22 @@ export class WorkspaceService {
 		this.logger.log(
 			`Workspace registered: ${result.name} (${result.id}) - status: pending`,
 		);
-
 		return result;
 	}
 
 	async findAll(filter: WorkspaceFilterDto) {
-		const db = getDatabase();
-
-		const conditions: any[] = [];
-
-		if (filter.status) {
-			conditions.push(eq(schema.workspaces.status, filter.status));
-		}
-
-		const offset = (filter.page - 1) * filter.limit;
-
-		const [items, countResult] = await Promise.all([
-			db
-				.select()
-				.from(schema.workspaces)
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				.where(conditions.length > 0 ? and(...conditions) : undefined)
-				.limit(filter.limit)
-				.offset(offset)
-				.orderBy(schema.workspaces.createdAt),
-			db
-				.select({ count: sql<number>`count(*)` })
-				.from(schema.workspaces)
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				.where(conditions.length > 0 ? and(...conditions) : undefined),
-		]);
-
-		return {
-			items,
-			total: Number(countResult[0]?.count ?? 0),
+		return this.workspaceRepository.findAll({
+			status: filter.status,
 			page: filter.page,
 			limit: filter.limit,
-		};
+		});
 	}
 
 	async findById(id: string) {
-		const db = getDatabase();
-
-		const [workspace] = await db
-			.select()
-			.from(schema.workspaces)
-			.where(eq(schema.workspaces.id, id));
-
+		const workspace = await this.workspaceRepository.findById(id);
 		if (!workspace) {
 			throw new NotFoundException('Workspace does not exist');
 		}
-
 		return workspace;
 	}
 
@@ -188,18 +126,11 @@ export class WorkspaceService {
 		actorId: string,
 		ipAddress: string,
 	) {
-		const db = getDatabase();
-
 		await this.findById(id);
 
-		const [updated] = await db
-			.update(schema.workspaces)
-			.set({
-				...(dto.name && { name: dto.name }),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.workspaces.id, id))
-			.returning();
+		const updated = await this.workspaceRepository.update(id, {
+			...(dto.name && { name: dto.name }),
+		});
 
 		await this.auditLoggerService.log({
 			actorId,
@@ -216,8 +147,6 @@ export class WorkspaceService {
 	}
 
 	async approve(id: string, actorId: string, ipAddress: string) {
-		const db = getDatabase();
-
 		const workspace = await this.findById(id);
 
 		if (workspace.status !== 'pending') {
@@ -226,14 +155,9 @@ export class WorkspaceService {
 			);
 		}
 
-		const [updated] = await db
-			.update(schema.workspaces)
-			.set({
-				status: 'active',
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.workspaces.id, id))
-			.returning();
+		const updated = await this.workspaceRepository.update(id, {
+			status: 'active',
+		});
 
 		await this.auditLoggerService.log({
 			actorId,
@@ -246,7 +170,6 @@ export class WorkspaceService {
 		});
 
 		this.logger.log(`Workspace approved: ${workspace.name} (${id})`);
-
 		return updated;
 	}
 
@@ -256,8 +179,6 @@ export class WorkspaceService {
 		actorId: string,
 		ipAddress: string,
 	) {
-		const db = getDatabase();
-
 		const workspace = await this.findById(id);
 
 		if (workspace.status !== 'pending') {
@@ -266,15 +187,10 @@ export class WorkspaceService {
 			);
 		}
 
-		const [updated] = await db
-			.update(schema.workspaces)
-			.set({
-				status: 'rejected',
-				rejectionReason: dto.rejectionReason,
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.workspaces.id, id))
-			.returning();
+		const updated = await this.workspaceRepository.update(id, {
+			status: 'rejected',
+			rejectionReason: dto.rejectionReason,
+		});
 
 		await this.auditLoggerService.log({
 			actorId,
@@ -290,34 +206,24 @@ export class WorkspaceService {
 		this.logger.log(
 			`Workspace rejected: ${workspace.name} (${id}) - reason: ${dto.rejectionReason}`,
 		);
-
 		return updated;
 	}
 
 	async suspend(id: string, actorId: string, ipAddress: string) {
-		const db = getDatabase();
-
 		const workspace = await this.findById(id);
 
 		if (workspace.status === 'suspended') {
 			throw new ConflictException('Workspace is already suspended');
 		}
 
-		// 1. Update status
-		const [updated] = await db
-			.update(schema.workspaces)
-			.set({
-				status: 'suspended',
-				suspendedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.workspaces.id, id))
-			.returning();
+		const updated = await this.workspaceRepository.update(id, {
+			status: 'suspended',
+			suspendedAt: new Date(),
+		});
 
-		// 2. Force logout all sessions (Redis) - 10-30s per documentation
+		// Force logout all sessions (Redis) - 10-30s
 		await this.sessionRegistryService.revokeAllWorkspaceSessions(id);
 
-		// 3. Audit log
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
@@ -331,7 +237,6 @@ export class WorkspaceService {
 		this.logger.log(
 			`Workspace suspended: ${workspace.name} (${id}) - all sessions revoked`,
 		);
-
 		return updated;
 	}
 
@@ -341,50 +246,32 @@ export class WorkspaceService {
 		actorId: string,
 		ipAddress: string,
 	) {
-		const db = getDatabase();
-
-		// Check workspace exists
 		await this.findById(workspaceId);
 
-		// Check duplicate role
-		const [existing] = await db
-			.select()
-			.from(schema.workspaceEnabledRoles)
-			.where(
-				and(
-					eq(schema.workspaceEnabledRoles.workspaceId, workspaceId),
-					eq(schema.workspaceEnabledRoles.role, dto.role),
-				),
-			);
+		const result = await this.workspaceRepository.enableRole(
+			workspaceId,
+			dto.role,
+			actorId,
+		);
 
-		if (existing) {
+		if (result.existing) {
 			throw new ConflictException(
 				`Role "${dto.role}" is already enabled for this workspace`,
 			);
 		}
-
-		const [enabledRole] = await db
-			.insert(schema.workspaceEnabledRoles)
-			.values({
-				workspaceId,
-				role: dto.role,
-				enabledBy: actorId,
-			})
-			.returning();
 
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId,
 			action: 'WORKSPACE_ENABLE_ROLE',
 			resourceType: 'workspace_enabled_roles',
-			resourceId: enabledRole.id,
+			resourceId: result.role.id,
 			changes: { role: dto.role },
 			ipAddress,
 			status: 'success',
 		});
 
 		this.logger.log(`Role "${dto.role}" enabled for workspace ${workspaceId}`);
-
-		return enabledRole;
+		return result.role;
 	}
 }

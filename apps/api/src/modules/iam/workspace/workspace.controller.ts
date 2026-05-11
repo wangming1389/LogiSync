@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -23,7 +23,9 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { Roles } from '../../../common/decorators/roles.decorator';
 import { getClientIp } from '../../../common/utils/request.utils';
+import { RbacGuard } from '../../../core/security/rbac.guard';
 import type { JwtPayload } from '../auth/auth.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
@@ -65,7 +67,8 @@ export class WorkspaceController {
 
 	// GET /workspaces (PLATFORM_ADMIN)
 	@Get()
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'List workspaces',
@@ -89,7 +92,8 @@ export class WorkspaceController {
 
 	// GET /workspaces/:id (PLATFORM_ADMIN)
 	@Get(':id')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Workspace details',
@@ -105,7 +109,8 @@ export class WorkspaceController {
 
 	// PATCH /workspaces/:id (PLATFORM_ADMIN)
 	@Patch(':id')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Update workspace',
@@ -128,7 +133,8 @@ export class WorkspaceController {
 
 	// PATCH /workspaces/:id/approve (PLATFORM_ADMIN)
 	@Patch(':id/approve')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Approve workspace',
@@ -149,7 +155,8 @@ export class WorkspaceController {
 
 	// PATCH /workspaces/:id/reject (PLATFORM_ADMIN)
 	@Patch(':id/reject')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Reject workspace',
@@ -175,7 +182,8 @@ export class WorkspaceController {
 
 	// PATCH /workspaces/:id/suspend (PLATFORM_ADMIN)
 	@Patch(':id/suspend')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Suspend workspace',
@@ -197,7 +205,8 @@ export class WorkspaceController {
 	// POST /workspaces/:id/roles/enable (COMPANY_ADMIN)
 
 	@Post(':id/roles/enable')
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('company_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Enable role for workspace',

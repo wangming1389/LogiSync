@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { getDatabase, schema } from '../../../database';
+import { getDatabase, schema } from '../../../infrastructure/database';
 import { ROLE_PERMISSIONS } from './constants/role-permissions.const';
 
 @Injectable()
