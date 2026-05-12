@@ -48,6 +48,8 @@ import { WorkspaceService } from './workspace/workspace.service';
 		JwtStrategy,
 		PermissionService,
 		PassportModule,
+		WorkspaceRepository,
+		WorkspaceService,
 	],
 })
 export class IamModule {}

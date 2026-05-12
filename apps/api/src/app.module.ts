@@ -14,6 +14,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { MessageQueueModule } from './infrastructure/message-queue/message-queue.module';
 import { ObjectStorageModule } from './infrastructure/object-storage/object-storage.module';
 import { IamModule } from './modules/iam/iam.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
 
 @Module({
 	imports: [
@@ -36,6 +37,7 @@ import { IamModule } from './modules/iam/iam.module';
 		ObjectStorageModule,
 		MessageQueueModule,
 		WorkersModule,
+		MasterDataModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

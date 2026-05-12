@@ -291,7 +291,10 @@ async function seedCatalogCategories(
 	}
 }
 
-async function seedUnitsOfMeasure(db: ReturnType<typeof getDatabase>) {
+async function seedUnitsOfMeasure(
+	db: ReturnType<typeof getDatabase>,
+	adminUserId: string,
+) {
 	for (const uom of UNITS_OF_MEASURE) {
 		const existing = await db
 			.select()
@@ -308,6 +311,7 @@ async function seedUnitsOfMeasure(db: ReturnType<typeof getDatabase>) {
 			name: uom.name,
 			code: uom.code,
 			isActive: true,
+			createdBy: adminUserId,
 		});
 
 		console.log(`✅ Unit of measure created: ${uom.name} (${uom.code})`);
@@ -447,7 +451,7 @@ async function seed() {
 	// 3. Master data
 	console.log('\n── Master Data ──');
 	await seedCatalogCategories(db, adminUserId);
-	await seedUnitsOfMeasure(db);
+	await seedUnitsOfMeasure(db, adminUserId);
 
 	// 4. Demo supplier data
 	console.log('\n── Demo Supplier Data ──');
