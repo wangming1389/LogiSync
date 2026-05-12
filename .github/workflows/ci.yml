@@ -73,7 +73,7 @@ jobs:
         run: pnpm lint:fast
 
       - name: Deep API Lint (ESLint)
-        run: pnpm turbo lint --filter=@logisync/api
+        run: pnpm lint:api
 
   # 4. BACKEND BUILD & SIZE
   build-api:
