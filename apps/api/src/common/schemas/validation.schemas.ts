@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Workspace Validation Schemas
- */
+// Workspace Validation Schemas
 export const createWorkspaceSchema = z.object({
 	name: z.string().min(1, 'Workspace name is required').max(255),
 	slug: z
@@ -20,9 +18,7 @@ export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 export const updateWorkspaceSchema = createWorkspaceSchema.partial();
 export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
 
-/**
- * User Validation Schemas
- */
+// User Validation Schemas
 export const createUserSchema = z.object({
 	email: z
 		.string()
@@ -46,9 +42,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export const updateUserSchema = createUserSchema.partial();
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
-/**
- * Login Validation Schema
- */
+// Login Validation Schema
 export const loginSchema = z.object({
 	email: z.string().email('Invalid email address'),
 	password: z.string().min(1, 'Password is required'),
@@ -56,9 +50,7 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-/**
- * Audit Log Validation Schema
- */
+// Audit Log Validation Schema
 export const auditLogSchema = z.object({
 	actorId: z.string().uuid('Invalid actor ID'),
 	workspaceId: z.string().uuid('Invalid workspace ID'),
@@ -74,9 +66,7 @@ export const auditLogSchema = z.object({
 
 export type AuditLogInput = z.infer<typeof auditLogSchema>;
 
-/**
- * Pagination Schema
- */
+// Pagination Schema
 export const paginationSchema = z.object({
 	page: z.number().int().min(1).default(1),
 	limit: z.number().int().min(1).max(100).default(10),
@@ -86,9 +76,7 @@ export const paginationSchema = z.object({
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
 
-/**
- * Query Filters Schema
- */
+// Query Filters Schema
 export const workspaceFilterSchema = z.object({
 	search: z.string().optional(),
 	type: z.enum(['supplier', 'buyer', 'carrier']).optional(),

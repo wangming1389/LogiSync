@@ -203,7 +203,6 @@ export class WorkspaceController {
 	}
 
 	// POST /workspaces/:id/roles/enable (COMPANY_ADMIN)
-
 	@Post(':id/roles/enable')
 	@UseGuards(JwtAuthGuard, RbacGuard)
 	@Roles('company_admin')

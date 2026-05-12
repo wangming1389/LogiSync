@@ -22,6 +22,20 @@
       "when": 1778403248636,
       "tag": "0002_steep_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778551211709,
+      "tag": "0003_oval_lionheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778551790312,
+      "tag": "0004_add_rls_policies",
+      "breakpoints": true
     }
   ]
 }
