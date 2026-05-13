@@ -17,6 +17,7 @@
     "lint": "pnpm lint:fast && pnpm lint:deep",
     "lint:fast": "biome check --write .",
     "format": "biome check --write .",
+    "lint:api": "turbo lint --filter=@logisync/api",
     "lint:deep": "turbo lint",
     "commit": "cz",
     "prepare": "husky"

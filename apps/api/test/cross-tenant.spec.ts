@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { v4 as uuid } from 'uuid';
 import { AppModule } from '../src/app.module';
-import { getDatabase, schema } from '../src/database';
+import { getDatabase, schema } from '../src/infrastructure/database';
 
 /**
  * Cross-Tenant Isolation Test

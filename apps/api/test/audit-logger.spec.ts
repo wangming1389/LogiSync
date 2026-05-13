@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { v4 as uuid } from 'uuid';
-import { getDatabase, schema } from '../src/database';
-import { AuditLoggerService } from '../src/modules/audit/audit-logger.service';
+import { AuditLoggerService } from '../src/core/audit/audit-logger.service';
+import { getDatabase, schema } from '../src/infrastructure/database';
 
 describe('Audit Logger Service', () => {
 	let service: AuditLoggerService;
