@@ -10,7 +10,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 

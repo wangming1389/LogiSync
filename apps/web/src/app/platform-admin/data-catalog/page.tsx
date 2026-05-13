@@ -2,7 +2,7 @@
 
 import { Plus, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 import { uomList, vehicleTypes } from '../../data/mockData';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
