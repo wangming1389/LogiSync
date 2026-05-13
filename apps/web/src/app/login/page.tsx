@@ -3,7 +3,6 @@
 import {
 	AlertTriangle,
 	Building2,
-	ChevronRight,
 	Eye,
 	EyeOff,
 	Lock,
@@ -55,7 +54,7 @@ const ROLE_INITIAL_PATH: Record<UserRole, string> = {
 };
 
 export default function LoginPage() {
-	const [step, setStep] = useState<'login' | 'role_select' | 'locked'>('login');
+	const [step, setStep] = useState<'login' | 'locked'>('login');
 	const [email, setEmail] = useState('admin@logisync.vn');
 	const [password, setPassword] = useState('password');
 	const [showPass, setShowPass] = useState(false);
@@ -64,6 +63,24 @@ export default function LoginPage() {
 	const [loading, setLoading] = useState(false);
 
 	const router = useRouter();
+
+	// Giải mã JWT payload (không cần xác thực signature)
+	function decodeJWT(token: string): { role: UserRole; [key: string]: any } {
+		try {
+			const base64Url = token.split('.')[1];
+			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+			const jsonPayload = decodeURIComponent(
+				atob(base64)
+					.split('')
+					.map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+					.join('')
+			);
+			return JSON.parse(jsonPayload);
+		} catch (error) {
+			console.error('Failed to decode JWT:', error);
+			throw new Error('Invalid token format');
+		}
+	}
 
 	async function handleLogin(e: React.FormEvent) {
 		e.preventDefault();
@@ -80,10 +97,21 @@ export default function LoginPage() {
 		try {
 			const res: any = await api.post('/auth/login', { email, password });
 			if (res?.data?.access_token) {
-				localStorage.setItem('access_token', res.data.access_token);
+				const token = res.data.access_token;
+				localStorage.setItem('access_token', token);
+				
+				// Giải mã JWT để lấy role
+				const payload = decodeJWT(token);
+				const role = payload.role as UserRole;
+				
+				// Auto-route dựa trên role
+				if (role && ROLE_INITIAL_PATH[role]) {
+					router.push(ROLE_INITIAL_PATH[role]);
+				} else {
+					setError('Invalid role in token');
+				}
 			}
 			setError('');
-			setStep('role_select');
 		} catch (err: any) {
 			const f = failCount + 1;
 			setFailCount(f);
@@ -95,10 +123,6 @@ export default function LoginPage() {
 		} finally {
 			setLoading(false);
 		}
-	}
-
-	function handleRoleSelect(role: UserRole) {
-		router.push(ROLE_INITIAL_PATH[role]);
 	}
 
 	if (step === 'locked') {
@@ -150,86 +174,7 @@ export default function LoginPage() {
 		);
 	}
 
-	if (step === 'role_select') {
-		return (
-			<div
-				className="min-h-screen flex items-center justify-center p-4 w-full"
-				style={{ background: '#0F4C8A' }}
-			>
-				<div
-					className="w-full max-w-lg rounded-xl p-8"
-					style={{ background: '#FFFFFF', boxShadow: MARITIME_SHADOW_LG }}
-				>
-					<div className="text-center mb-6">
-						<div
-							className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-							style={{
-								background: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
-							}}
-						>
-							<Building2 className="w-6 h-6 text-white" />
-						</div>
-						<h2
-							style={{
-								color: '#191C1E',
-								fontSize: '1.5rem',
-								fontWeight: 'bold',
-							}}
-						>
-							Select Your Role
-						</h2>
-						<p
-							className="mt-1"
-							style={{
-								fontSize: 13,
-								color: 'rgba(25,28,30,0.55)',
-								letterSpacing: '0.03em',
-								textTransform: 'uppercase',
-								fontWeight: 500,
-							}}
-						>
-							LOGISTICS SUPPLY CHAIN PLATFORM
-						</p>
-					</div>
-					<div className="space-y-2">
-						{ROLES.map((r) => (
-							<button
-								key={r.value}
-								onClick={() => handleRoleSelect(r.value)}
-								className="w-full flex items-center gap-4 p-4 rounded-xl transition-all group"
-								style={{ border: '2px solid #E0E4EB' }}
-							>
-								<div
-									className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-white"
-									style={{
-										background:
-											'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
-										fontWeight: 700,
-									}}
-								>
-									{r.label[0]}
-								</div>
-								<div className="text-left flex-1">
-									<div
-										style={{ color: '#191C1E', fontWeight: 600, fontSize: 14 }}
-									>
-										{r.label}
-									</div>
-									<div style={{ fontSize: 12, color: 'rgba(25,28,30,0.55)' }}>
-										{r.description}
-									</div>
-								</div>
-								<ChevronRight
-									className="w-5 h-5"
-									style={{ color: '#C1C6D4' }}
-								/>
-							</button>
-						))}
-					</div>
-				</div>
-			</div>
-		);
-	}
+
 
 	return (
 		<div
