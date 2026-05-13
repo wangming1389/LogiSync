@@ -6,8 +6,8 @@ import { getDatabase, initializeDatabase, schema } from './index';
 
 // ─── Seed data constants ───
 
-const PLATFORM_ADMIN_EMAIL = 'platform@logisync.local';
-const PLATFORM_ADMIN_PASSWORD = 'Admin@123456';
+const PLATFORM_ADMIN_EMAIL = 'admin@logisync.vn';
+const PLATFORM_ADMIN_PASSWORD = 'password';
 
 const CATALOG_CATEGORIES = [
 	{
@@ -169,15 +169,15 @@ async function seedSupplierUsers(
 ) {
 	const users = [
 		{
-			email: 'supplier.admin@logisync.local',
-			password: 'Supplier@123456',
+			email: 'supplier@logisync.vn',
+			password: 'password',
 			firstName: 'Supplier',
-			lastName: 'Admin',
-			role: 'company_admin',
+			lastName: 'Manager',
+			role: 'supplier',
 		},
 		{
-			email: 'supplier.staff@logisync.local',
-			password: 'Supplier@123456',
+			email: 'supplier.staff@logisync.vn',
+			password: 'password',
 			firstName: 'Supplier',
 			lastName: 'Staff',
 			role: 'supplier_staff',
@@ -211,21 +211,22 @@ async function seedSupplierUsers(
 	}
 }
 
+
 async function seedBuyerUsers(
 	db: ReturnType<typeof getDatabase>,
 	workspaceId: string,
 ) {
 	const users = [
 		{
-			email: 'buyer.admin@logisync.local',
-			password: 'Buyer@123456',
+			email: 'buyer.admin@logisync.vn',
+			password: 'password',
 			firstName: 'Buyer',
 			lastName: 'Admin',
-			role: 'company_admin',
+			role: 'buyer',
 		},
 		{
-			email: 'buyer.staff@logisync.local',
-			password: 'Buyer@123456',
+			email: 'buyer.staff@logisync.vn',
+			password: 'password',
 			firstName: 'Buyer',
 			lastName: 'Staff',
 			role: 'buyer_staff',
@@ -256,6 +257,144 @@ async function seedBuyerUsers(
 		});
 
 		console.log(`✅ Buyer user created: ${user.email} (${user.role})`);
+	}
+}
+
+async function seedCarrierWorkspace(db: ReturnType<typeof getDatabase>) {
+	const existing = await db
+		.select()
+		.from(schema.workspaces)
+		.where(eq(schema.workspaces.slug, 'demo-carrier'));
+
+	if (existing.length > 0) {
+		console.log('ℹ️ Demo carrier workspace already exists, skipping...');
+		return existing[0].id;
+	}
+
+	const workspaceId = uuid();
+	await db.insert(schema.workspaces).values({
+		id: workspaceId,
+		name: 'Demo Carrier Ltd.',
+		slug: 'demo-carrier',
+		type: 'carrier',
+		taxId: '5555555555',
+		status: 'active',
+		registeredIpAddress: '127.0.0.1',
+		acceptedTermsVersion: 'v1.0',
+		isActive: true,
+	});
+
+	console.log('✅ Demo carrier workspace created');
+	return workspaceId;
+}
+
+async function seedCarrierUsers(
+	db: ReturnType<typeof getDatabase>,
+	workspaceId: string,
+) {
+	const users = [
+		{
+			email: 'carrier@logisync.vn',
+			password: 'password',
+			firstName: 'Carrier',
+			lastName: 'Manager',
+			role: 'carrier',
+		},
+	];
+
+	for (const user of users) {
+		const existing = await db
+			.select()
+			.from(schema.users)
+			.where(eq(schema.users.email, user.email));
+
+		if (existing.length > 0) {
+			console.log(`ℹ️ User ${user.email} already exists, skipping...`);
+			continue;
+		}
+
+		const hashedPassword = await bcrypt.hash(user.password, 12);
+		await db.insert(schema.users).values({
+			id: uuid(),
+			workspaceId,
+			email: user.email,
+			passwordHash: hashedPassword,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			role: user.role,
+			isActive: true,
+		});
+
+		console.log(`✅ Carrier user created: ${user.email} (${user.role})`);
+	}
+}
+
+async function seedHRWorkspace(db: ReturnType<typeof getDatabase>) {
+	const existing = await db
+		.select()
+		.from(schema.workspaces)
+		.where(eq(schema.workspaces.slug, 'demo-hr'));
+
+	if (existing.length > 0) {
+		console.log('ℹ️ Demo HR workspace already exists, skipping...');
+		return existing[0].id;
+	}
+
+	const workspaceId = uuid();
+	await db.insert(schema.workspaces).values({
+		id: workspaceId,
+		name: 'Demo HR Inc.',
+		slug: 'demo-hr',
+		type: 'supplier',
+		taxId: '3333333333',
+		status: 'active',
+		registeredIpAddress: '127.0.0.1',
+		acceptedTermsVersion: 'v1.0',
+		isActive: true,
+	});
+
+	console.log('✅ Demo HR workspace created');
+	return workspaceId;
+}
+
+async function seedHRUsers(
+	db: ReturnType<typeof getDatabase>,
+	workspaceId: string,
+) {
+	const users = [
+		{
+			email: 'hr@logisync.vn',
+			password: 'password',
+			firstName: 'HR',
+			lastName: 'Manager',
+			role: 'hr',
+		},
+	];
+
+	for (const user of users) {
+		const existing = await db
+			.select()
+			.from(schema.users)
+			.where(eq(schema.users.email, user.email));
+
+		if (existing.length > 0) {
+			console.log(`ℹ️ User ${user.email} already exists, skipping...`);
+			continue;
+		}
+
+		const hashedPassword = await bcrypt.hash(user.password, 12);
+		await db.insert(schema.users).values({
+			id: uuid(),
+			workspaceId,
+			email: user.email,
+			passwordHash: hashedPassword,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			role: user.role,
+			isActive: true,
+		});
+
+		console.log(`✅ HR user created: ${user.email} (${user.role})`);
 	}
 }
 
@@ -441,12 +580,16 @@ async function seed() {
 	const platformWorkspaceId = await seedPlatformWorkspace(db);
 	const supplierWorkspaceId = await seedSupplierWorkspace(db);
 	const buyerWorkspaceId = await seedBuyerWorkspace(db);
+	const carrierWorkspaceId = await seedCarrierWorkspace(db);
+	const hrWorkspaceId = await seedHRWorkspace(db);
 
 	// 2. Users
 	console.log('\n── Users ──');
 	const adminUserId = await seedPlatformAdmin(db, platformWorkspaceId);
 	await seedSupplierUsers(db, supplierWorkspaceId);
 	await seedBuyerUsers(db, buyerWorkspaceId);
+	await seedCarrierUsers(db, carrierWorkspaceId);
+	await seedHRUsers(db, hrWorkspaceId);
 
 	// 3. Master data
 	console.log('\n── Master Data ──');
