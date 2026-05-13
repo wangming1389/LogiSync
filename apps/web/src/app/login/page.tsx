@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { api } from '@/lib/api';
 
 const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
@@ -77,8 +78,9 @@ export default function LoginPage() {
 
 		setLoading(true);
 		try {
-			if (password === 'wrong') {
-				throw new Error('Invalid credentials');
+			const res: any = await api.post('/auth/login', { email, password });
+			if (res?.data?.access_token) {
+				localStorage.setItem('access_token', res.data.access_token);
 			}
 			setError('');
 			setStep('role_select');
