@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client } from 'minio';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
@@ -115,6 +116,49 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			stream.on('error', reject);
 		});
+	}
+
+	async uploadFileWithExtension(
+		fileBuffer: Buffer,
+		originalName: string,
+		folder = 'media',
+	): Promise<string> {
+		this.ensureConnected();
+		const extension = originalName.split('.').pop() || 'png';
+		const objectName = `${folder}/${uuidv4()}.${extension}`;
+		await this.minioClient.putObject(this.bucketName, objectName, fileBuffer);
+		return objectName;
+	}
+
+	async uploadFromUrl(url: string, folder = 'media'): Promise<string> {
+		this.ensureConnected();
+		try {
+			const response = await fetch(url);
+			if (!response.ok) {
+				throw new Error(
+					`Failed to fetch image from URL: ${response.statusText}`,
+				);
+			}
+			const arrayBuffer = await response.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+
+			// Try to get extension from URL or Content-Type
+			let extension = url.split('.').pop()?.split('?')[0];
+			if (!extension || extension.length > 5 || extension.includes('/')) {
+				const contentType = response.headers.get('content-type');
+				extension = contentType ? contentType.split('/')[1] : 'png';
+			}
+
+			const objectName = `${folder}/${uuidv4()}.${extension}`;
+			await this.minioClient.putObject(this.bucketName, objectName, buffer);
+			return objectName;
+		} catch (error) {
+			this.logger.error(
+				`Error uploading from URL: ${url}`,
+				error instanceof Error ? error.stack : String(error),
+			);
+			throw new Error('Could not upload image from URL');
+		}
 	}
 
 	async deleteFile(objectName: string): Promise<void> {
