@@ -28,7 +28,7 @@ export default function RegisterWorkspace() {
 					workspaceName
 						.toLowerCase()
 						.replace(/[^a-z0-9]+/g, '-')
-						.replace(/^-+|-+$/g, '') || 'ws-' + Date.now(),
+						.replace(/^-+|-+$/g, '') || 'ws-' + crypto.randomUUID().slice(0, 8),
 				type: workspaceType,
 				taxId: '1234567890',
 				acceptedTermsVersion: '1.0',
