@@ -13,8 +13,10 @@ import { WorkersModule } from './core/workers/workers.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { MessageQueueModule } from './infrastructure/message-queue/message-queue.module';
 import { ObjectStorageModule } from './infrastructure/object-storage/object-storage.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { IamModule } from './modules/iam/iam.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
 	imports: [
@@ -38,6 +40,8 @@ import { MasterDataModule } from './modules/master-data/master-data.module';
 		MessageQueueModule,
 		WorkersModule,
 		MasterDataModule,
+		CatalogModule,
+		MediaModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

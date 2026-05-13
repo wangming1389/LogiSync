@@ -18,6 +18,11 @@ import { UomService } from './uom/uom.service';
 		UomService,
 		UomRepository,
 	],
-	exports: [CatalogCategoryService, UomService],
+	exports: [
+		CatalogCategoryService,
+		CatalogCategoryRepository,
+		UomService,
+		UomRepository,
+	],
 })
 export class MasterDataModule {}
