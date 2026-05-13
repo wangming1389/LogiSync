@@ -6,7 +6,6 @@ import {
 	BarChart2,
 	Bell,
 	Building2,
-	ChevronDown,
 	ChevronRight,
 	ClipboardList,
 	Clock,
@@ -154,15 +153,6 @@ const NAV_CONFIG: Record<
 	},
 };
 
-const ROLES = [
-	{ value: 'platform_admin', label: 'Platform Admin' },
-	{ value: 'company_admin', label: 'Company Admin' },
-	{ value: 'supplier', label: 'Supplier User' },
-	{ value: 'carrier', label: 'Carrier Dispatcher' },
-	{ value: 'buyer', label: 'Buyer Manager' },
-	{ value: 'hr', label: 'HR Admin' },
-];
-
 export default function AppLayout({
 	children,
 	currentRole,
@@ -173,19 +163,9 @@ export default function AppLayout({
 	const pathname = usePathname();
 	const router = useRouter();
 
-	const [roleDropdown, setRoleDropdown] = useState(false);
 	const [userDropdown, setUserDropdown] = useState(false);
 
 	const navConfig = NAV_CONFIG[currentRole] || NAV_CONFIG['platform_admin'];
-
-	const handleSwitchRole = (newRole: string) => {
-		setRoleDropdown(false);
-		// Wait to find the first NON-commented route? Oh wait, we commented them out in code!
-		// The array still has them as objects or comments? I commented them entirely in strings.
-		// So items[0] is the first active one!
-		const newPath = NAV_CONFIG[newRole].items[0]?.path || `/${newRole}`;
-		router.push(newPath);
-	};
 
 	const handleLogout = () => {
 		router.push('/login');
@@ -216,49 +196,17 @@ export default function AppLayout({
 				</div>
 
 				<div className="px-3 pb-3">
-					<button
-						onClick={() => setRoleDropdown(!roleDropdown)}
-						className="w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors"
+					<div
+						className="w-full flex items-center px-3 py-2 rounded-lg"
 						style={{ background: 'rgba(255,255,255,0.10)' }}
 					>
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-2 flex-1">
 							<div className="w-2 h-2 rounded-full bg-white/70" />
 							<span className="text-white/90" style={{ fontSize: 13 }}>
 								{navConfig.label}
 							</span>
 						</div>
-						<ChevronDown
-							className={`w-4 h-4 text-white/60 transition-transform ${roleDropdown ? 'rotate-180' : ''}`}
-						/>
-					</button>
-
-					{roleDropdown && (
-						<div
-							className="mt-1 rounded-lg overflow-hidden z-30 relative"
-							style={{
-								background: '#0A3F78',
-								boxShadow: '0px 8px 24px rgba(15,76,138,0.08)',
-							}}
-						>
-							{ROLES.map((r) => (
-								<button
-									key={r.value}
-									onClick={() => handleSwitchRole(r.value)}
-									className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-white/10"
-									style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-								>
-									<div
-										className={`w-2 h-2 rounded-full ${currentRole === r.value ? 'bg-white' : 'bg-transparent'}`}
-									/>
-									<span
-										className={`text-sm ${currentRole === r.value ? 'text-white font-medium' : 'text-white/70'}`}
-									>
-										{r.label}
-									</span>
-								</button>
-							))}
-						</div>
-					)}
+					</div>
 				</div>
 
 				<nav className="flex-1 overflow-y-auto px-3 space-y-0.5 pb-3">
