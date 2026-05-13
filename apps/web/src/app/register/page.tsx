@@ -2,6 +2,7 @@
 import { ArrowRight, Building2, Lock, Mail, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { api } from '@/lib/api';
 
 const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
@@ -14,17 +15,35 @@ export default function RegisterWorkspace() {
 	const [adminEmail, setAdminEmail] = useState('');
 	const [password, setPassword] = useState('');
 
-	const handleRegister = (e: React.FormEvent) => {
+	const handleRegister = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (step === 1) {
 			setStep(2);
 			return;
 		}
-		// Perform API call to register
-		alert(
-			'Workspace Registered Successfully! Waiting for Platform Admin approval.',
-		);
-		router.push('/login');
+		try {
+			await api.post('/workspaces', {
+				name: workspaceName,
+				slug:
+					workspaceName
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, '-')
+						.replace(/^-+|-+$/g, '') || 'ws-' + Date.now(),
+				type: workspaceType,
+				taxId: '1234567890',
+				acceptedTermsVersion: '1.0',
+				adminEmail,
+				adminPassword: password,
+				adminFirstName: adminName.split(' ')[0] || 'Admin',
+				adminLastName: adminName.split(' ').slice(1).join(' ') || 'User',
+			});
+			alert(
+				'Workspace Registered Successfully! Waiting for Platform Admin approval.',
+			);
+			router.push('/login');
+		} catch (err: any) {
+			alert(err.message || 'Failed to register workspace.');
+		}
 	};
 
 	return (
