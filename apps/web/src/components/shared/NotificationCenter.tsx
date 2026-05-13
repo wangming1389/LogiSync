@@ -142,7 +142,7 @@ export function NotificationCenter() {
 											marginTop: 2,
 										}}
 									>
-										{n.time}
+										{n.timestamp}
 									</p>
 								</div>
 								<p
@@ -182,3 +182,4 @@ export function NotificationCenter() {
 		</div>
 	);
 }
+
