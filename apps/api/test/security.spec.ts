@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { v4 as uuid } from 'uuid';
-import { getDatabase, schema } from '../src/database';
-import { SecurityService } from '../src/modules/security/security.service';
+import { SecurityService } from '../src/core/security/security.service';
+import { getDatabase, schema } from '../src/infrastructure/database';
 
 describe('Security Service', () => {
 	let service: SecurityService;
