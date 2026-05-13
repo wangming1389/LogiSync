@@ -94,24 +94,26 @@ export default function LoginPage() {
 		}
 
 		setLoading(true);
+		setError('');
 		try {
 			const res: any = await api.post('/auth/login', { email, password });
-			if (res?.data?.access_token) {
-				const token = res.data.access_token;
-				localStorage.setItem('access_token', token);
-				
-				// Giải mã JWT để lấy role
-				const payload = decodeJWT(token);
-				const role = payload.role as UserRole;
-				
-				// Auto-route dựa trên role
-				if (role && ROLE_INITIAL_PATH[role]) {
-					router.push(ROLE_INITIAL_PATH[role]);
-				} else {
-					setError('Invalid role in token');
-				}
+			const token = res?.data?.accessToken;
+			if (!token) {
+				throw new Error('No access token received from server');
 			}
-			setError('');
+			
+			localStorage.setItem('access_token', token);
+			
+			// Giải mã JWT để lấy role
+			const payload = decodeJWT(token);
+			const role = payload.role as UserRole;
+			
+			// Auto-route dựa trên role
+			if (role && ROLE_INITIAL_PATH[role]) {
+				router.push(ROLE_INITIAL_PATH[role]);
+			} else {
+				throw new Error('Invalid role in token');
+			}
 		} catch (err: any) {
 			const f = failCount + 1;
 			setFailCount(f);
