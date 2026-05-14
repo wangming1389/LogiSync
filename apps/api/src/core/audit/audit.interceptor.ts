@@ -74,7 +74,7 @@ export class AuditInterceptor implements NestInterceptor {
 	}
 
 	private extractResourceId(path: string): string | undefined {
-		// Extract UUID from path like /api/orders/{id}
+		// Extract UUID from the path if present
 		const uuidRegex =
 			/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 		const match = path.match(uuidRegex);
