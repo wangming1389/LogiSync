@@ -1,16 +1,29 @@
-'use client';
+﻿'use client';
 
 import {
+	Ban,
 	Building2,
 	CheckCircle,
 	ChevronLeft,
 	Eye,
+	UserPlus,
 	XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
-import { pendingWorkspaces } from '../../data/mockData';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
+
+interface Workspace {
+	id: string;
+	name: string;
+	slug: string;
+	type: string;
+	status: string;
+	taxId: string;
+	adminEmail: string;
+	createdAt: string;
+}
 
 function TypeChip({ type }: { type: string }) {
 	return (
@@ -24,7 +37,7 @@ function TypeChip({ type }: { type: string }) {
 				letterSpacing: '0.05em',
 			}}
 		>
-			{type.toUpperCase()}
+			{type?.toUpperCase() || ''}
 		</span>
 	);
 }
@@ -32,8 +45,10 @@ function TypeChip({ type }: { type: string }) {
 function StatusChip({ status }: { status: string }) {
 	const map: Record<string, { bg: string; color: string }> = {
 		pending: { bg: '#FFEFC6', color: '#7A4F00' },
-		approved: { bg: '#C8F0D8', color: '#1B6B3A' },
+		active: { bg: '#C8F0D8', color: '#1B6B3A' },
 		rejected: { bg: '#FFDAD6', color: '#BA1A1A' },
+		revoked: { bg: '#FFDAD6', color: '#BA1A1A' },
+		suspended: { bg: '#F2B8B5', color: '#8C1D18' },
 	};
 	const s = map[status] ?? { bg: '#E0E4EB', color: '#191C1E' };
 	return (
@@ -47,345 +62,450 @@ function StatusChip({ status }: { status: string }) {
 				letterSpacing: '0.05em',
 			}}
 		>
-			{status.toUpperCase()}
+			{(status === 'revoked' ? 'rejected' : status).toUpperCase()}
 		</span>
 	);
 }
 
 export default function WorkspaceApprovals() {
-	const [workspaces, setWorkspaces] = useState(
-		pendingWorkspaces.map((w) => ({ ...w, status: 'pending' as string })),
-	);
+	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [rejectModal, setRejectModal] = useState<string | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
+	const [suspendModal, setSuspendModal] = useState<string | null>(null);
+	const [suspendReason, setSuspendReason] = useState('');
+	const [roleModal, setRoleModal] = useState<string | null>(null);
+	const [roleToEnable, setRoleToEnable] = useState('');
+
+	const [statusFilter, setStatusFilter] = useState('all');
+
+	const fetchWorkspaces = async () => {
+		try {
+			const query =
+				statusFilter !== 'all'
+					? `?status=${statusFilter}&limit=100`
+					: `?limit=100`;
+			const data: any = await api.get('/workspaces' + query);
+			if (data?.items) {
+				setWorkspaces(data.items);
+			}
+		} catch (e) {
+			console.error('Error fetching workspaces', e);
+		}
+	};
+
+	useEffect(() => {
+		fetchWorkspaces();
+	}, [statusFilter]);
 
 	const detail = workspaces.find((w) => w.id === selected);
 
-	function approve(id: string) {
-		setWorkspaces((ws) =>
-			ws.map((w) => (w.id === id ? { ...w, status: 'approved' } : w)),
-		);
-		setSelected(null);
-	}
-	function reject(id: string) {
-		setWorkspaces((ws) =>
-			ws.map((w) => (w.id === id ? { ...w, status: 'rejected' } : w)),
-		);
-		setRejectModal(null);
-		setRejectReason('');
-		setSelected(null);
+	async function approve(id: string) {
+		try {
+			await api.patch(`/workspaces/${id}/approve`, {});
+			fetchWorkspaces();
+			setSelected(null);
+		} catch (e) {
+			console.error(e);
+			alert('Approve failed');
+		}
 	}
 
-	/* â”€â”€ Detail View â”€â”€ */
-	if (selected && detail) {
-		return (
-			<div className="p-6 max-w-3xl mx-auto">
-				<button
-					onClick={() => setSelected(null)}
-					className="flex items-center gap-1 mb-4 hover:opacity-80"
-					style={{ fontSize: 13, color: 'rgba(25,28,30,0.55)' }}
-				>
-					<ChevronLeft className="w-4 h-4" /> Back to list
-				</button>
-				<div
-					className="rounded-xl p-6"
-					style={{ background: '#FFFFFF', boxShadow: SHADOW }}
-				>
-					<div className="flex items-start justify-between mb-6">
-						<div>
-							<div className="flex items-center gap-2 mb-1">
-								<h2 style={{ color: '#191C1E' }}>{detail.company}</h2>
-								<TypeChip type={detail.type} />
-							</div>
-							<p style={{ fontSize: 13, color: 'rgba(25,28,30,0.55)' }}>
-								Submitted: {detail.submittedAt}
-							</p>
-						</div>
-						<StatusChip status={detail.status} />
-					</div>
+	async function reject(id: string) {
+		try {
+			await api.patch(`/workspaces/${id}/reject`, { reason: rejectReason });
+			fetchWorkspaces();
+			setRejectModal(null);
+			setRejectReason('');
+			setSelected(null);
+		} catch (e) {
+			console.error(e);
+			alert('Reject failed');
+		}
+	}
 
-					<div className="grid grid-cols-2 gap-4 mb-6">
-						{[
-							['Email', detail.email],
-							['Phone', detail.phone],
-							['Tax Code', detail.taxCode],
-							['City', detail.city],
-							['Country', detail.country],
-							['Type', detail.type],
-						].map(([k, v]) => (
-							<div
-								key={k}
-								className="rounded-lg p-3"
-								style={{ background: '#F2F4F7' }}
-							>
-								<p
-									style={{
-										fontSize: 11,
-										fontWeight: 500,
-										letterSpacing: '0.05em',
-										textTransform: 'uppercase',
-										color: 'rgba(25,28,30,0.55)',
-									}}
+	async function suspend(id: string) {
+		try {
+			await api.patch(`/workspaces/${id}/suspend`, { reason: suspendReason });
+			fetchWorkspaces();
+			setSuspendModal(null);
+			setSuspendReason('');
+			setSelected(null);
+		} catch (e) {
+			console.error(e);
+			alert('Suspend failed');
+		}
+	}
+
+	async function enableRole(id: string) {
+		if (!roleToEnable) return;
+		try {
+			await api.post(`/workspaces/${id}/roles/enable`, { role: roleToEnable });
+			fetchWorkspaces();
+			setRoleModal(null);
+			setRoleToEnable('');
+			alert('Role enabled successfully');
+		} catch (e) {
+			console.error(e);
+			alert('Enable role failed');
+		}
+	}
+
+	return (
+		<div className="p-8 max-w-7xl mx-auto min-h-screen">
+			{/* Breadcrumb */}
+			<div
+				className="flex items-center gap-2 mb-6 cursor-pointer"
+				style={{ color: '#0F4C8A', fontWeight: 500 }}
+			>
+				<ChevronLeft size={20} />
+				<span>Platform Admin / Workspaces</span>
+			</div>
+
+			<div className="mb-6 flex items-center justify-between">
+				<h1
+					className="text-3xl font-light"
+					style={{ color: '#191C1E', letterSpacing: '-0.02em' }}
+				>
+					Workspace Management
+				</h1>
+				<select
+					className="border rounded p-2 text-sm"
+					value={statusFilter}
+					onChange={(e) => setStatusFilter(e.target.value)}
+				>
+					<option value="all">All</option>
+					<option value="pending">Pending</option>
+					<option value="active">Active</option>
+					<option value="suspended">Suspended</option>
+					<option value="revoked">Rejected</option>
+				</select>
+			</div>
+
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+				<div className="lg:col-span-2 space-y-4">
+					{workspaces.map((w) => (
+						<div
+							key={w.id}
+							className="bg-white rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer transition-shadow"
+							onClick={() => setSelected(w.id)}
+							style={{
+								boxShadow: selected === w.id ? SHADOW : '',
+								border:
+									selected === w.id
+										? '1px solid rgba(15,76,138,0.2)'
+										: '1px solid #E0E4EB',
+							}}
+						>
+							<div className="flex gap-4 items-center">
+								<div
+									className="w-12 h-12 rounded-full flex items-center justify-center"
+									style={{ background: '#F8FAFC', color: '#0F4C8A' }}
 								>
-									{k}
-								</p>
-								<p style={{ fontSize: 14, color: '#191C1E', marginTop: 4 }}>
-									{v}
-								</p>
+									<Building2 size={24} />
+								</div>
+								<div>
+									<h3
+										className="font-medium text-lg mb-1"
+										style={{ color: '#191C1E' }}
+									>
+										{w.name}
+									</h3>
+									<div
+										className="flex flex-wrap items-center gap-3 text-sm"
+										style={{ color: '#40484C' }}
+									>
+										<span>Tax ID: {w.taxId}</span>
+										<span>•</span>
+										<span>
+											Submitted: {new Date(w.createdAt).toLocaleDateString()}
+										</span>
+									</div>
+								</div>
 							</div>
-						))}
-					</div>
-
-					{detail.status === 'pending' && (
-						<div className="flex gap-3">
-							<button
-								onClick={() => approve(detail.id)}
-								className="flex items-center gap-2 px-5 py-2.5 text-white rounded-[6px] transition-all hover:brightness-105"
-								style={{
-									background:
-										'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
-									fontWeight: 600,
-									letterSpacing: '0.05em',
-									fontSize: 13,
-								}}
-							>
-								<CheckCircle className="w-4 h-4" /> APPROVE WORKSPACE
-							</button>
-							<button
-								onClick={() => setRejectModal(detail.id)}
-								className="flex items-center gap-2 px-5 py-2.5 rounded-[6px] transition-colors"
-								style={{
-									background: '#FFDAD6',
-									color: '#BA1A1A',
-									fontWeight: 600,
-									fontSize: 13,
-									letterSpacing: '0.05em',
-								}}
-							>
-								<XCircle className="w-4 h-4" /> REJECT WORKSPACE
-							</button>
+							<div className="flex items-center gap-3">
+								<TypeChip type={w.type} />
+								<StatusChip status={w.status} />
+							</div>
+						</div>
+					))}
+					{workspaces.length === 0 && (
+						<div className="text-center p-8 text-gray-500 bg-white border border-gray-200 rounded-xl">
+							No workspaces found.
 						</div>
 					)}
 				</div>
 
-				{/* Reject Modal */}
-				{rejectModal && (
-					<div
-						className="fixed inset-0 flex items-center justify-center z-50"
-						style={{
-							background: 'rgba(0,0,0,0.4)',
-							backdropFilter: 'blur(4px)',
-						}}
-					>
+				{/* Detail Panel */}
+				<div className="lg:col-span-1">
+					{detail ? (
 						<div
-							className="rounded-xl p-6 w-full max-w-md"
-							style={{
-								background: 'rgba(255,255,255,0.92)',
-								backdropFilter: 'blur(20px)',
-								boxShadow: SHADOW,
-							}}
+							className="bg-white rounded-xl p-6 sticky top-8"
+							style={{ boxShadow: SHADOW, border: '1px solid #E0E4EB' }}
 						>
-							<h3 className="mb-1" style={{ color: '#191C1E' }}>
-								Reject Workspace Application
-							</h3>
-							<p
-								className="mb-4"
-								style={{ fontSize: 14, color: 'rgba(25,28,30,0.6)' }}
-							>
-								Please provide a reason for rejection. This will be sent to the
-								applicant.
-							</p>
-							<label
-								className="block mb-1"
-								style={{
-									fontSize: 11,
-									fontWeight: 500,
-									letterSpacing: '0.05em',
-									textTransform: 'uppercase',
-									color: 'rgba(25,28,30,0.6)',
-								}}
-							>
-								REJECTION REASON
-							</label>
-							<textarea
-								value={rejectReason}
-								onChange={(e) => setRejectReason(e.target.value)}
-								rows={4}
-								placeholder="Enter rejection reason..."
-								className="w-full px-3 py-2 rounded-t-[6px] focus:outline-none resize-none mb-4"
-								style={{
-									background: '#D5DAE3',
-									borderBottom: '2px solid #00559F',
-									color: '#191C1E',
-									fontSize: 14,
-								}}
-							/>
-							<div className="flex gap-2">
-								<button
-									onClick={() => reject(rejectModal)}
-									disabled={!rejectReason.trim()}
-									className="flex-1 py-2.5 text-white rounded-[6px] transition-all disabled:opacity-40"
-									style={{
-										background: '#BA1A1A',
-										fontWeight: 600,
-										fontSize: 13,
-									}}
+							<div className="flex justify-between items-start mb-6">
+								<h2
+									className="text-xl font-medium"
+									style={{ color: '#191C1E' }}
 								>
-									Confirm Reject
-								</button>
-								<button
-									onClick={() => setRejectModal(null)}
-									className="flex-1 py-2.5 rounded-[6px] transition-colors"
-									style={{
-										background: '#D5DAE3',
-										color: '#191C1E',
-										fontWeight: 500,
-										fontSize: 13,
-									}}
-								>
-									Cancel
-								</button>
+									Workspace Details
+								</h2>
+								<StatusChip status={detail.status} />
+							</div>
+
+							<div className="space-y-6">
+								<div>
+									<p className="text-sm mb-1" style={{ color: '#40484C' }}>
+										Company Name
+									</p>
+									<p className="font-medium" style={{ color: '#191C1E' }}>
+										{detail.name}
+									</p>
+								</div>
+								<div>
+									<p className="text-sm mb-1" style={{ color: '#40484C' }}>
+										Slug
+									</p>
+									<p className="font-medium" style={{ color: '#191C1E' }}>
+										{detail.slug}
+									</p>
+								</div>
+								<div>
+									<p className="text-sm mb-1" style={{ color: '#40484C' }}>
+										Admin Email
+									</p>
+									<p className="font-medium" style={{ color: '#191C1E' }}>
+										{detail.adminEmail}
+									</p>
+								</div>
+								<div>
+									<p className="text-sm mb-1" style={{ color: '#40484C' }}>
+										Tax ID
+									</p>
+									<p className="font-medium" style={{ color: '#191C1E' }}>
+										{detail.taxId}
+									</p>
+								</div>
+								<div>
+									<p className="text-sm mb-1" style={{ color: '#40484C' }}>
+										Created At
+									</p>
+									<p className="font-medium" style={{ color: '#191C1E' }}>
+										{new Date(detail.createdAt).toLocaleString()}
+									</p>
+								</div>
+
+								{detail.status === 'pending' && (
+									<div className="pt-6 border-t border-gray-100 flex gap-3">
+										<button
+											onClick={() => setRejectModal(detail.id)}
+											className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors"
+											style={{
+												color: '#BA1A1A',
+												border: '1px solid #FFDAD6',
+												background: 'transparent',
+											}}
+										>
+											<XCircle size={18} />
+											Reject
+										</button>
+										<button
+											onClick={() => approve(detail.id)}
+											className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-white transition-opacity"
+											style={{ background: '#0F4C8A' }}
+										>
+											<CheckCircle size={18} />
+											Approve
+										</button>
+									</div>
+								)}
+
+								{detail.status === 'active' && (
+									<div className="pt-6 border-t border-gray-100 flex gap-3 flex-col">
+										<button
+											onClick={() => setSuspendModal(detail.id)}
+											className="w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors"
+											style={{
+												color: '#BA1A1A',
+												border: '1px solid #FFDAD6',
+												background: 'transparent',
+											}}
+										>
+											<Ban size={18} />
+											Suspend
+										</button>
+										<button
+											onClick={() => setRoleModal(detail.id)}
+											className="w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-white transition-opacity"
+											style={{ background: '#0F4C8A' }}
+										>
+											<UserPlus size={18} />
+											Enable Role
+										</button>
+									</div>
+								)}
 							</div>
 						</div>
-					</div>
-				)}
-			</div>
-		);
-	}
-
-	/* â”€â”€ List View â”€â”€ */
-	return (
-		<div className="p-6">
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					<h1 style={{ color: '#191C1E' }}>Workspace Approvals</h1>
-					<p
-						style={{ fontSize: 13, color: 'rgba(25,28,30,0.55)', marginTop: 2 }}
-					>
-						{workspaces.filter((w) => w.status === 'pending').length} pending
-						application(s)
-					</p>
+					) : (
+						<div
+							className="bg-white rounded-xl p-8 text-center flex flex-col items-center justify-center"
+							style={{ minHeight: '300px', border: '1px dashed #E0E4EB' }}
+						>
+							<Eye size={32} color="#72787E" className="mb-4 opacity-50" />
+							<p style={{ color: '#40484C' }}>
+								Select a workspace to view details
+							</p>
+						</div>
+					)}
 				</div>
 			</div>
 
-			<div
-				className="rounded-xl overflow-hidden"
-				style={{ background: '#FFFFFF', boxShadow: SHADOW }}
-			>
-				<table className="w-full">
-					<thead style={{ background: '#F2F4F7' }}>
-						<tr>
-							{[
-								'COMPANY',
-								'TYPE',
-								'EMAIL',
-								'TAX CODE',
-								'CITY',
-								'SUBMITTED',
-								'STATUS',
-								'ACTION',
-							].map((h) => (
-								<th
-									key={h}
-									className="text-left px-4 py-3"
-									style={{
-										fontSize: 11,
-										fontWeight: 500,
-										letterSpacing: '0.05em',
-										color: 'rgba(25,28,30,0.6)',
-									}}
-								>
-									{h}
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{workspaces.map((w, i) => (
-							<tr
-								key={w.id}
-								style={{ background: i % 2 === 1 ? '#F7F9FC' : '#FFFFFF' }}
-								onMouseEnter={(e) =>
-									((e.currentTarget as HTMLTableRowElement).style.background =
-										'#E0E4EB')
-								}
-								onMouseLeave={(e) =>
-									((e.currentTarget as HTMLTableRowElement).style.background =
-										i % 2 === 1 ? '#F7F9FC' : '#FFFFFF')
-								}
+			{/* Reject Modal */}
+			{rejectModal && (
+				<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+					<div
+						className="bg-white rounded-2xl p-6 max-w-md w-full"
+						style={{ boxShadow: SHADOW }}
+					>
+						<h3
+							className="text-xl font-medium mb-4"
+							style={{ color: '#191C1E' }}
+						>
+							Reject Workspace Request
+						</h3>
+						<p className="text-sm mb-4" style={{ color: '#40484C' }}>
+							Please provide a reason for rejecting this workspace. This will be
+							sent to the applicant.
+						</p>
+						<textarea
+							value={rejectReason}
+							onChange={(e) => setRejectReason(e.target.value)}
+							className="w-full rounded-xl border p-3 mb-6 min-h-[100px] outline-none"
+							style={{ borderColor: '#E0E4EB' }}
+							placeholder="Rejection reason..."
+						/>
+						<div className="flex gap-3 justify-end">
+							<button
+								onClick={() => {
+									setRejectModal(null);
+									setRejectReason('');
+								}}
+								className="px-5 py-2 rounded-xl font-medium"
+								style={{ color: '#40484C' }}
 							>
-								<td className="px-4 py-3">
-									<div className="flex items-center gap-2">
-										<div
-											className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-											style={{ background: '#D3E4F5' }}
-										>
-											<Building2
-												className="w-4 h-4"
-												style={{ color: '#0F4C8A' }}
-											/>
-										</div>
-										<span
-											style={{
-												fontSize: 14,
-												color: '#191C1E',
-												fontWeight: 500,
-											}}
-										>
-											{w.company}
-										</span>
-									</div>
-								</td>
-								<td className="px-4 py-3">
-									<TypeChip type={w.type} />
-								</td>
-								<td
-									className="px-4 py-3"
-									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
-								>
-									{w.email}
-								</td>
-								<td
-									className="px-4 py-3"
-									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
-								>
-									{w.taxCode}
-								</td>
-								<td
-									className="px-4 py-3"
-									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
-								>
-									{w.city}
-								</td>
-								<td
-									className="px-4 py-3"
-									style={{ fontSize: 13, color: 'rgba(25,28,30,0.5)' }}
-								>
-									{w.submittedAt}
-								</td>
-								<td className="px-4 py-3">
-									<StatusChip status={w.status} />
-								</td>
-								<td className="px-4 py-3">
-									<button
-										onClick={() => setSelected(w.id)}
-										className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-										style={{
-											fontSize: 11,
-											fontWeight: 500,
-											letterSpacing: '0.05em',
-											color: '#1A6EC4',
-										}}
-									>
-										<Eye className="w-3.5 h-3.5" /> VIEW DETAIL
-									</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
+								Cancel
+							</button>
+							<button
+								onClick={() => reject(rejectModal)}
+								disabled={!rejectReason.trim()}
+								className="px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50"
+								style={{ background: '#BA1A1A' }}
+							>
+								Confirm Rejection
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Suspend Modal */}
+			{suspendModal && (
+				<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+					<div
+						className="bg-white rounded-2xl p-6 max-w-md w-full"
+						style={{ boxShadow: SHADOW }}
+					>
+						<h3
+							className="text-xl font-medium mb-4"
+							style={{ color: '#191C1E' }}
+						>
+							Suspend Workspace
+						</h3>
+						<p className="text-sm mb-4" style={{ color: '#40484C' }}>
+							Please provide a reason for suspending this workspace.
+						</p>
+						<textarea
+							value={suspendReason}
+							onChange={(e) => setSuspendReason(e.target.value)}
+							className="w-full rounded-xl border p-3 mb-6 min-h-[100px] outline-none"
+							style={{ borderColor: '#E0E4EB' }}
+							placeholder="Suspension reason..."
+						/>
+						<div className="flex gap-3 justify-end">
+							<button
+								onClick={() => {
+									setSuspendModal(null);
+									setSuspendReason('');
+								}}
+								className="px-5 py-2 rounded-xl font-medium"
+								style={{ color: '#40484C' }}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={() => suspend(suspendModal)}
+								disabled={!suspendReason.trim()}
+								className="px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50"
+								style={{ background: '#BA1A1A' }}
+							>
+								Suspend
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Enable Role Modal */}
+			{roleModal && (
+				<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+					<div
+						className="bg-white rounded-2xl p-6 max-w-md w-full"
+						style={{ boxShadow: SHADOW }}
+					>
+						<h3
+							className="text-xl font-medium mb-4"
+							style={{ color: '#191C1E' }}
+						>
+							Enable Additional Role
+						</h3>
+						<p className="text-sm mb-4" style={{ color: '#40484C' }}>
+							Select a role to enable for this workspace.
+						</p>
+						<select
+							className="w-full rounded-xl border p-3 mb-6 outline-none"
+							style={{ borderColor: '#E0E4EB' }}
+							value={roleToEnable}
+							onChange={(e) => setRoleToEnable(e.target.value)}
+						>
+							<option value="">-- Select Role --</option>
+							<option value="supplier">Supplier</option>
+							<option value="carrier">Carrier</option>
+							<option value="buyer">Buyer</option>
+						</select>
+
+						<div className="flex gap-3 justify-end">
+							<button
+								onClick={() => {
+									setRoleModal(null);
+									setRoleToEnable('');
+								}}
+								className="px-5 py-2 rounded-xl font-medium"
+								style={{ color: '#40484C' }}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={() => enableRole(roleModal)}
+								disabled={!roleToEnable}
+								className="px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50"
+								style={{ background: '#0F4C8A' }}
+							>
+								Enable Role
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
