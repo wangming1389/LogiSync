@@ -50,6 +50,20 @@
       "when": 1778744682774,
       "tag": "0006_negotiation_rounds_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778751449518,
+      "tag": "0007_futuristic_stone_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778752376598,
+      "tag": "0008_order_status_history_append_only",
+      "breakpoints": true
     }
   ]
 }
