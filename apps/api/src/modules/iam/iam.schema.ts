@@ -80,7 +80,8 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
 	enabledRoles: many(workspaceEnabledRoles),
 	supplierCategories: many(supplierCategories),
 	products: many(products),
-	rfqs: many(rfqs),
+	buyerRfqs: many(rfqs, { relationName: 'rfqBuyerWorkspace' }),
+	supplierRfqs: many(rfqs, { relationName: 'rfqSupplierWorkspace' }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
