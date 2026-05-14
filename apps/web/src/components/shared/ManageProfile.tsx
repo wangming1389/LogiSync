@@ -18,7 +18,7 @@ export function ManageProfile() {
 		email: 'admin@logisync.com',
 		phone: '+1 234 567 8900',
 		currentRole: 'platform_admin',
-		company: 'LogiSync'
+		company: 'LogiSync',
 	};
 	const [tab, setTab] = useState<'personal' | 'security' | 'notifications'>(
 		'personal',
@@ -526,4 +526,3 @@ export function ManageProfile() {
 		</div>
 	);
 }
-

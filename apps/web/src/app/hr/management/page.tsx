@@ -464,7 +464,7 @@ export default function HRManagement() {
 											...empList,
 											{
 												...editEmp,
-												id: 'EMP' + Date.now(),
+												id: 'EMP' + crypto.randomUUID().slice(0, 8),
 												joinDate: '2026-04-13',
 											} as Employee,
 										]);
