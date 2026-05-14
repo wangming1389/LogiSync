@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SessionRegistryService } from '../../../core/session/session-registry.service';
 import type { ProductSearchQueryDto } from './product-search.dto';
 import { ProductSearchRepository } from './product-search.repository';
