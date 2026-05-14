@@ -36,6 +36,20 @@
       "when": 1778551790312,
       "tag": "0004_add_rls_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778744123318,
+      "tag": "0005_smiling_pestilence",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778744682774,
+      "tag": "0006_negotiation_rounds_append_only",
+      "breakpoints": true
     }
   ]
 }

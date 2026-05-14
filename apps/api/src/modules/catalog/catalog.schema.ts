@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
 	boolean,
+	index,
 	integer,
 	jsonb,
 	pgTable,
@@ -82,6 +83,17 @@ export const products = pgTable(
 	(table) => ({
 		uniqueWorkspaceSku: unique('uq_products_workspace_sku').on(
 			table.workspaceId,
+			table.sku,
+		),
+		// Composite indexes backing the cross-tenant product search query (QAR-05)
+		idxWorkspaceStatusName: index('idx_products_workspace_status_name').on(
+			table.workspaceId,
+			table.status,
+			table.name,
+		),
+		idxWorkspaceStatusSku: index('idx_products_workspace_status_sku').on(
+			table.workspaceId,
+			table.status,
 			table.sku,
 		),
 	}),
