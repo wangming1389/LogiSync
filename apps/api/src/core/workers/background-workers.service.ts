@@ -1,20 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { OrderService } from '../../modules/order/order.service';
 import { DatabaseBackupService } from './database-backup.service';
 
 @Injectable()
 export class BackgroundWorkersService {
 	private readonly logger = new Logger(BackgroundWorkersService.name);
 
-	constructor(private readonly databaseBackupService: DatabaseBackupService) {}
+	constructor(
+		private readonly databaseBackupService: DatabaseBackupService,
+		private readonly orderService: OrderService,
+	) {}
 
 	// Run every 15 minutes - Auto settle confirmations after 48 hours
 	@Cron('0 */15 * * * *')
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async settleConfirmations(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: Auto-settle confirmations...');
-			// TODO: Query orders/shipments confirmed > 48h ago and settle them
+			const result = await this.orderService.settleDueConfirmations();
+			this.logger.log(`Auto-confirmed purchase orders: ${result.processed}`);
 			this.logger.log('✅ Confirmation settlement completed');
 		} catch (error) {
 			this.logger.error('❌ Confirmation settlement failed:', error);
