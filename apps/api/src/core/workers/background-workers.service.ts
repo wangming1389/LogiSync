@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { lt } from 'drizzle-orm';
+import { getDatabase, schema } from '../../infrastructure/database';
 import { OrderService } from '../../modules/order/order.service';
 import { DatabaseBackupService } from './database-backup.service';
 
@@ -57,11 +59,13 @@ export class BackgroundWorkersService {
 
 	// Run daily at 2 AM - Clean up expired sessions
 	@Cron('0 2 * * *')
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async cleanExpiredSessions(): Promise<void> {
 		try {
 			this.logger.log('🔄 Starting: Session cleanup...');
-			// TODO: Remove sessions older than 7 days
+			const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+			await getDatabase()
+				.delete(schema.sessionRegistry)
+				.where(lt(schema.sessionRegistry.issuedAt, cutoff));
 			this.logger.log('✅ Session cleanup completed');
 		} catch (error) {
 			this.logger.error('❌ Session cleanup failed:', error);
@@ -90,7 +94,7 @@ export class BackgroundWorkersService {
 				return;
 			}
 
-			// 1. Tạo Daily Snapshot (pg_dump → gzip → MinIO)
+			// 1. Create Daily Snapshot (pg_dump → gzip → MinIO)
 			const result = await this.databaseBackupService.createDailySnapshot();
 
 			if (!result.success) {
@@ -103,7 +107,7 @@ export class BackgroundWorkersService {
 				`Snapshot saved: ${result.objectPath} (${sizeMB} MB, ${result.durationMs}ms)`,
 			);
 
-			// 2. Xóa các bản snapshot cũ hơn retention period
+			// 2. Delete old snapshots beyond retention period (default 7 days) and log the cleanup results
 			const snapshotCleanup =
 				await this.databaseBackupService.cleanupOldBackups();
 
@@ -113,7 +117,7 @@ export class BackgroundWorkersService {
 				);
 			}
 
-			// 3. Xóa các WAL archive files cũ
+			// 3. Delete old WAL archive files beyond retention period (default 7 days) and log the cleanup results
 			const walCleanup = await this.databaseBackupService.cleanupOldWalFiles();
 
 			if (walCleanup.deletedCount > 0) {
@@ -122,7 +126,7 @@ export class BackgroundWorkersService {
 				);
 			}
 
-			// 4. Log tổng kết
+			// 4. Log summary of available snapshots after cleanup
 			const backups = await this.databaseBackupService.listBackups();
 			this.logger.log(
 				`✅ Database backup completed. Total snapshots available: ${backups.length}`,
