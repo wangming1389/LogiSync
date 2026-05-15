@@ -13,12 +13,14 @@ services:
     # - archive_timeout=300: force archive every 5 minutes even if WAL is not full (16MB)
     command: >
       postgres
-      -c wal_level=replica
+      -c wal_level=logical
       -c archive_mode=on
       -c archive_command='/scripts/wal-archive.sh %p %f'
       -c archive_timeout=300
+      -c max_replication_slots=10
+      -c max_wal_senders=10
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - postgres-audit-data:/var/lib/postgresql/audit
@@ -28,21 +30,36 @@ services:
       - logisync-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
+
+  postgres_replica:
+    image: timescale/timescaledb:latest-pg16
+    container_name: logisync-db-replica
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+    networks:
+      - logisync-network
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: logisync-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     networks:
       - logisync-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,15 +72,15 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     volumes:
       - minio-data:/data
     networks:
       - logisync-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ['CMD', 'mc', 'ready', 'local']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -75,15 +92,15 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - '5672:5672'
+      - '15672:15672'
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - logisync-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -100,3 +117,4 @@ volumes:
   postgres-wal-archive:
   minio-data:
   rabbitmq-data:
+  postgres-replica-data:

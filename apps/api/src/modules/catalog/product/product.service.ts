@@ -6,6 +6,7 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { ObjectStorageService } from '../../../infrastructure/object-storage/object-storage.service';
@@ -70,7 +71,7 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_CREATE',
+				action: AuditAction.PRODUCT_CREATE_SUCCESS,
 				resourceType: 'product',
 				resourceId: product.id,
 				changes: {
@@ -79,7 +80,7 @@ export class ProductService {
 					unitPrice: dto.unitPrice,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return product;
@@ -186,12 +187,12 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_UPDATE',
+				action: AuditAction.PRODUCT_UPDATE_SUCCESS,
 				resourceType: 'product',
 				resourceId: id,
 				changes: { old: oldValues, new: dto },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -228,7 +229,7 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_PUBLISH',
+				action: AuditAction.PRODUCT_PUBLISH_SUCCESS,
 				resourceType: 'product',
 				resourceId: id,
 				changes: {
@@ -236,7 +237,7 @@ export class ProductService {
 					new: { status: 'active' },
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -273,7 +274,7 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_UNPUBLISH',
+				action: AuditAction.PRODUCT_UNPUBLISH_SUCCESS,
 				resourceType: 'product',
 				resourceId: id,
 				changes: {
@@ -281,7 +282,7 @@ export class ProductService {
 					new: { status: 'inactive' },
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -319,12 +320,12 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_DELETE',
+				action: AuditAction.PRODUCT_DELETE_SUCCESS,
 				resourceType: 'product',
 				resourceId: id,
 				changes: { sku: product.sku, name: product.name },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 		});
 
@@ -400,7 +401,7 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_IMAGE_UPLOAD',
+				action: AuditAction.PRODUCT_IMAGE_UPLOAD_SUCCESS,
 				resourceType: 'product',
 				resourceId: productId,
 				changes: {
@@ -409,7 +410,7 @@ export class ProductService {
 					replaceExisting,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updatedProduct;
@@ -470,7 +471,7 @@ export class ProductService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'PRODUCT_IMAGE_BATCH_UPLOAD_FROM_URL',
+				action: AuditAction.PRODUCT_IMAGE_BATCH_UPLOAD_FROM_URL_SUCCESS,
 				resourceType: 'product',
 				resourceId: productId,
 				changes: {
@@ -480,7 +481,7 @@ export class ProductService {
 					replaceExisting,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updatedProduct;

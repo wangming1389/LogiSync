@@ -73,7 +73,7 @@ export default function LoginPage() {
 				atob(base64)
 					.split('')
 					.map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-					.join('')
+					.join(''),
 			);
 			return JSON.parse(jsonPayload);
 		} catch (error) {
@@ -101,13 +101,13 @@ export default function LoginPage() {
 			if (!token) {
 				throw new Error('No access token received from server');
 			}
-			
+
 			localStorage.setItem('access_token', token);
-			
+
 			// Giải mã JWT để lấy role
 			const payload = decodeJWT(token);
 			const role = payload.role as UserRole;
-			
+
 			// Auto-route dựa trên role
 			if (role && ROLE_INITIAL_PATH[role]) {
 				router.push(ROLE_INITIAL_PATH[role]);
@@ -175,8 +175,6 @@ export default function LoginPage() {
 			</div>
 		);
 	}
-
-
 
 	return (
 		<div

@@ -6,6 +6,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { SessionRegistryService } from '../../../core/session/session-registry.service';
 import { getDatabase } from '../../../infrastructure/database';
@@ -82,7 +83,7 @@ export class WorkspaceService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId: adminUser.id,
 				workspaceId: workspace.id,
-				action: 'WORKSPACE_REGISTER',
+				action: AuditAction.WORKSPACE_REGISTER_SUCCESS,
 				resourceType: 'workspace',
 				resourceId: workspace.id,
 				changes: {
@@ -92,7 +93,7 @@ export class WorkspaceService {
 					taxId: dto.taxId,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return workspace;
@@ -135,12 +136,12 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
-			action: 'WORKSPACE_UPDATE',
+			action: AuditAction.WORKSPACE_UPDATE_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
 			changes: dto.name ? { name: dto.name } : {},
 			ipAddress,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		return updated;
@@ -162,11 +163,11 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
-			action: 'WORKSPACE_APPROVE',
+			action: AuditAction.WORKSPACE_APPROVE_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
 			ipAddress,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(`Workspace approved: ${workspace.name} (${id})`);
@@ -195,12 +196,12 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
-			action: 'WORKSPACE_REJECT',
+			action: AuditAction.WORKSPACE_REJECT_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
 			changes: { rejectionReason: dto.rejectionReason },
 			ipAddress,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(
@@ -227,11 +228,11 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
-			action: 'WORKSPACE_SUSPEND',
+			action: AuditAction.WORKSPACE_SUSPEND_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
 			ipAddress,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(
@@ -263,12 +264,12 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId,
-			action: 'WORKSPACE_ENABLE_ROLE',
+			action: AuditAction.WORKSPACE_ENABLE_ROLE_SUCCESS,
 			resourceType: 'workspace_enabled_roles',
 			resourceId: result.role.id,
 			changes: { role: dto.role },
 			ipAddress,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(`Role "${dto.role}" enabled for workspace ${workspaceId}`);

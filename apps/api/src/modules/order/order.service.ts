@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-enum-comparison, @typescript-eslint/no-unsafe-call */
 import {
 	BadRequestException,
@@ -8,6 +9,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as XLSX from 'xlsx';
+import { AuditAction, AuditStatus } from '../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../core/audit/audit-logger.service';
 import { MessageQueueService } from '../../infrastructure/message-queue/message-queue.service';
 import { UserRole } from '../iam/auth/enums/user-role.enum';
@@ -25,6 +27,11 @@ import type {
 	RejectOrderDto,
 } from './order.dto';
 import { OrderRepository } from './order.repository';
+
+interface DueAutoConfirmOrder {
+	id: string;
+	supplierWorkspaceId: string;
+}
 
 const ORDER_READ_ROLES = [
 	UserRole.BUYER_STAFF,
@@ -138,7 +145,7 @@ export class OrderService {
 			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
-				action: 'ORDER_APPROVED',
+				action: AuditAction.ORDER_APPROVE_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: orderId,
 				changes: {
@@ -147,7 +154,7 @@ export class OrderService {
 					autoConfirmAt,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updated;
@@ -206,7 +213,7 @@ export class OrderService {
 			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
-				action: 'ORDER_REJECTED',
+				action: AuditAction.ORDER_REJECT_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: orderId,
 				changes: {
@@ -215,7 +222,7 @@ export class OrderService {
 					rejectionReason: dto.rejectionReason,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updated;
@@ -303,7 +310,7 @@ export class OrderService {
 			await this.auditLoggerService.logInTx(tx, {
 				actorId: params.confirmedBy ?? 'SYSTEM_SCHEDULER',
 				workspaceId: params.workspaceId,
-				action: 'GOODS_RECEIPT_CONFIRMED',
+				action: AuditAction.GOODS_RECEIPT_CONFIRM_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: params.orderId,
 				changes: {
@@ -312,7 +319,7 @@ export class OrderService {
 					confirmationType: params.confirmationType,
 				},
 				ipAddress: params.ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updated;
@@ -379,7 +386,7 @@ export class OrderService {
 			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
-				action: 'ORDER_ASSIGNED',
+				action: AuditAction.ORDER_ASSIGN_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: orderId,
 				changes: {
@@ -387,7 +394,7 @@ export class OrderService {
 					assignedTo: dto.userId,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return updated;
@@ -442,7 +449,7 @@ export class OrderService {
 	async settleDueConfirmations() {
 		const orders = (await this.orderRepo.runInTransaction((tx) =>
 			this.orderRepo.listDueAutoConfirmOrders(tx),
-		)) as any[];
+		)) as DueAutoConfirmOrder[];
 
 		for (const order of orders) {
 			try {

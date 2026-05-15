@@ -5,6 +5,7 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
@@ -56,12 +57,12 @@ export class UomService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'UOM_CREATE',
+				action: AuditAction.UOM_CREATE_SUCCESS,
 				resourceType: 'unit_of_measure',
 				resourceId: uom.id,
 				changes: { name: dto.name, code: dto.code },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return uom;
@@ -125,12 +126,12 @@ export class UomService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'UOM_UPDATE',
+				action: AuditAction.UOM_UPDATE_SUCCESS,
 				resourceType: 'unit_of_measure',
 				resourceId: id,
 				changes: { old: oldValues, new: dto },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -151,12 +152,12 @@ export class UomService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'UOM_DISABLE',
+				action: AuditAction.UOM_DISABLE_SUCCESS,
 				resourceType: 'unit_of_measure',
 				resourceId: id,
 				changes: { isActive: false, disabledAt: result.disabledAt },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -177,12 +178,12 @@ export class UomService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'UOM_ENABLE',
+				action: AuditAction.UOM_ENABLE_SUCCESS,
 				resourceType: 'unit_of_measure',
 				resourceId: id,
 				changes: { isActive: true, disabledAt: null },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;

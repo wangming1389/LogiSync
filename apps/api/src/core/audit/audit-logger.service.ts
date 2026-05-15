@@ -4,19 +4,20 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { v4 as uuid } from 'uuid';
 import { getDatabase, schema } from '../../infrastructure/database';
 import * as schemaTypes from '../../infrastructure/database/schema';
+import { AuditAction, AuditStatus } from './audit.enums';
 
 export type DrizzleTransaction = NodePgDatabase<typeof schemaTypes>;
 
 export interface AuditLogPayload {
 	actorId: string;
 	workspaceId: string;
-	action: string;
+	action: AuditAction | string;
 	resourceType: string;
 	resourceId?: string;
 	changes?: Record<string, unknown>;
 	ipAddress: string;
 	userAgent?: string;
-	status: 'success' | 'failure';
+	status: AuditStatus;
 	errorMessage?: string;
 }
 
