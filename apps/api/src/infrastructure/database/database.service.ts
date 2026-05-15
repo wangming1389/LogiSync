@@ -6,7 +6,13 @@ import {
 	OnModuleInit,
 } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { getDatabase, getPool, initializeDatabase } from './index';
+import {
+	getDatabase,
+	getPool,
+	getReadReplicaPool,
+	initializeDatabase,
+	initializeReadReplicaDatabase,
+} from './index';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -25,12 +31,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 					throw new Error('Database pool is not initialized');
 				}
 				await pool.query('select 1');
+				initializeReadReplicaDatabase();
+				const readReplicaPool = getReadReplicaPool();
+				if (!readReplicaPool) {
+					throw new Error('Read replica database pool is not initialized');
+				}
+				await readReplicaPool.query('select 1');
+				const auditLogsTable = await readReplicaPool.query(
+					"select to_regclass('public.audit_logs') as table_name",
+				);
+				if (!auditLogsTable.rows[0]?.table_name) {
+					this.logger.error(
+						'DATABASE_REPLICA_URL points to a database/schema without public.audit_logs',
+					);
+				}
 			},
 			5,
 			1500,
 		);
 
 		this.logger.log('PostgreSQL connection verified.');
+		this.logger.log(
+			process.env.DATABASE_REPLICA_URL
+				? 'PostgreSQL read replica connection verified.'
+				: 'DATABASE_REPLICA_URL not set, read replica client falls back to primary.',
+		);
 	}
 
 	async onModuleDestroy() {
@@ -41,6 +66,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
 		this.logger.log('Closing PostgreSQL connection...');
 		await pool.end();
+		const readReplicaPool = getReadReplicaPool();
+		if (readReplicaPool && readReplicaPool !== pool) {
+			await readReplicaPool.end();
+		}
 		this.logger.log('PostgreSQL connection closed.');
 	}
 

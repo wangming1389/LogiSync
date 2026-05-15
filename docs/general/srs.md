@@ -1,36 +1,6 @@
 **Revision and Sign Off Sheet**
 
-**Change Record**
-
-| **Author** | **Version** | **Change reference** | **Date** |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.1 | Initialize | 29/03/2026 |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.2 | Add some use case description | 31/03/2026 |
-| --- | --- | --- | --- |
-| Ha Nguyen Viet Anh | 0.3 | Update use case diagram, introduction and use case description | 20/12/2023 |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.4 | Update use case diagram | 08/1/2023 |
-| --- | --- | --- | --- |
-| Ha Nguyen Viet Anh | 1.0 | Upload list and view description | 08/1/2023 |
-| --- | --- | --- | --- |
-
-**Reviewers**
-
-| **Name** | **Version** | **Position** | **Date** |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.1 | Application Owner | 6/12/2023 |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.2 | Application Owner | 11/12/2023 |
-| --- | --- | --- | --- |
-| Pham Ngoc Quang Minh | 0.3 | Application Owner | 21/12/2023 |
-| --- | --- | --- | --- |
-| Ha Nguyen Viet Anh | 0.4 | Application Owner | 08/1/2023 |
-| --- | --- | --- | --- |
-| Ha Nguyen Viet Anh | 1.0 | Application Owner | 08/1/2023 |
-| --- | --- | --- | --- |
-
-**MỤC LỤC**
+**Table of Contents**
 
 [**1\. Introduction 12**](#_heading=h.gjdgxs)
 

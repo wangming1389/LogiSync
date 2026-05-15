@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { SecurityService } from '../../../core/security/security.service';
 import { SessionRegistryService } from '../../../core/session/session-registry.service';
@@ -71,11 +72,11 @@ export class AuthService {
 			await this.auditLoggerService.log({
 				actorId: user.id,
 				workspaceId: user.workspaceId,
-				action: 'AUTH_LOGIN_LOCKED',
+				action: AuditAction.AUTH_LOGIN_LOCKED_FAILED,
 				resourceType: 'auth',
 				ipAddress,
 				userAgent,
-				status: 'failure',
+				status: AuditStatus.FAILURE,
 				errorMessage: 'Account is locked due to too many failed login attempts',
 			});
 
@@ -94,11 +95,11 @@ export class AuthService {
 			await this.auditLoggerService.log({
 				actorId: user.id,
 				workspaceId: user.workspaceId,
-				action: 'AUTH_LOGIN_FAILED',
+				action: AuditAction.AUTH_LOGIN_FAILED,
 				resourceType: 'auth',
 				ipAddress,
 				userAgent,
-				status: 'failure',
+				status: AuditStatus.FAILURE,
 				errorMessage: 'Password is incorrect',
 			});
 
@@ -133,11 +134,11 @@ export class AuthService {
 		await this.auditLoggerService.log({
 			actorId: user.id,
 			workspaceId: user.workspaceId,
-			action: 'AUTH_LOGIN_SUCCESS',
+			action: AuditAction.AUTH_LOGIN_SUCCESS,
 			resourceType: 'auth',
 			ipAddress,
 			userAgent,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(
@@ -163,11 +164,11 @@ export class AuthService {
 		await this.auditLoggerService.log({
 			actorId: payload.sub,
 			workspaceId: payload.workspaceId,
-			action: 'AUTH_LOGOUT',
+			action: AuditAction.AUTH_LOGOUT_SUCCESS,
 			resourceType: 'auth',
 			ipAddress,
 			userAgent,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(
@@ -246,11 +247,11 @@ export class AuthService {
 			await this.auditLoggerService.log({
 				actorId: payload.sub,
 				workspaceId: payload.workspaceId,
-				action: 'AUTH_CHANGE_PASSWORD_FAILED',
+				action: AuditAction.AUTH_CHANGE_PASSWORD_FAILED,
 				resourceType: 'auth',
 				ipAddress,
 				userAgent,
-				status: 'failure',
+				status: AuditStatus.FAILURE,
 				errorMessage: 'Current password is incorrect',
 			});
 
@@ -295,11 +296,11 @@ export class AuthService {
 		await this.auditLoggerService.log({
 			actorId: payload.sub,
 			workspaceId: payload.workspaceId,
-			action: 'AUTH_CHANGE_PASSWORD_SUCCESS',
+			action: AuditAction.AUTH_CHANGE_PASSWORD_SUCCESS,
 			resourceType: 'auth',
 			ipAddress,
 			userAgent,
-			status: 'success',
+			status: AuditStatus.SUCCESS,
 		});
 
 		this.logger.log(`Password changed for user ${payload.sub}`);

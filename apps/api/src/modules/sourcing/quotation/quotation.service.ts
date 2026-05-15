@@ -8,6 +8,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase, schema } from '../../../infrastructure/database';
 import { UserRole } from '../../iam/auth/enums/user-role.enum';
@@ -162,8 +163,8 @@ export class QuotationService {
 				workspaceId,
 				action:
 					finalStatus === 'submitted'
-						? 'QUOTATION_SUBMITTED'
-						: 'QUOTATION_DRAFTED',
+						? AuditAction.QUOTATION_SUBMIT_SUCCESS
+						: AuditAction.QUOTATION_DRAFT_SUCCESS,
 				resourceType: 'quotation',
 				resourceId: quotationId,
 				changes: {
@@ -173,7 +174,7 @@ export class QuotationService {
 					mode: dto.mode,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return this.quotationRepo.findById(quotationId, tx);
@@ -247,7 +248,7 @@ export class QuotationService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'NEGOTIATION_ROUND_SUBMITTED',
+				action: AuditAction.NEGOTIATION_ROUND_SUBMIT_SUCCESS,
 				resourceType: 'negotiation_round',
 				resourceId: inserted.id,
 				changes: {
@@ -257,7 +258,7 @@ export class QuotationService {
 					proposedDeliveryDays: dto.proposedDeliveryDays,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return inserted;
@@ -323,7 +324,7 @@ export class QuotationService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'NEGOTIATION_ROUND_ACCEPTED',
+				action: AuditAction.NEGOTIATION_ROUND_ACCEPT_SUCCESS,
 				resourceType: 'negotiation_round',
 				resourceId: target.id,
 				changes: {
@@ -332,7 +333,7 @@ export class QuotationService {
 					acceptedDeliveryDays: target.proposedDeliveryDays,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return { round: accepted, quotation: updatedQuotation };
@@ -459,7 +460,7 @@ export class QuotationService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'QUOTATION_SELECTED',
+				action: AuditAction.QUOTATION_SELECT_SUCCESS,
 				resourceType: 'quotation',
 				resourceId: quotationId,
 				changes: {
@@ -475,7 +476,7 @@ export class QuotationService {
 					},
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return { quotation: lockedQuotation, purchaseOrder: po };

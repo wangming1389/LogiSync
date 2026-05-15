@@ -6,6 +6,7 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { CatalogCategoryRepository } from '../../master-data/catalog-category/catalog-category.repository';
@@ -62,7 +63,7 @@ export class SupplierCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'SUPPLIER_CATEGORY_CREATE',
+				action: AuditAction.SUPPLIER_CATEGORY_CREATE_SUCCESS,
 				resourceType: 'supplier_category',
 				resourceId: category.id,
 				changes: {
@@ -70,7 +71,7 @@ export class SupplierCategoryService {
 					catalogCategoryId: dto.catalogCategoryId,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return category;
@@ -139,12 +140,12 @@ export class SupplierCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'SUPPLIER_CATEGORY_UPDATE',
+				action: AuditAction.SUPPLIER_CATEGORY_UPDATE_SUCCESS,
 				resourceType: 'supplier_category',
 				resourceId: id,
 				changes: { old: oldValues, new: dto },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -176,12 +177,12 @@ export class SupplierCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'SUPPLIER_CATEGORY_SOFT_DELETE',
+				action: AuditAction.SUPPLIER_CATEGORY_SOFT_DELETE_SUCCESS,
 				resourceType: 'supplier_category',
 				resourceId: id,
 				changes: { isActive: false },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
