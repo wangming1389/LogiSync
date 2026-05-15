@@ -202,6 +202,24 @@ pnpm --filter @logisync/api db:seed
 psql $DATABASE_URL < apps/api/src/database/rls-setup.sql
 ```
 
+### 5. Setup database replica
+
+```bash
+docker compose up -d --force-recreate postgres
+docker compose up -d postgres_replica
+powershell -ExecutionPolicy Bypass -File docker/postgres/setup-audit-log-replica.ps1
+```
+
+Check replicatation:
+```
+docker exec -it logisync-db-replica psql -U logisync_user -d logisync_db -c "select * from pg_stat_subscription;"
+```
+
+Check bảng đã có data:
+```
+docker exec -it logisync-db-replica psql -U logisync_user -d logisync_db -c "select count(*) from audit_logs;"
+```
+
 ## Chạy backend
 
 ### Development
