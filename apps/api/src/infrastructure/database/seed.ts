@@ -211,7 +211,6 @@ async function seedSupplierUsers(
 	}
 }
 
-
 async function seedBuyerUsers(
 	db: ReturnType<typeof getDatabase>,
 	workspaceId: string,

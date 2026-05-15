@@ -550,7 +550,7 @@ export default function BuyerOrdersTracking() {
 											setComplaints([
 												...complaints,
 												{
-												id: 'COMP' + crypto.randomUUID().slice(0, 8),
+													id: 'COMP' + crypto.randomUUID().slice(0, 8),
 													orderId: compForm.orderId,
 													type: compForm.type,
 													description: compForm.description,

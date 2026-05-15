@@ -7,6 +7,7 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
@@ -62,12 +63,12 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_CREATED',
+				action: AuditAction.RFQ_CREATE_SUCCESS,
 				resourceType: 'rfq',
 				resourceId: rfq.id,
 				changes: { note: dto.note ?? null },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return rfq;
@@ -168,7 +169,7 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_ITEM_UPSERTED',
+				action: AuditAction.RFQ_ITEM_UPSERT_SUCCESS,
 				resourceType: 'rfq_item',
 				resourceId: upserted.id,
 				changes: {
@@ -178,7 +179,7 @@ export class RfqService {
 					mergedInto: existingItem ? existingItem.id : null,
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return upserted;
@@ -234,12 +235,12 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_ITEM_UPDATED',
+				action: AuditAction.RFQ_ITEM_UPDATE_SUCCESS,
 				resourceType: 'rfq_item',
 				resourceId: itemId,
 				changes: { old: oldValues, new: dto },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -268,12 +269,12 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_ITEM_DELETED',
+				action: AuditAction.RFQ_ITEM_DELETE_SUCCESS,
 				resourceType: 'rfq_item',
 				resourceId: itemId,
 				changes: { productId: item.productId, quantity: item.quantity },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 		});
 
@@ -347,7 +348,7 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_SUBMITTED',
+				action: AuditAction.RFQ_SUBMIT_SUCCESS,
 				resourceType: 'rfq',
 				resourceId: id,
 				changes: {
@@ -355,7 +356,7 @@ export class RfqService {
 					supplierWorkspaceIds: childRfqs.map((c) => c.supplierWorkspaceId),
 				},
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return { parent: updatedParent, childRfqs };
@@ -393,12 +394,12 @@ export class RfqService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId,
-				action: 'RFQ_DELETED',
+				action: AuditAction.RFQ_DELETE_SUCCESS,
 				resourceType: 'rfq',
 				resourceId: id,
 				changes: { itemCount: items.length },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 		});
 
