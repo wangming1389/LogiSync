@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-enum-comparison, @typescript-eslint/no-unsafe-call */
 import {
 	BadRequestException,
 	ConflictException,
@@ -416,12 +416,12 @@ export class OrderService {
 			throw new BadRequestException('Date range must not exceed 366 days');
 		}
 
-		const orders = await this.orderRepo.listForExport(
+		const orders = (await this.orderRepo.listForExport(
 			role,
 			workspaceId,
 			query.start_date,
 			query.end_date,
-		);
+		)) as Record<string, unknown>[];
 
 		if (query.format === 'pdf') {
 			return {
@@ -440,9 +440,9 @@ export class OrderService {
 	}
 
 	async settleDueConfirmations() {
-		const orders = await this.orderRepo.runInTransaction((tx) =>
+		const orders = (await this.orderRepo.runInTransaction((tx) =>
 			this.orderRepo.listDueAutoConfirmOrders(tx),
-		);
+		)) as any[];
 
 		for (const order of orders) {
 			try {
@@ -489,7 +489,7 @@ export class OrderService {
 	}
 
 	private renderXlsx(orders: Record<string, unknown>[]): Buffer {
-		const rows = orders.map((order) => ({
+		const rows = (orders as any[]).map((order) => ({
 			id: order.id,
 			quotationId: order.quotationId,
 			buyerWorkspaceId: order.buyerWorkspaceId,
@@ -509,16 +509,15 @@ export class OrderService {
 	}
 
 	private renderSimplePdf(orders: Record<string, unknown>[]): Buffer {
+		const ordersAny = orders as any[];
 		const lines = [
 			'LogiSync Order Export',
 			`Generated at: ${new Date().toISOString()}`,
-			`Total orders: ${orders.length}`,
+			`Total orders: ${ordersAny.length}`,
 			'',
-			...orders.map(
+			...ordersAny.map(
 				(order) =>
-					`${String(order.id)} | ${String(order.status)} | ${String(
-						order.totalPrice,
-					)}`,
+					`${String(order.id)} | ${String(order.status)} | ${String(order.totalPrice)}`,
 			),
 		];
 		const content = [

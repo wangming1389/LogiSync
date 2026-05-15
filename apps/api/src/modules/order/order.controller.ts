@@ -102,7 +102,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Order detail' })
 	@ApiResponse({ status: 404, description: 'Order not found' })
-	async detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+	detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = (req as any).user as JwtPayload;
 		return this.orderService.getOrderDetail(
 			id,
@@ -118,7 +118,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Order approved' })
 	@ApiResponse({ status: 409, description: 'Order is not pending approval' })
-	async approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+	approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = (req as any).user as JwtPayload;
 		return this.orderService.approveOrder(
 			id,
@@ -137,7 +137,7 @@ export class OrderController {
 	@ApiBody({ type: RejectOrderDto })
 	@ApiResponse({ status: 200, description: 'Order rejected' })
 	@ApiResponse({ status: 400, description: 'rejectionReason is required' })
-	async reject(
+	reject(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: RejectOrderDto,
 		@Req() req: Request,
@@ -157,10 +157,7 @@ export class OrderController {
 	@ApiOperation({ summary: 'Confirm goods received manually (US-73)' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Goods receipt confirmed' })
-	async confirmReceipt(
-		@Param('id', ParseUUIDPipe) id: string,
-		@Req() req: Request,
-	) {
+	confirmReceipt(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = (req as any).user as JwtPayload;
 		return this.orderService.confirmReceiptManually(
 			id,
@@ -178,7 +175,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiBody({ type: AssignOrderDto })
 	@ApiResponse({ status: 200, description: 'Order assigned' })
-	async assign(
+	assign(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: AssignOrderDto,
 		@Req() req: Request,

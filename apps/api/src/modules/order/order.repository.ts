@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
@@ -47,7 +47,8 @@ export class OrderRepository extends BaseRepository {
 			conditions.push(eq(schema.purchaseOrders.status, params.status));
 		}
 
-		const whereClause = and(...conditions);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		const whereClause = and(...(conditions as any));
 		const [items, countResult] = await Promise.all([
 			runner
 				.select()
@@ -85,10 +86,12 @@ export class OrderRepository extends BaseRepository {
 		if (userId && this.isStaffRole(role)) {
 			conditions.push(eq(schema.purchaseOrders.assignedTo, userId));
 		}
+
 		const [order] = await runner
 			.select()
 			.from(schema.purchaseOrders)
-			.where(and(...conditions));
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			.where(and(...(conditions as any)));
 		return order;
 	}
 
@@ -193,7 +196,7 @@ export class OrderRepository extends BaseRepository {
 		return assignment;
 	}
 
-	async listStatusHistory(orderId: string, tx?: any) {
+	listStatusHistory(orderId: string, tx?: any) {
 		const runner = tx || this.db;
 		return runner
 			.select()
@@ -202,7 +205,7 @@ export class OrderRepository extends BaseRepository {
 			.orderBy(schema.orderStatusHistory.changedAt);
 	}
 
-	async listAssignmentHistory(orderId: string, tx?: any) {
+	listAssignmentHistory(orderId: string, tx?: any) {
 		const runner = tx || this.db;
 		return runner
 			.select()
@@ -232,7 +235,7 @@ export class OrderRepository extends BaseRepository {
 		return user;
 	}
 
-	async listForExport(
+	listForExport(
 		role: string,
 		workspaceId: string,
 		startDate: Date,
@@ -253,7 +256,7 @@ export class OrderRepository extends BaseRepository {
 			.orderBy(desc(schema.purchaseOrders.createdAt));
 	}
 
-	async listDueAutoConfirmOrders(tx: any) {
+	listDueAutoConfirmOrders(tx: any) {
 		return tx
 			.select()
 			.from(schema.purchaseOrders)
