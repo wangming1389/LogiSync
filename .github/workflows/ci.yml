@@ -2,9 +2,9 @@ name: LogiSync CI
 
 on:
   push:
-    branches: ["main", "develop"]
+    branches: ['main', 'develop']
   pull_request:
-    branches: ["main", "develop"]
+    branches: ['main', 'develop']
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -64,7 +64,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
@@ -92,7 +92,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
@@ -136,17 +136,20 @@ jobs:
       - name: Analyze Image Size
         run: |
           RAW_SIZE=$(docker images --format "{{.Size}}" logisync-api:latest)
-          echo "### 🐳 Docker Optimization Report" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Final Image Size** | $RAW_SIZE |" >> $GITHUB_STEP_SUMMARY
-
           SIZE_BYTES=$(docker inspect logisync-api:latest --format='{{.Size}}')
           SIZE_MB=$((SIZE_BYTES / 1048576))
-          if (( SIZE_MB < 300 )); then
-            echo "| **Optimization Check** | ✅ Lean ($SIZE_MB MB) |" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🐳 Docker Optimization Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| :--- | :--- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Final Image Size** | $RAW_SIZE |" >> "$GITHUB_STEP_SUMMARY"
+
+          if (( SIZE_MB < 450 )); then
+            echo "| **Status** | ✅ **Lean** ($SIZE_MB MiB) |" >> "$GITHUB_STEP_SUMMARY"
+          elif (( SIZE_MB < 800 )); then
+            echo "| **Status** | 🟡 **Healthy** ($SIZE_MB MiB) |" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "| **Optimization Check** | ⚠️ Heavy ($SIZE_MB MB) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Status** | ⚠️ **Heavy** ($SIZE_MB MiB) |" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # 6. WEB BUILD
@@ -166,7 +169,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
