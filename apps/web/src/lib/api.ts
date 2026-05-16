@@ -1,12 +1,10 @@
 import { apiFetch } from '@logisync/api-client';
 import { env } from '../config/env';
+import { getStoredAccessToken } from './auth';
 
 const baseOptions = {
 	baseUrl: env.NEXT_PUBLIC_API_BASE_URL,
-	getToken: () =>
-		typeof window === 'undefined'
-			? undefined
-			: (localStorage.getItem('access_token') ?? undefined),
+	getToken: getStoredAccessToken,
 };
 
 export const api = {

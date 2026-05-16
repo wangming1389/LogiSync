@@ -34,6 +34,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { clearAuthSession } from '@/lib/auth';
 
 const NAV_CONFIG: Record<
 	string,
@@ -168,6 +169,7 @@ export default function AppLayout({
 	const navConfig = NAV_CONFIG[currentRole] || NAV_CONFIG['platform_admin'];
 
 	const handleLogout = () => {
+		clearAuthSession();
 		router.push('/login');
 	};
 

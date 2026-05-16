@@ -11,6 +11,11 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import {
+	parseJwtClaims,
+	resolveAuthDestination,
+	setAuthSession,
+} from '@/lib/auth';
 
 const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
@@ -19,7 +24,8 @@ export type UserRole =
 	| 'supplier'
 	| 'carrier'
 	| 'buyer'
-	| 'hr';
+	| 'hr'
+	| 'company_admin';
 
 const ROLES: { value: UserRole; label: string; description: string }[] = [
 	{
@@ -64,24 +70,6 @@ export default function LoginPage() {
 
 	const router = useRouter();
 
-	// Giải mã JWT payload (không cần xác thực signature)
-	function decodeJWT(token: string): { role: UserRole; [key: string]: any } {
-		try {
-			const base64Url = token.split('.')[1];
-			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-			const jsonPayload = decodeURIComponent(
-				atob(base64)
-					.split('')
-					.map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-					.join('')
-			);
-			return JSON.parse(jsonPayload);
-		} catch (error) {
-			console.error('Failed to decode JWT:', error);
-			throw new Error('Invalid token format');
-		}
-	}
-
 	async function handleLogin(e: React.FormEvent) {
 		e.preventDefault();
 		if (failCount >= 5) {
@@ -101,26 +89,38 @@ export default function LoginPage() {
 			if (!token) {
 				throw new Error('No access token received from server');
 			}
-			
-			localStorage.setItem('access_token', token);
-			
-			// Giải mã JWT để lấy role
-			const payload = decodeJWT(token);
-			const role = payload.role as UserRole;
-			
-			// Auto-route dựa trên role
-			if (role && ROLE_INITIAL_PATH[role]) {
-				router.push(ROLE_INITIAL_PATH[role]);
-			} else {
+
+			const payload = parseJwtClaims(token);
+			if (!payload) {
+				throw new Error('Invalid token format');
+			}
+
+			setAuthSession(token, res?.data?.refreshToken ?? res?.data?.refresh_token);
+
+			const destination = resolveAuthDestination(payload);
+			if (!destination) {
 				throw new Error('Invalid role in token');
 			}
+
+			router.push(destination);
 		} catch (err: any) {
 			const f = failCount + 1;
 			setFailCount(f);
 			if (f >= 5) {
 				setStep('locked');
 			} else {
-				setError(err.message || 'Invalid credentials.');
+				const message = String(err?.message ?? '');
+				if (
+				err?.status === 401 ||
+					err?.status === 403 ||
+					/incorrect|invalid credentials/i.test(message)
+				) {
+					setError('Email or password is incorrect.');
+				} else if (/lock/i.test(message) || err?.status === 429) {
+					setError('Your account is locked after too many failed attempts.');
+				} else {
+					setError(message || 'Email or password is incorrect.');
+				}
 			}
 		} finally {
 			setLoading(false);
