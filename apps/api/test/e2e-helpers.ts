@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { ZodValidationPipe } from 'nestjs-zod';
 import request from 'supertest';
@@ -15,7 +16,8 @@ let seq = 0;
 
 export function unique(prefix: string) {
 	seq += 1;
-	return `${prefix}-${Date.now()}-${seq}`;
+	const randomStr = randomUUID().substring(0, 6); // Bốc thêm 6 ký tự ngẫu nhiên mã hóa cứng
+	return `${prefix}-${Date.now()}-${seq}-${randomStr}`;
 }
 
 export async function createE2eApp() {

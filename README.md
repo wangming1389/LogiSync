@@ -13,7 +13,7 @@ pnpm prepare
 
 ```bash
 pnpm db:up
-pnpm db:setup
+pnpm db:setup:local
 pnpm db:studio
 ```
 

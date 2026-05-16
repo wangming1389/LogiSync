@@ -138,7 +138,7 @@ jobs:
           POSTGRES_PASSWORD=logisync
           POSTGRES_DB=logisync
           DATABASE_URL=postgresql://logisync:logisync@localhost:5432/logisync
-          DATABASE_REPLICA_URL=postgresql://logisync:logisync@localhost:5433/logisync
+          DATABASE_REPLICA_URL=postgresql://logisync:logisync@localhost:5432/logisync
           REDIS_URL=redis://localhost:6379
           RABBITMQ_URL=amqp://logisync:logisync@localhost:5672
           RABBITMQ_USER=logisync
@@ -159,6 +159,9 @@ jobs:
 
       - name: Start API infrastructure
         run: pnpm db:up
+
+      - name: Wait for Database readiness
+        run: sleep 5
 
       - name: Setup API database
         run: pnpm db:setup

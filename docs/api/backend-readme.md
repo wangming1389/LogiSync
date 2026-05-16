@@ -60,7 +60,7 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 2. **Infrastructure**: `docker compose up -d`
 3. **Database Setup**:
    ```bash
-   pnpm --filter @logisync/api db:setup
+   pnpm --filter @logisync/api db:setup:local
    # Apply Row-Level Security (RLS)
    psql $DATABASE_URL < apps/api/src/database/rls-setup.sql
    ```
