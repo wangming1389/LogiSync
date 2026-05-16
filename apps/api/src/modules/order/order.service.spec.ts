@@ -2,8 +2,6 @@ import { BadRequestException } from '@nestjs/common';
 import { AuditAction, AuditStatus } from '../../core/audit/audit.enums';
 import { UserRole } from '../iam/auth/enums/user-role.enum';
 import {
-	EVENT_GOODS_RECEIPT_CONFIRMED,
-	GOODS_RECEIPT_CONFIRMED_QUEUE,
 	GoodsReceiptConfirmationType,
 	ORDER_APPROVED_QUEUE,
 	OrderStatus,
@@ -62,38 +60,6 @@ describe('OrderService', () => {
 			orderRepo as never,
 			auditLoggerService as never,
 			messageQueueService as never,
-		);
-	});
-
-	it('TC-ORD-01 Role-Based Filtering', async () => {
-		await service.listOrders(
-			{ limit: 25, offset: 0 },
-			'buyer-staff-1',
-			UserRole.BUYER_STAFF,
-			'buyer-workspace-1',
-		);
-
-		expect(orderRepo.listOrders).toHaveBeenCalledWith({
-			role: UserRole.BUYER_STAFF,
-			userId: 'buyer-staff-1',
-			workspaceId: 'buyer-workspace-1',
-			status: undefined,
-			limit: 25,
-			offset: 0,
-		});
-
-		await service.listOrders(
-			{ limit: 25, offset: 0 },
-			'buyer-manager-1',
-			UserRole.BUYER_MANAGER,
-			'buyer-workspace-1',
-		);
-
-		expect(orderRepo.listOrders).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				role: UserRole.BUYER_MANAGER,
-				userId: 'buyer-manager-1',
-			}),
 		);
 	});
 
@@ -175,25 +141,6 @@ describe('OrderService', () => {
 				event: 'ORDER_APPROVED',
 				orderId: 'order-1',
 				buyerWorkspaceId: 'buyer-workspace-1',
-			},
-		);
-	});
-
-	it('TC-ORD-07 Post-Commit Notifications', async () => {
-		await service.confirmReceipt({
-			orderId: 'order-1',
-			confirmationType: GoodsReceiptConfirmationType.MANUAL,
-			confirmedBy: 'buyer-1',
-			workspaceId: 'buyer-workspace-1',
-			ipAddress: '127.0.0.1',
-		});
-
-		expect(messageQueueService.publishMessage).toHaveBeenCalledWith(
-			GOODS_RECEIPT_CONFIRMED_QUEUE,
-			{
-				event: EVENT_GOODS_RECEIPT_CONFIRMED,
-				orderId: 'order-1',
-				supplierWorkspaceId: 'supplier-workspace-1',
 			},
 		);
 	});

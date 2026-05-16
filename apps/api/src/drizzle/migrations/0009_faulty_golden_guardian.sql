@@ -1,0 +1,1 @@
+ALTER TABLE "quotations" ALTER COLUMN "estimated_delivery_date" SET DATA TYPE integer;

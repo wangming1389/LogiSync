@@ -1,13 +1,99 @@
-describe.skip('Order infrastructure test cases from docs/api/order', () => {
+import { INestApplication } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
+import request from 'supertest';
+
+import { schema } from '../src/infrastructure/database';
+import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import {
+	bearer,
+	createE2eApp,
+	createIdentity,
+	createOrderFixture,
+	db,
+	login,
+	pool,
+} from './e2e-helpers';
+
+describe('Order infrastructure test cases from docs/api/order', () => {
+	let app: INestApplication;
+
+	beforeAll(async () => {
+		app = await createE2eApp();
+	});
+
+	afterAll(async () => {
+		await app.close();
+	});
+
 	it('TC-ORD-03 Status History Immutability', async () => {
-		// Requires migrated PostgreSQL triggers enforcing append-only order_status_history.
+		const fixture = await createOrderFixture();
+		const [history] = await db()
+			.insert(schema.orderStatusHistory)
+			.values({
+				orderId: fixture.order.id,
+				statusValue: 'pending_approval',
+				changedBy: fixture.buyer.user.id,
+				changedAt: new Date(),
+			})
+			.returning();
+
+		await expect(
+			pool().query(
+				'update order_status_history set status_value = $1 where id = $2',
+				['approved', history.id],
+			),
+		).rejects.toThrow(/append-only|forbidden|immutable/i);
+		await expect(
+			pool().query('delete from order_status_history where id = $1', [
+				history.id,
+			]),
+		).rejects.toThrow(/append-only|forbidden|immutable/i);
 	});
 
 	it('TC-ORD-06 Atomic Transactions', async () => {
-		// Requires a DB-backed status update flow and an injected failure to verify rollback.
+		const fixture = await createOrderFixture();
+
+		await expect(
+			db().transaction(async (tx) => {
+				await tx
+					.update(schema.purchaseOrders)
+					.set({ status: 'approved' })
+					.where(eq(schema.purchaseOrders.id, fixture.order.id));
+				await tx.insert(schema.orderStatusHistory).values({
+					orderId: fixture.order.id,
+					statusValue: 'approved',
+					changedBy: fixture.supplier.user.id,
+					changedAt: new Date(),
+				});
+				throw new Error('force order rollback');
+			}),
+		).rejects.toThrow('force order rollback');
+
+		const [order] = await db()
+			.select()
+			.from(schema.purchaseOrders)
+			.where(eq(schema.purchaseOrders.id, fixture.order.id));
+		const approvedHistory = await db()
+			.select()
+			.from(schema.orderStatusHistory)
+			.where(eq(schema.orderStatusHistory.orderId, fixture.order.id));
+
+		expect(order.status).toBe('pending_approval');
+		expect(approvedHistory.some((row) => row.statusValue === 'approved')).toBe(
+			false,
+		);
 	});
 
 	it('TC-ORD-09 Tenant Isolation', async () => {
-		// Requires authenticated API requests from separate buyer/supplier workspaces.
+		const fixture = await createOrderFixture();
+		const outsider = await createIdentity(UserRole.BUYER_STAFF, {
+			type: 'buyer',
+		});
+		const outsiderToken = await login(app, outsider.user.email);
+
+		await request(app.getHttpServer())
+			.get(`/orders/${fixture.order.id}`)
+			.set(bearer(outsiderToken))
+			.expect(404);
 	});
 });

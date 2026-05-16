@@ -63,6 +63,15 @@ export const RejectWorkspaceSchema = z.object({
 
 export class RejectWorkspaceDto extends createZodDto(RejectWorkspaceSchema) {}
 
+export const RevokeWorkspaceSchema = z.object({
+	companyNameConfirmation: z
+		.string()
+		.min(1, 'Company name confirmation cannot be empty')
+		.max(255),
+});
+
+export class RevokeWorkspaceDto extends createZodDto(RevokeWorkspaceSchema) {}
+
 export const EnableRoleSchema = z.object({
 	role: z.enum(
 		[

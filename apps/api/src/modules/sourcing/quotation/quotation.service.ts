@@ -95,6 +95,9 @@ export class QuotationService {
 		);
 
 		const finalStatus = dto.mode === 'draft' ? 'draft' : 'submitted';
+		const estimatedDeliveryDays = this.toEstimatedDeliveryDays(
+			dto.estimatedDeliveryDate,
+		);
 
 		const result = await getDatabase().transaction(async (tx) => {
 			let quotationId: string;
@@ -106,7 +109,7 @@ export class QuotationService {
 						status: finalStatus,
 						totalPrice,
 						unitPrice: dto.unitPrice,
-						estimatedDeliveryDate: dto.estimatedDeliveryDate,
+						estimatedDeliveryDate: estimatedDeliveryDays,
 						deliveryTerms: dto.deliveryTerms,
 						note: dto.note ?? null,
 						submittedAt:
@@ -130,7 +133,7 @@ export class QuotationService {
 						status: finalStatus,
 						totalPrice,
 						unitPrice: dto.unitPrice,
-						estimatedDeliveryDate: dto.estimatedDeliveryDate,
+						estimatedDeliveryDate: estimatedDeliveryDays,
 						deliveryTerms: dto.deliveryTerms,
 						note: dto.note ?? null,
 						isLocked: false,
@@ -450,7 +453,9 @@ export class QuotationService {
 					totalPrice: quotation.totalPrice,
 					finalUnitPrice: unitPriceSnapshot,
 					finalPaymentTerms: quotation.deliveryTerms,
-					finalDeliveryDate: quotation.estimatedDeliveryDate,
+					finalDeliveryDate: this.resolveFinalDeliveryDate(
+						quotation.estimatedDeliveryDate,
+					),
 					isLocked: true,
 				},
 				tx,
@@ -494,6 +499,19 @@ export class QuotationService {
 	): Promise<number> {
 		const items = await this.quotationRepo.listItems(quotationId, tx);
 		return items.reduce((acc: number, it: any) => acc + it.quantity, 0);
+	}
+
+	private resolveFinalDeliveryDate(value: unknown): Date | null {
+		if (value instanceof Date) return value;
+		if (typeof value === 'number') {
+			return new Date(Date.now() + value * 24 * 60 * 60 * 1000);
+		}
+		return null;
+	}
+
+	private toEstimatedDeliveryDays(date: Date): number {
+		const diffMs = date.getTime() - Date.now();
+		return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
 	}
 
 	private assertReadAccess(
