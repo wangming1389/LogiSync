@@ -17,11 +17,11 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { getClientIp } from '../../common/utils/request.utils';
-import type { JwtPayload } from '../../modules/iam/auth/auth.dto';
-import { UserRole } from '../../modules/iam/auth/enums/user-role.enum';
-import { AuditLogQueryDto } from './audit-log-query.dto';
-import { AuditLogQueryService } from './audit-log-query.service';
+import { getClientIp } from '../../../common/utils/request.utils';
+import type { JwtPayload } from '../../../modules/iam/auth/auth.dto';
+import { UserRole } from '../../../modules/iam/auth/enums/user-role.enum';
+import { AuditLogQueryDto } from '../dtos/audit-log-query.dto';
+import { AuditLogQueryService } from '../services/audit-log-query.service';
 
 @ApiTags('Platform Admin Audit Logs')
 @ApiBearerAuth('access-token')

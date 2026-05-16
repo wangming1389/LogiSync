@@ -7,8 +7,8 @@ import {
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { AuditAction, AuditStatus } from './audit.enums';
-import { AuditLoggerService } from './audit-logger.service';
+import { AuditAction, AuditStatus } from '../enums/audit.enums';
+import { AuditLoggerService } from '../services/audit-logger.service';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {

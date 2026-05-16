@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { AuditAction } from '../../../core/audit/audit.enums';
+import { AuditAction } from '../../../core/audit/enums/audit.enums';
 import { getDatabase } from '../../../infrastructure/database';
 import { RfqService } from './rfq.service';
 

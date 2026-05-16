@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { v4 as uuid } from 'uuid';
-import { getDatabase, schema } from '../../infrastructure/database';
-import * as schemaTypes from '../../infrastructure/database/schema';
-import { AuditAction, AuditStatus } from './audit.enums';
+import { getDatabase, schema } from '../../../infrastructure/database';
+import * as schemaTypes from '../../../infrastructure/database/schema';
+import { AuditAction, AuditStatus } from '../enums/audit.enums';
 
 export type DrizzleTransaction = NodePgDatabase<typeof schemaTypes>;
 

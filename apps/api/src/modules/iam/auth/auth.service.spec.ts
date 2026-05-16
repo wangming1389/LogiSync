@@ -1,7 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
 import { AuthService } from './auth.service';
 
 jest.mock('bcryptjs', () => ({

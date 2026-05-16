@@ -127,36 +127,31 @@ Commit after every phase. Each commit must build and test before continuing.
    - Fix this plan.
    - Record risks and verification commands.
 
-2. **Core health structure**
-   - Move only `src/core/health` into the standard layout.
-   - Update imports and specs.
+2. **Bulk Core Service Reorganization**
+   - Simultaneously migrate `src/core/health` and `src/core/audit` into the new layout.
+   - Keep audit-specific enums local to the audit module to limit ripple effects across other modules.
 
-3. **Core audit structure**
-   - Move only `src/core/audit` into the standard layout.
-   - Keep audit enum locations local for now.
-
-4. **Infrastructure helpers**
+3. **Infrastructure helpers**
    - Add pagination helpers.
    - Add health registry if still needed after reviewing current health service.
    - Do not change transaction behavior in this commit.
 
-5. **Module structure, one domain at a time**
-   - Move one domain per commit, for example `media`, then `master-data/uom`,
-     then `catalog/product`.
-   - Keep tests beside the moved implementation files.
+4. **Bulk Functional Module Reorganization**
+   - Migrate all domain modules (`media`, `master-data`, `catalog`, `order`, `sourcing`, etc) at once.
+   - Ensure that all associated unit test specs (\*.spec.ts) are moved into the corresponding folders (services/, controllers/, etc.) to maintain colocation integrity.
 
-6. **Unit of Work with CLS**
+5. **Unit of Work with CLS**
    - Refactor transaction handling separately.
    - Keep compatibility with existing manual `tx` arguments until all callers are
      migrated.
 
-7. **Order module critical fix**
+6. **Order module critical fix**
    - Extract pure state-transition logic.
    - Move large export/rendering work to background processing and object
      storage.
    - Apply strategy pattern only where it reduces real branching complexity.
 
-8. **Auth security and global filters**
+7. **Auth security and global filters**
    - Add rate limiting.
    - Review global filters/guards/interceptors.
    - Keep security changes isolated from folder moves.
@@ -173,7 +168,8 @@ pnpm --filter @logisync/api test -- --runInBand
 Run these when the phase touches API routes, auth, database setup, or app wiring:
 
 ```powershell
-pnpm --filter @logisync/api test:e2e
+pnpm test:api
+pnpm test:api:e2e
 pnpm lint:api
 ```
 

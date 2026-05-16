@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { AuditAction, AuditStatus } from '../../core/audit/audit.enums';
+import { AuditAction, AuditStatus } from '../../core/audit/enums/audit.enums';
 import { UserRole } from '../iam/auth/enums/user-role.enum';
 import {
 	GoodsReceiptConfirmationType,

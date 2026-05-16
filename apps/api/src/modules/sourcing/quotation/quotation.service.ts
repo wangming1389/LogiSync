@@ -8,8 +8,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { getDatabase, schema } from '../../../infrastructure/database';
 import { UserRole } from '../../iam/auth/enums/user-role.enum';
 import { RfqRepository } from '../rfq/rfq.repository';

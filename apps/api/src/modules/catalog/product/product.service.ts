@@ -6,8 +6,11 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { ObjectStorageService } from '../../../infrastructure/object-storage/object-storage.service';
 import { UomRepository } from '../../master-data/uom/uom.repository';

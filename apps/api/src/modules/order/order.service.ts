@@ -9,8 +9,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as XLSX from 'xlsx';
-import { AuditAction, AuditStatus } from '../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../core/audit/audit-logger.service';
+import { AuditAction, AuditStatus } from '../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../core/audit/services/audit-logger.service';
 import { MessageQueueService } from '../../infrastructure/message-queue/message-queue.service';
 import { UserRole } from '../iam/auth/enums/user-role.enum';
 import {
