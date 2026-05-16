@@ -15,6 +15,7 @@ import type {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
 	RejectWorkspaceDto,
+	RevokeWorkspaceDto,
 	UpdateWorkspaceDto,
 	WorkspaceFilterDto,
 } from './workspace.dto';
@@ -238,6 +239,47 @@ export class WorkspaceService {
 		this.logger.log(
 			`Workspace suspended: ${workspace.name} (${id}) - all sessions revoked`,
 		);
+		return updated;
+	}
+
+	async revoke(
+		id: string,
+		dto: RevokeWorkspaceDto,
+		actorId: string,
+		ipAddress: string,
+	) {
+		const workspace = await this.findById(id);
+
+		if (workspace.name !== dto.companyNameConfirmation) {
+			throw new ConflictException(
+				'Company name confirmation does not match workspace name',
+			);
+		}
+
+		if (workspace.status === 'revoked') {
+			throw new ConflictException('Workspace is already revoked');
+		}
+
+		const updated = await this.workspaceRepository.update(id, {
+			status: 'revoked',
+			revokedAt: new Date(),
+			isActive: false,
+		});
+
+		await this.sessionRegistryService.revokeAllWorkspaceSessions(id);
+
+		await this.auditLoggerService.log({
+			actorId,
+			workspaceId: id,
+			action: AuditAction.UNKNOWN_MUTATION_SUCCESS,
+			resourceType: 'workspace',
+			resourceId: id,
+			changes: { status: 'revoked', isActive: false },
+			ipAddress,
+			status: AuditStatus.SUCCESS,
+		});
+
+		this.logger.log(`Workspace revoked: ${workspace.name} (${id})`);
 		return updated;
 	}
 

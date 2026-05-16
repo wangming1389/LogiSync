@@ -78,9 +78,7 @@ export const quotations = pgTable('quotations', {
 	status: varchar('status', { length: 20 }).notNull().default('draft'),
 	totalPrice: integer('total_price').notNull(),
 	unitPrice: integer('unit_price'),
-	estimatedDeliveryDate: timestamp('estimated_delivery_date', {
-		withTimezone: true,
-	}),
+	estimatedDeliveryDate: integer('estimated_delivery_date'),
 	deliveryTerms: text('delivery_terms'),
 	note: text('note'),
 	isLocked: boolean('is_locked').notNull().default(false),
