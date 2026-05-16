@@ -8,6 +8,10 @@
     },
     "test": {
       "cache": true,
+      "outputs": []
+    },
+    "test:cov": {
+      "cache": true,
       "outputs": ["coverage/**"]
     },
     "test:e2e": {

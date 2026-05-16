@@ -1,8 +1,9 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-// Vietnam Tax ID: 10 or 13 digits
-const TAX_ID_REGEX = /^\d{10}(\d{3})?$/;
+const TAX_ID_REGEX = /^\d{10,13}$/;
+const PASSWORD_COMPLEXITY_REGEX =
+	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 export const RegisterWorkspaceSchema = z.object({
 	name: z
@@ -20,7 +21,7 @@ export const RegisterWorkspaceSchema = z.object({
 	type: z.enum(['supplier', 'buyer', 'carrier'], {
 		errorMap: () => ({ message: 'Type must be supplier, buyer, or carrier' }),
 	}),
-	taxId: z.string().regex(TAX_ID_REGEX, 'Invalid tax ID (10 or 13 digits)'),
+	taxId: z.string().regex(TAX_ID_REGEX, 'Invalid tax ID (10 to 13 digits)'),
 	acceptedTermsVersion: z.string().min(1, 'Must accept terms of service'),
 	// Admin user for new workspace
 	adminEmail: z
@@ -30,7 +31,11 @@ export const RegisterWorkspaceSchema = z.object({
 		.transform((v) => v.toLowerCase().trim()),
 	adminPassword: z
 		.string()
-		.min(8, 'Admin password must be at least 8 characters'),
+		.min(8, 'Admin password must be at least 8 characters')
+		.regex(
+			PASSWORD_COMPLEXITY_REGEX,
+			'Admin password must include uppercase, lowercase, number, and special character',
+		),
 	adminFirstName: z.string().max(100).optional(),
 	adminLastName: z.string().max(100).optional(),
 });
