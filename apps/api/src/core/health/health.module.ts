@@ -4,11 +4,12 @@ import { ObjectStorageModule } from '../../infrastructure/object-storage/object-
 import { SessionModule } from '../session/session.module';
 import { HealthController } from './controllers/health.controller';
 import { HealthCheckService } from './services/health-check.service';
+import { HealthRegistryService } from './services/health-registry.service';
 
 @Module({
 	imports: [SessionModule, ObjectStorageModule, MessageQueueModule],
-	providers: [HealthCheckService],
+	providers: [HealthCheckService, HealthRegistryService],
 	controllers: [HealthController],
-	exports: [HealthCheckService],
+	exports: [HealthCheckService, HealthRegistryService],
 })
 export class HealthModule {}

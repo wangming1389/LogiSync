@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { HealthCheckService } from './health-check.service';
+import { HealthRegistryService } from './health-registry.service';
 
 jest.mock('nodemailer', () => ({
 	createTransport: jest.fn(),
@@ -13,6 +14,7 @@ describe('HealthCheckService', () => {
 	const objectStorageService = { ping: jest.fn() };
 	const messageQueueService = { ping: jest.fn() };
 	const configService = { get: jest.fn() };
+	let healthRegistry: HealthRegistryService;
 
 	let service: HealthCheckService;
 
@@ -35,6 +37,7 @@ describe('HealthCheckService', () => {
 		});
 		(nodemailer.createTransport as jest.Mock).mockReturnValue({ sendMail });
 		sendMail.mockResolvedValue(undefined);
+		healthRegistry = new HealthRegistryService();
 
 		service = new HealthCheckService(
 			databaseService as never,
@@ -42,6 +45,7 @@ describe('HealthCheckService', () => {
 			objectStorageService as never,
 			messageQueueService as never,
 			configService as unknown as ConfigService,
+			healthRegistry,
 		);
 	});
 
