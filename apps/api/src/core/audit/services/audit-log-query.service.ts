@@ -1,9 +1,12 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { and, count, desc, eq, gte, lt, lte, type SQL } from 'drizzle-orm';
 import type { Response } from 'express';
-import { getReadReplicaDatabase, schema } from '../../infrastructure/database';
-import { AuditAction, AuditStatus } from './audit.enums';
-import type { AuditLogQuery } from './audit-log-query.dto';
+import {
+	getReadReplicaDatabase,
+	schema,
+} from '../../../infrastructure/database';
+import type { AuditLogQuery } from '../dtos/audit-log-query.dto';
+import { AuditAction, AuditStatus } from '../enums/audit.enums';
 import { AuditLoggerService } from './audit-logger.service';
 
 const MASK = '********';

@@ -4,8 +4,8 @@ import {
 	Logger,
 	Optional,
 } from '@nestjs/common';
-import { AuditStatus } from '../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../core/audit/audit-logger.service';
+import { AuditStatus } from '../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../core/audit/services/audit-logger.service';
 import { ObjectStorageService } from '../../infrastructure/object-storage/object-storage.service';
 
 export interface IMulterFile {

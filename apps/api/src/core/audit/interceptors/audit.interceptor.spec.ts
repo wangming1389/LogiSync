@@ -1,6 +1,6 @@
 import { ExecutionContext } from '@nestjs/common';
 import { firstValueFrom, of } from 'rxjs';
-import { AuditAction, AuditStatus } from './audit.enums';
+import { AuditAction, AuditStatus } from '../enums/audit.enums';
 import { AuditInterceptor } from './audit.interceptor';
 
 describe('AuditInterceptor', () => {

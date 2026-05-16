@@ -5,8 +5,11 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
 import { WorkspaceRepository } from '../../iam/workspace/workspace.repository';

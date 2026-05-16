@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { AuditStatus } from '../../core/audit/audit.enums';
+import { AuditStatus } from '../../core/audit/enums/audit.enums';
 import type { IMulterFile } from './media.service';
 import { MediaService } from './media.service';
 

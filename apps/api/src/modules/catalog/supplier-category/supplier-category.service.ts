@@ -6,8 +6,11 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { CatalogCategoryRepository } from '../../master-data/catalog-category/catalog-category.repository';
 import type {

@@ -5,8 +5,8 @@ import {
 	HealthResponseDto,
 	LivenessResponseDto,
 	ReadinessResponseDto,
-} from './health.dto';
-import { HealthCheckService } from './health-check.service';
+} from '../dtos/health.dto';
+import { HealthCheckService } from '../services/health-check.service';
 
 @ApiTags('System')
 @Controller('health')

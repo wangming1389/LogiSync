@@ -6,8 +6,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
-import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { SessionRegistryService } from '../../../core/session/session-registry.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { UserRepository } from '../auth/user.repository';

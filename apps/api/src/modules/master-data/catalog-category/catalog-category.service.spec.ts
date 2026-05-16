@@ -1,5 +1,8 @@
 import { ConflictException } from '@nestjs/common';
-import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
+import {
+	AuditAction,
+	AuditStatus,
+} from '../../../core/audit/enums/audit.enums';
 import { getDatabase } from '../../../infrastructure/database';
 import { CatalogCategoryService } from './catalog-category.service';
 
