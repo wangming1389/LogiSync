@@ -173,7 +173,11 @@ export default function CatalogManagement() {
 		} else {
 			setProducts((ps) => [
 				...ps,
-				{ ...editProduct, id: 'PRD' + crypto.randomUUID().slice(0, 8), image: null } as Product,
+				{
+					...editProduct,
+					id: 'PRD' + crypto.randomUUID().slice(0, 8),
+					image: null,
+				} as Product,
 			]);
 		}
 		setShowForm(false);

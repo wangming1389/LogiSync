@@ -95,15 +95,16 @@ export default function LoginPage() {
 				throw new Error('No access token received from server');
 			}
 
-			const payload = parseJwtClaims(token);
-			if (!payload) {
-				throw new Error('Invalid token format');
-			}
+			localStorage.setItem('access_token', token);
 
-			setAuthSession(token, res?.data?.refreshToken ?? res?.data?.refresh_token);
+			// Giải mã JWT để lấy role
+			const payload = decodeJWT(token);
+			const role = payload.role as UserRole;
 
-			const destination = resolveAuthDestination(payload);
-			if (!destination) {
+			// Auto-route dựa trên role
+			if (role && ROLE_INITIAL_PATH[role]) {
+				router.push(ROLE_INITIAL_PATH[role]);
+			} else {
 				throw new Error('Invalid role in token');
 			}
 
@@ -180,8 +181,6 @@ export default function LoginPage() {
 			</div>
 		);
 	}
-
-
 
 	return (
 		<div

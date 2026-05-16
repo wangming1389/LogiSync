@@ -27,7 +27,12 @@ export const purchaseOrders = pgTable('purchase_orders', {
 	status: varchar('status', { length: 30 })
 		.notNull()
 		.default('pending_approval'),
+	assignedTo: uuid('assigned_to').references(() => users.id),
 	totalPrice: integer('total_price').notNull(),
+	// Snapshot columns (QAR-25, BR-212). Frozen at the moment of quotation selection so the PO
+	finalUnitPrice: integer('final_unit_price'),
+	finalPaymentTerms: text('final_payment_terms'),
+	finalDeliveryDate: timestamp('final_delivery_date', { withTimezone: true }),
 	isLocked: boolean('is_locked').notNull().default(true),
 	rejectionReason: text('rejection_reason'),
 	autoConfirmAt: timestamp('auto_confirm_at', { withTimezone: true }),
@@ -52,24 +57,62 @@ export const goodsReceipts = pgTable('goods_receipts', {
 		.defaultNow(),
 });
 
-export const purchaseOrdersRelations = relations(purchaseOrders, ({ one }) => ({
-	quotation: one(quotations, {
-		fields: [purchaseOrders.quotationId],
-		references: [quotations.id],
+export const orderStatusHistory = pgTable('order_status_history', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	orderId: uuid('order_id')
+		.notNull()
+		.references(() => purchaseOrders.id),
+	statusValue: varchar('status_value', { length: 30 }).notNull(),
+	changedBy: uuid('changed_by').references(() => users.id),
+	changedAt: timestamp('changed_at', { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
+export const orderAssignmentHistory = pgTable('order_assignment_history', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	orderId: uuid('order_id')
+		.notNull()
+		.references(() => purchaseOrders.id),
+	assignedTo: uuid('assigned_to')
+		.notNull()
+		.references(() => users.id),
+	assignedBy: uuid('assigned_by')
+		.notNull()
+		.references(() => users.id),
+	assignedAt: timestamp('assigned_at', { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	unassignedAt: timestamp('unassigned_at', { withTimezone: true }),
+});
+
+export const purchaseOrdersRelations = relations(
+	purchaseOrders,
+	({ one, many }) => ({
+		quotation: one(quotations, {
+			fields: [purchaseOrders.quotationId],
+			references: [quotations.id],
+		}),
+		buyerWorkspace: one(workspaces, {
+			fields: [purchaseOrders.buyerWorkspaceId],
+			references: [workspaces.id],
+		}),
+		supplierWorkspace: one(workspaces, {
+			fields: [purchaseOrders.supplierWorkspaceId],
+			references: [workspaces.id],
+		}),
+		goodsReceipt: one(goodsReceipts, {
+			fields: [purchaseOrders.id],
+			references: [goodsReceipts.purchaseOrderId],
+		}),
+		assignee: one(users, {
+			fields: [purchaseOrders.assignedTo],
+			references: [users.id],
+		}),
+		statusHistory: many(orderStatusHistory),
+		assignmentHistory: many(orderAssignmentHistory),
 	}),
-	buyerWorkspace: one(workspaces, {
-		fields: [purchaseOrders.buyerWorkspaceId],
-		references: [workspaces.id],
-	}),
-	supplierWorkspace: one(workspaces, {
-		fields: [purchaseOrders.supplierWorkspaceId],
-		references: [workspaces.id],
-	}),
-	goodsReceipt: one(goodsReceipts, {
-		fields: [purchaseOrders.id],
-		references: [goodsReceipts.purchaseOrderId],
-	}),
-}));
+);
 
 export const goodsReceiptsRelations = relations(goodsReceipts, ({ one }) => ({
 	purchaseOrder: one(purchaseOrders, {
@@ -81,3 +124,35 @@ export const goodsReceiptsRelations = relations(goodsReceipts, ({ one }) => ({
 		references: [users.id],
 	}),
 }));
+
+export const orderStatusHistoryRelations = relations(
+	orderStatusHistory,
+	({ one }) => ({
+		purchaseOrder: one(purchaseOrders, {
+			fields: [orderStatusHistory.orderId],
+			references: [purchaseOrders.id],
+		}),
+		changedByUser: one(users, {
+			fields: [orderStatusHistory.changedBy],
+			references: [users.id],
+		}),
+	}),
+);
+
+export const orderAssignmentHistoryRelations = relations(
+	orderAssignmentHistory,
+	({ one }) => ({
+		purchaseOrder: one(purchaseOrders, {
+			fields: [orderAssignmentHistory.orderId],
+			references: [purchaseOrders.id],
+		}),
+		assignedToUser: one(users, {
+			fields: [orderAssignmentHistory.assignedTo],
+			references: [users.id],
+		}),
+		assignedByUser: one(users, {
+			fields: [orderAssignmentHistory.assignedBy],
+			references: [users.id],
+		}),
+	}),
+);
