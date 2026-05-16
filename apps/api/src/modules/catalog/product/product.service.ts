@@ -360,7 +360,7 @@ export class ProductService {
 		if (objectKey.startsWith('http://') || objectKey.startsWith('https://')) {
 			return objectKey;
 		}
-		return objectKey;
+		return this.objectStorageService.generateSignedUrl(objectKey, 60 * 60);
 	}
 
 	async uploadProductImage(
