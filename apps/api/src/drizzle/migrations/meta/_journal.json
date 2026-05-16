@@ -64,6 +64,13 @@
       "when": 1778752376598,
       "tag": "0008_order_status_history_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778930584209,
+      "tag": "0009_faulty_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

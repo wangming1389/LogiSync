@@ -8,7 +8,11 @@
     },
     "test": {
       "cache": true,
-      "outputs": ["coverage/**"]
+      "outputs": []
+    },
+    "test:cov": {
+      "cache": true,
+      "outputs": ["coverage"]
     },
     "test:e2e": {
       "dependsOn": ["build"],

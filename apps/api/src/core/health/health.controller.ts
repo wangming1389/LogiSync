@@ -5,7 +5,7 @@ import {
 	HealthResponseDto,
 	LivenessResponseDto,
 	ReadinessResponseDto,
-} from './dto/health.dto';
+} from './health.dto';
 import { HealthCheckService } from './health-check.service';
 
 @ApiTags('System')

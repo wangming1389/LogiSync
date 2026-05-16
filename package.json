@@ -19,6 +19,9 @@
     "format": "biome check --write .",
     "lint:api": "turbo lint --filter=@logisync/api",
     "lint:deep": "turbo lint",
+    "test:api": "turbo test --filter=@logisync/api",
+    "test:api:cov": "turbo test:cov --filter=@logisync/api",
+    "test:api:e2e": "turbo test:e2e --filter=@logisync/api",
     "commit": "cz",
     "prepare": "husky"
   },
