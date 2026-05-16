@@ -23,7 +23,7 @@ describe('ProductSearchService', () => {
 			limit: 25,
 			offset: 0,
 		});
-		sessionRegistry.get.mockImplementation(async (key: string) => {
+		sessionRegistry.get.mockImplementation((key: string) => {
 			if (key === 'reputation:supplier-1') return '80';
 			if (key === 'reputation:supplier-2') return '95';
 			return null;

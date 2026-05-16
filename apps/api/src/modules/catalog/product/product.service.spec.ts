@@ -61,7 +61,7 @@ describe('ProductService', () => {
 		productRepo.findBySku.mockResolvedValue(null);
 		productRepo.findById.mockResolvedValue(product);
 		productRepo.create.mockResolvedValue(product);
-		productRepo.update.mockImplementation(async (_id, data) => ({
+		productRepo.update.mockImplementation((_id, data) => ({
 			...product,
 			...data,
 		}));
@@ -71,7 +71,7 @@ describe('ProductService', () => {
 		auditLoggerService.logInTx.mockResolvedValue(undefined);
 		objectStorageService.isReady.mockReturnValue(true);
 		objectStorageService.generateSignedUrl.mockImplementation(
-			async (key: string) => `https://storage.test/${key}?signature=1`,
+			(key: string) => `https://storage.test/${key}?signature=1`,
 		);
 		objectStorageService.deleteFile.mockResolvedValue(undefined);
 
