@@ -32,6 +32,7 @@ import {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
 	RejectWorkspaceDto,
+	RevokeWorkspaceDto,
 	UpdateWorkspaceDto,
 	WorkspaceFilterDto,
 } from './workspace.dto';
@@ -200,6 +201,33 @@ export class WorkspaceController {
 		const payload = (req as any).user as JwtPayload;
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.suspend(id, payload.sub, ipAddress);
+	}
+
+	// PATCH /workspaces/:id/revoke (PLATFORM_ADMIN)
+	@Patch(':id/revoke')
+	@UseGuards(JwtAuthGuard, RbacGuard)
+	@Roles('platform_admin')
+	@ApiBearerAuth('access-token')
+	@ApiOperation({
+		summary: 'Revoke workspace',
+		description:
+			'Permanently revoke a workspace. Requires exact company name confirmation.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+	@ApiBody({ type: RevokeWorkspaceDto })
+	@ApiResponse({ status: 200, description: 'Workspace revoked' })
+	@ApiResponse({
+		status: 409,
+		description: 'Company name confirmation does not match',
+	})
+	async revoke(
+		@Param('id', ParseUUIDPipe) id: string,
+		@Body() dto: RevokeWorkspaceDto,
+		@Req() req: Request,
+	) {
+		const payload = (req as any).user as JwtPayload;
+		const ipAddress = getClientIp(req);
+		return this.workspaceService.revoke(id, dto, payload.sub, ipAddress);
 	}
 
 	// POST /workspaces/:id/roles/enable (COMPANY_ADMIN)

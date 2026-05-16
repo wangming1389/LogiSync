@@ -3,8 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { SessionRegistryService } from '../../../core/session/session-registry.service';
+import { schema } from '../../../infrastructure/database';
+import { WorkspaceRepository } from '../workspace/workspace.repository';
 import { type JwtPayload } from './auth.dto';
 import { CLOCK_SKEW_TOLERANCE_SECONDS } from './constants/auth.constants';
+
+type Workspace = typeof schema.workspaces.$inferSelect;
 
 /**
  * JwtStrategy — Passport JWT Strategy for LogiSync
@@ -27,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly sessionRegistryService: SessionRegistryService,
+		private readonly workspaceRepository: WorkspaceRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		super({
@@ -68,6 +73,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		}
 
 		// Valid payload → attach to request.user
+		const workspace: Workspace | undefined =
+			await this.workspaceRepository.findById(payload.workspaceId);
+
+		if (!workspace || workspace.status !== 'active' || !workspace.isActive) {
+			await this.sessionRegistryService.revokeSession(payload.sessionId);
+			throw new UnauthorizedException('Workspace is not active');
+		}
+
 		return payload;
 	}
 }

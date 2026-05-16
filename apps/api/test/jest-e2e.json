@@ -3,6 +3,9 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+	"moduleNameMapper": {
+		"^uuid$": "<rootDir>/mocks/uuid.ts"
+	},
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

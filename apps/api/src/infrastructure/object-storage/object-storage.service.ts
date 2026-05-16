@@ -171,6 +171,18 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 		return this.minioClient.bucketExists(this.bucketName);
 	}
 
+	async generateSignedUrl(
+		objectName: string,
+		expirySeconds = 60 * 60,
+	): Promise<string> {
+		this.ensureConnected();
+		return this.minioClient.presignedGetObject(
+			this.bucketName,
+			objectName,
+			expirySeconds,
+		);
+	}
+
 	getBucketName(): string {
 		return this.bucketName;
 	}
