@@ -1,6 +1,9 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
+const PASSWORD_COMPLEXITY_REGEX =
+	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 export interface JwtPayload {
 	sub: string; // userId
 	workspaceId: string;
@@ -37,7 +40,11 @@ export const ChangePasswordSchema = z
 		currentPassword: z.string().min(1, 'Current password cannot be empty'),
 		newPassword: z
 			.string()
-			.min(8, 'New password must be at least 8 characters'),
+			.min(8, 'New password must be at least 8 characters')
+			.regex(
+				PASSWORD_COMPLEXITY_REGEX,
+				'New password must include uppercase, lowercase, number, and special character',
+			),
 	})
 	.refine((data) => data.currentPassword !== data.newPassword, {
 		message: 'New password must differ from current password',

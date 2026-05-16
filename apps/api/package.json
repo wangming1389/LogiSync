@@ -91,10 +91,14 @@
     "testRegex": "^.+\\.spec\\.ts$",
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/dist/"
+      "/dist/",
+      "/test/"
     ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^uuid$": "<rootDir>/test/mocks/uuid.ts"
     },
     "collectCoverageFrom": [
       "src/**/*.(t|j)s"
