@@ -8,6 +8,16 @@ Backend API for LogiSync - NestJS with Drizzle ORM, PostgreSQL, Redis.
 - **[Validation](./zod-migration-guide.md)** - Input validation with Zod
 - **[Backend Readme](./backend-readme.md)** - Architecture overview
 
+## Module Documentation
+
+- **[IAM Module](./iam/README.md)** - Identity, Auth, and Workspace Management.
+- **[Catalog Module](./catalog/README.md)** - Supplier Catalog and Product Management.
+- **[Order Module](./order/README.md)** - Purchase Orders and Task Management.
+- **[Sourcing Module](./sourcing/README.md)** - RFQ, Quotations, and Negotiation.
+- **[Master Data Module](./master-data/README.md)** - Shared Platform Data (Categories, UoM).
+- **[Media Module](./media/README.md)** - Secure Storage and Signed URLs.
+- **[Core Services](./core/README.md)** - Audit, Health, and Security foundational services.
+
 ## Quick Links
 
 ### Core Concepts

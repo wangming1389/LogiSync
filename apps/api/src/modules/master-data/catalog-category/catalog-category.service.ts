@@ -5,6 +5,7 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditStatus } from '../../../core/audit/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/audit-logger.service';
 import { getDatabase } from '../../../infrastructure/database';
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
@@ -67,12 +68,12 @@ export class CatalogCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'CATALOG_CATEGORY_CREATE',
+				action: AuditAction.CATALOG_CATEGORY_CREATE_SUCCESS,
 				resourceType: 'catalog_category',
 				resourceId: category.id,
 				changes: { name: dto.name, code: dto.code },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return category;
@@ -143,12 +144,12 @@ export class CatalogCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'CATALOG_CATEGORY_UPDATE',
+				action: AuditAction.CATALOG_CATEGORY_UPDATE_SUCCESS,
 				resourceType: 'catalog_category',
 				resourceId: id,
 				changes: { old: oldValues, new: dto },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -169,12 +170,12 @@ export class CatalogCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'CATALOG_CATEGORY_DISABLE',
+				action: AuditAction.CATALOG_CATEGORY_DISABLE_SUCCESS,
 				resourceType: 'catalog_category',
 				resourceId: id,
 				changes: { isActive: false, disabledAt: result.disabledAt },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;
@@ -195,12 +196,12 @@ export class CatalogCategoryService {
 			await this.auditLoggerService.logInTx(tx as any, {
 				actorId,
 				workspaceId: platformId,
-				action: 'CATALOG_CATEGORY_ENABLE',
+				action: AuditAction.CATALOG_CATEGORY_ENABLE_SUCCESS,
 				resourceType: 'catalog_category',
 				resourceId: id,
 				changes: { isActive: true, disabledAt: null },
 				ipAddress,
-				status: 'success',
+				status: AuditStatus.SUCCESS,
 			});
 
 			return result;

@@ -1,17 +1,27 @@
-# LogiSync Docs
+# 📖 LogiSync Documentation Hub
 
-Tài liệu của monorepo được gom về đây để dễ tìm và mở rộng theo từng mảng.
+This centralized hub organizes all monorepo documentation into logical domains for rapid access and scalability.
 
-## Cấu trúc
+---
 
-- [API](./api/README.md)
-- [CI/CD](./ci-cd/README.md)
-- [Web](./web/README.md)
-- [Mobile](./mobile/README.md)
+### 📂 Core Structure
 
-## Gợi ý tổ chức
+- **[📁 General](./general/)**
+  - Central repository for high-level system documentation.
+  - Includes: Business Requirements (SRS), Architectural Design (SAD), and System Design (ADD).
 
-- `api/`: kiến trúc backend, setup môi trường, database, bảo mật, vận hành
-- `ci-cd/`: workflow, release, container, deploy
-- `web/`: kiến trúc frontend web, conventions, routing, UI
-- `mobile/`: mobile app, offline flow, build/release
+- **[📁 API (Backend)](./api/)**
+  - Technical documentation for server-side services and infrastructure.
+  - Includes: Backend architecture, database schemas, security protocols.
+
+- **[📁 Web (Frontend)](./web/)**
+  - Documentation for the administrative dashboard and web platforms.
+  - Includes: UI/UX conventions, routing structures, and frontend state management.
+
+- **[📁 Mobile](./mobile/)**
+  - Technical specifications for the mobile application ecosystem.
+  - Includes: Offline-first synchronization logic, driver workflows.
+
+---
+
+> **💡 Contribution Tip:** To maintain system integrity, ensure all new documentation is placed within its respective domain directory.

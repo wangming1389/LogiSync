@@ -17,6 +17,8 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { IamModule } from './modules/iam/iam.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { MediaModule } from './modules/media/media.module';
+import { OrderModule } from './modules/order/order.module';
+import { SourcingModule } from './modules/sourcing/sourcing.module';
 
 @Module({
 	imports: [
@@ -42,6 +44,8 @@ import { MediaModule } from './modules/media/media.module';
 		MasterDataModule,
 		CatalogModule,
 		MediaModule,
+		SourcingModule,
+		OrderModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
