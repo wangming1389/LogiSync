@@ -21,11 +21,13 @@ const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
 export type UserRole =
 	| 'platform_admin'
+	| 'company_admin'
 	| 'supplier'
+	| 'supplier_staff'
 	| 'carrier'
 	| 'buyer'
-	| 'hr'
-	| 'company_admin';
+	| 'buyer_staff'
+	| 'hr';
 
 const ROLES: { value: UserRole; label: string; description: string }[] = [
 	{
@@ -51,11 +53,14 @@ const ROLES: { value: UserRole; label: string; description: string }[] = [
 	{ value: 'hr', label: 'HR', description: 'Employee and KPI management' },
 ];
 
-const ROLE_INITIAL_PATH: Record<UserRole, string> = {
+const ROLE_INITIAL_PATH: Record<string, string> = {
 	platform_admin: '/platform-admin',
+	company_admin: '/company-admin',
 	supplier: '/supplier/catalog',
+	supplier_staff: '/supplier/catalog',
 	carrier: '/carrier/fleet',
 	buyer: '/buyer/sourcing',
+	buyer_staff: '/buyer/sourcing',
 	hr: '/hr/management',
 };
 
@@ -85,7 +90,7 @@ export default function LoginPage() {
 		setError('');
 		try {
 			const res: any = await api.post('/auth/login', { email, password });
-			const token = res?.data?.accessToken;
+			const token = res?.accessToken ?? res?.data?.accessToken ?? res?.data?.access_token;
 			if (!token) {
 				throw new Error('No access token received from server');
 			}
