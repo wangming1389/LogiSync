@@ -11,6 +11,7 @@ import { DatabaseService } from '../../../infrastructure/database/database.servi
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
 import { ObjectStorageService } from '../../../infrastructure/object-storage/object-storage.service';
 import { SessionRegistryService } from '../../session/session-registry.service';
+import { HealthRegistryService } from './health-registry.service';
 
 export interface HealthStatus {
 	database: boolean;
@@ -43,7 +44,10 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 		private readonly objectStorageService: ObjectStorageService,
 		private readonly messageQueueService: MessageQueueService,
 		private readonly configService: ConfigService,
-	) {}
+		private readonly healthRegistry: HealthRegistryService,
+	) {
+		this.registerDefaultChecks();
+	}
 
 	onModuleInit() {
 		this.timer = setInterval(
@@ -60,58 +64,16 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 
 	// performs health checks for all critical services and updates the status
 	async performHealthCheck(): Promise<HealthStatus> {
-		const failed: string[] = [];
+		const results = await this.healthRegistry.runChecks(this.pingTimeoutMs);
+		const failed = results
+			.filter((result) => !result.healthy)
+			.map((result) => result.name);
 
-		try {
-			await this.withTimeout(
-				this.databaseService.ping(),
-				this.pingTimeoutMs,
-				'database',
-			);
-			this.status.database = true;
-		} catch {
-			this.status.database = false;
-			failed.push('database');
-			this.logger.error('Database health check failed');
-		}
-
-		try {
-			await this.withTimeout(
-				this.sessionRegistryService.ping(),
-				this.pingTimeoutMs,
-				'redis',
-			);
-			this.status.redis = true;
-		} catch {
-			this.status.redis = false;
-			failed.push('redis');
-			this.logger.warn('Redis health check failed');
-		}
-
-		try {
-			await this.withTimeout(
-				this.objectStorageService.ping(),
-				this.pingTimeoutMs,
-				'objectStorage',
-			);
-			this.status.objectStorage = true;
-		} catch {
-			this.status.objectStorage = false;
-			failed.push('objectStorage');
-			this.logger.warn('ObjectStorage health check failed');
-		}
-
-		try {
-			await this.withTimeout(
-				this.messageQueueService.ping(),
-				this.pingTimeoutMs,
-				'messageQueue',
-			);
-			this.status.messageQueue = true;
-		} catch {
-			this.status.messageQueue = false;
-			failed.push('messageQueue');
-			this.logger.warn('MessageQueue health check failed');
+		for (const result of results) {
+			this.status = {
+				...this.status,
+				[result.name]: result.healthy,
+			};
 		}
 
 		this.status.timestamp = Date.now();
@@ -187,19 +149,23 @@ export class HealthCheckService implements OnModuleInit, OnModuleDestroy {
 		return this.status.database;
 	}
 
-	private withTimeout<T>(
-		promise: Promise<T>,
-		ms: number,
-		label: string,
-	): Promise<T> {
-		return Promise.race([
-			promise,
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new Error(`${label} ping timed out after ${ms}ms`)),
-					ms,
-				),
-			),
-		]);
+	private registerDefaultChecks(): void {
+		this.healthRegistry.register({
+			name: 'database',
+			required: true,
+			check: () => this.databaseService.ping(),
+		});
+		this.healthRegistry.register({
+			name: 'redis',
+			check: () => this.sessionRegistryService.ping(),
+		});
+		this.healthRegistry.register({
+			name: 'objectStorage',
+			check: () => this.objectStorageService.ping(),
+		});
+		this.healthRegistry.register({
+			name: 'messageQueue',
+			check: () => this.messageQueueService.ping(),
+		});
 	}
 }
