@@ -7,6 +7,11 @@ import { auditLogs } from '../../data/mockData';
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 const DOMAINS = ['All', 'Platform', 'Supplier', 'Carrier', 'Buyer', 'HR'];
 
+function toDate(value: string) {
+	const next = new Date(value);
+	return Number.isNaN(next.getTime()) ? null : next;
+}
+
 const domainStyle: Record<string, { bg: string; color: string }> = {
 	Platform: { bg: '#D3E4F5', color: '#0F4C8A' },
 	Supplier: { bg: '#C8F0D8', color: '#1B6B3A' },
@@ -21,15 +26,24 @@ export default function AuditLog() {
 	const [dateFrom, setDateFrom] = useState('');
 	const [dateTo, setDateTo] = useState('');
 
-	const filtered = auditLogs.filter((log) => {
+	const filtered = auditLogs
+		.filter((log) => {
 		const matchSearch =
 			!search ||
 			log.actor.includes(search) ||
 			log.action.includes(search) ||
 			log.target.includes(search);
 		const matchDomain = domain === 'All' || log.domain === domain;
-		return matchSearch && matchDomain;
-	});
+		if (!matchSearch || !matchDomain) return false;
+
+		const logDate = toDate(log.timestamp.slice(0, 10));
+		const fromDate = dateFrom ? toDate(dateFrom) : null;
+		const toDateValue = dateTo ? toDate(dateTo) : null;
+		if (fromDate && logDate && logDate < fromDate) return false;
+		if (toDateValue && logDate && logDate > toDateValue) return false;
+		return true;
+	})
+		.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
 
 	function exportCSV() {
 		const header = [

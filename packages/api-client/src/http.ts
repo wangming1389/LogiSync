@@ -33,5 +33,7 @@ export async function apiFetch<T>(
 		throw { status: response.status, message } satisfies ApiError;
 	}
 
-	return (await response.json()) as T;
+	const json = await response.json();
+	// Wrap in { data } to keep compatibility with existing frontend code
+	return { data: json } as unknown as T;
 }
