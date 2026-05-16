@@ -5,6 +5,8 @@ import { ClsService } from 'nestjs-cls';
 import { BaseRepository } from '../../../core/database/base.repository';
 import { schema } from '../../../infrastructure/database';
 
+type Workspace = typeof schema.workspaces.$inferSelect;
+
 @Injectable()
 export class WorkspaceRepository extends BaseRepository {
 	constructor(cls: ClsService) {
@@ -44,7 +46,7 @@ export class WorkspaceRepository extends BaseRepository {
 	// Find a workspace by ID.
 	// For workspace repository, we might not strictly enforce getRequiredWorkspaceId
 	// because admin services or public APIs might access it.
-	async findById(id: string, tx?: any) {
+	async findById(id: string, tx?: any): Promise<Workspace | undefined> {
 		const runner = tx || this.db;
 		const [workspace] = await runner
 			.select()
