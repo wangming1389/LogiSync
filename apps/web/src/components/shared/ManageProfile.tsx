@@ -1,7 +1,10 @@
 'use client';
 // Mocks
 import { Camera, CheckCircle, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { api } from '@/lib/api';
+import { clearAuthSession } from '@/lib/auth';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
@@ -13,6 +16,7 @@ const inputStyle = {
 };
 
 export function ManageProfile() {
+	const router = useRouter();
 	const user: any = {
 		name: 'Admin User',
 		email: 'admin@logisync.com',
@@ -61,15 +65,27 @@ export function ManageProfile() {
 		setTimeout(() => setSaved(false), 2000);
 	}
 
-	function handlePwSave(e: React.FormEvent) {
+	async function handlePwSave(e: React.FormEvent) {
 		e.preventDefault();
 		if (newPw !== confirmPw) return;
-		setPwSaved(true);
-		setPwStep(false);
-		setCurrentPw('');
-		setNewPw('');
-		setConfirmPw('');
-		setTimeout(() => setPwSaved(false), 2000);
+
+		try {
+			await api.patch('/auth/change-password', {
+				currentPassword: currentPw,
+				newPassword: newPw,
+			});
+			setPwSaved(true);
+			setPwStep(false);
+			setCurrentPw('');
+			setNewPw('');
+			setConfirmPw('');
+			setTimeout(() => {
+				clearAuthSession();
+				router.push('/login');
+			}, 900);
+		} catch (error: any) {
+			alert(error?.message || 'Failed to change password.');
+		}
 	}
 
 	return (
@@ -305,8 +321,7 @@ export function ManageProfile() {
 												color: '#1B6B3A',
 											}}
 										>
-											<CheckCircle className="w-4 h-4" /> Password updated
-											successfully.
+											<CheckCircle className="w-4 h-4" /> Password updated successfully. You will be signed out on other devices.
 										</div>
 									)}
 									<h4 className="mb-4" style={{ color: '#191C1E' }}>

@@ -1,5 +1,6 @@
-'use client';
+"use client";
 import {
+	ChevronLeft,
 	Edit2,
 	Image,
 	Plus,
@@ -11,15 +12,110 @@ import {
 import { useState } from 'react';
 import { supplierCategories, supplierProducts } from '@/app/data/mockData';
 
-const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
-type Product = (typeof supplierProducts)[0] & { visibility: string };
+	const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
-const inputStyle = {
-	background: '#D5DAE3',
-	borderBottom: '2px solid #00559F',
-	color: '#191C1E',
-	fontSize: 14,
-};
+	type Tab = 'products' | 'categories';
+
+	type ApiList<T> = { items?: T[] } | T[] | undefined;
+
+	type ProductStatus = 'draft' | 'active' | 'inactive';
+
+	type ProductItem = {
+		id: string;
+		supplierCategoryId: string;
+		uomId: string;
+		sku: string;
+		name: string;
+		description?: string | null;
+		unitPrice: number;
+		minOrderQty: number;
+		status: ProductStatus;
+		imageUrls?: string[] | null;
+		attributes?: Record<string, unknown> | null;
+	};
+
+	type SupplierCategoryItem = {
+		id: string;
+		catalogCategoryId: string;
+		name: string;
+		description?: string | null;
+		isActive?: boolean;
+		status?: string;
+	};
+
+	type CatalogCategoryItem = {
+		id: string;
+		name: string;
+		code?: string;
+		description?: string | null;
+		isActive?: boolean;
+		status?: string;
+	};
+
+	type UomItem = {
+		id: string;
+		name: string;
+		code: string;
+		isActive?: boolean;
+		status?: string;
+	};
+
+	type ProductForm = {
+		id?: string;
+		supplierCategoryId: string;
+		uomId: string;
+		sku: string;
+		name: string;
+		description: string;
+		unitPrice: number;
+		minOrderQty: number;
+	};
+
+	type CategoryForm = {
+		id?: string;
+		catalogCategoryId: string;
+		name: string;
+		description: string;
+	};
+
+	const inputStyle = {
+		background: '#D5DAE3',
+		borderBottom: '2px solid #00559F',
+		color: '#191C1E',
+		fontSize: 14,
+	};
+
+	function toArray<T>(payload: ApiList<T>): T[] {
+		if (Array.isArray(payload)) return payload;
+		if (payload && 'items' in payload && Array.isArray(payload.items)) {
+			return payload.items;
+		}
+		return [];
+	}
+
+	function statusFromBoolean(value?: boolean | string | null): ProductStatus | 'disabled' {
+		if (typeof value === 'string') return value as ProductStatus | 'disabled';
+		return value === false ? 'inactive' : 'active';
+	}
+
+	function StatusChip({ status }: { status: string }) {
+		const active = status === 'active';
+		const draft = status === 'draft';
+		return (
+			<span
+				className="px-3 py-1 rounded-full"
+				style={{
+					background: active ? '#C8F0D8' : draft ? '#E8EEF7' : '#F5D0D0',
+					color: active ? '#1B6B3A' : draft ? '#0F4C8A' : '#B42318',
+					fontSize: 11,
+					fontWeight: 500,
+					letterSpacing: '0.05em',
+				}}
+			>
+				{status?.toUpperCase()}
+			</span>
+		);
+	}
 
 export default function CatalogManagement() {
 	const [tab, setTab] = useState<'products' | 'categories'>('products');
