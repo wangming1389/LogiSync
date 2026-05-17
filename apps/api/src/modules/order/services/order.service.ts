@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-enum-comparison, @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-enum-comparison */
 import {
 	BadRequestException,
 	ConflictException,
@@ -8,7 +8,6 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import * as XLSX from 'xlsx';
 import {
 	AuditAction,
 	AuditStatus,
@@ -35,6 +34,8 @@ import {
 	OrderStatus,
 } from '../enums/order.enums';
 import { OrderRepository } from '../repositories/order.repository';
+import { OrderExportService } from './order-export.service';
+import { OrderStateTransitionService } from './order-state-transition.service';
 
 interface DueAutoConfirmOrder {
 	id: string;
@@ -49,6 +50,8 @@ export class OrderService {
 		private readonly orderRepo: OrderRepository,
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly messageQueueService: MessageQueueService,
+		private readonly stateTransitions: OrderStateTransitionService,
+		private readonly orderExportService: OrderExportService,
 	) {}
 
 	async listOrders(
@@ -112,19 +115,16 @@ export class OrderService {
 			}
 
 			buyerWorkspaceId = order.buyerWorkspaceId;
-			const approvedAt = new Date();
-			const autoConfirmAt = new Date(
-				approvedAt.getTime() + 48 * 60 * 60 * 1000,
-			);
+			const transition = this.stateTransitions.approve(order);
 
 			// TODO: Phase 2 - Integrate Finance (Credit Check & Payables)
 			const updated = await this.orderRepo.updateOrder(
 				orderId,
 				{
-					status: OrderStatus.APPROVED,
-					approvedAt,
-					autoConfirmAt,
-					rejectionReason: null,
+					status: transition.status,
+					approvedAt: transition.approvedAt,
+					autoConfirmAt: transition.autoConfirmAt,
+					rejectionReason: transition.rejectionReason,
 				},
 				tx,
 			);
@@ -132,9 +132,9 @@ export class OrderService {
 			await this.orderRepo.insertStatusHistory(
 				{
 					orderId,
-					statusValue: OrderStatus.APPROVED,
+					statusValue: transition.statusHistory.statusValue,
 					changedBy: actorId,
-					changedAt: approvedAt,
+					changedAt: transition.statusHistory.changedAt,
 				},
 				tx,
 			);
@@ -145,11 +145,7 @@ export class OrderService {
 				action: AuditAction.ORDER_APPROVE_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: orderId,
-				changes: {
-					oldStatus: order.status,
-					newStatus: OrderStatus.APPROVED,
-					autoConfirmAt,
-				},
+				changes: transition.changes,
 				ipAddress,
 				status: AuditStatus.SUCCESS,
 			});
@@ -186,13 +182,16 @@ export class OrderService {
 				);
 			}
 
-			const changedAt = new Date();
+			const transition = this.stateTransitions.reject(
+				order,
+				dto.rejectionReason,
+			);
 			const updated = await this.orderRepo.updateOrder(
 				orderId,
 				{
-					status: OrderStatus.REJECTED,
-					rejectionReason: dto.rejectionReason,
-					autoConfirmAt: null,
+					status: transition.status,
+					rejectionReason: transition.rejectionReason,
+					autoConfirmAt: transition.autoConfirmAt,
 				},
 				tx,
 			);
@@ -200,9 +199,9 @@ export class OrderService {
 			await this.orderRepo.insertStatusHistory(
 				{
 					orderId,
-					statusValue: OrderStatus.REJECTED,
+					statusValue: transition.statusHistory.statusValue,
 					changedBy: actorId,
-					changedAt,
+					changedAt: transition.statusHistory.changedAt,
 				},
 				tx,
 			);
@@ -213,11 +212,7 @@ export class OrderService {
 				action: AuditAction.ORDER_REJECT_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: orderId,
-				changes: {
-					oldStatus: order.status,
-					newStatus: OrderStatus.REJECTED,
-					rejectionReason: dto.rejectionReason,
-				},
+				changes: transition.changes,
 				ipAddress,
 				status: AuditStatus.SUCCESS,
 			});
@@ -272,14 +267,17 @@ export class OrderService {
 			}
 
 			supplierWorkspaceId = order.supplierWorkspaceId;
-			const confirmedAt = new Date();
+			const transition = this.stateTransitions.confirmReceipt(
+				order,
+				params.confirmationType,
+			);
 
 			// TODO: Phase 2 - Integrate Finance (Credit Check & Payables)
 			const updated = await this.orderRepo.updateOrder(
 				params.orderId,
 				{
-					status: OrderStatus.GOODS_RECEIVED,
-					autoConfirmAt: null,
+					status: transition.status,
+					autoConfirmAt: transition.autoConfirmAt,
 				},
 				tx,
 			);
@@ -287,9 +285,9 @@ export class OrderService {
 			await this.orderRepo.insertGoodsReceipt(
 				{
 					orderId: params.orderId,
-					confirmationType: params.confirmationType,
+					confirmationType: transition.goodsReceipt.confirmationType,
 					confirmedBy: params.confirmedBy,
-					confirmedAt,
+					confirmedAt: transition.goodsReceipt.confirmedAt,
 				},
 				tx,
 			);
@@ -297,9 +295,9 @@ export class OrderService {
 			await this.orderRepo.insertStatusHistory(
 				{
 					orderId: params.orderId,
-					statusValue: OrderStatus.GOODS_RECEIVED,
+					statusValue: transition.statusHistory.statusValue,
 					changedBy: params.confirmedBy,
-					changedAt: confirmedAt,
+					changedAt: transition.statusHistory.changedAt,
 				},
 				tx,
 			);
@@ -310,11 +308,7 @@ export class OrderService {
 				action: AuditAction.GOODS_RECEIPT_CONFIRM_SUCCESS,
 				resourceType: 'purchase_order',
 				resourceId: params.orderId,
-				changes: {
-					oldStatus: order.status,
-					newStatus: OrderStatus.GOODS_RECEIVED,
-					confirmationType: params.confirmationType,
-				},
+				changes: transition.changes,
 				ipAddress: params.ipAddress,
 				status: AuditStatus.SUCCESS,
 			});
@@ -427,20 +421,7 @@ export class OrderService {
 			query.end_date,
 		)) as Record<string, unknown>[];
 
-		if (query.format === 'pdf') {
-			return {
-				contentType: 'application/pdf',
-				filename: 'orders.pdf',
-				buffer: this.renderSimplePdf(orders),
-			};
-		}
-
-		return {
-			contentType:
-				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-			filename: 'orders.xlsx',
-			buffer: this.renderXlsx(orders),
-		};
+		return this.orderExportService.renderAndStore(query, orders);
 	}
 
 	async settleDueConfirmations() {
@@ -496,79 +477,5 @@ export class OrderService {
 				}`,
 			);
 		}
-	}
-
-	private renderXlsx(orders: Record<string, unknown>[]): Buffer {
-		const rows = (orders as any[]).map((order) => ({
-			id: order.id,
-			quotationId: order.quotationId,
-			buyerWorkspaceId: order.buyerWorkspaceId,
-			supplierWorkspaceId: order.supplierWorkspaceId,
-			status: order.status,
-			assignedTo: order.assignedTo,
-			totalPrice: order.totalPrice,
-			createdAt:
-				order.createdAt instanceof Date
-					? order.createdAt.toISOString()
-					: order.createdAt,
-		}));
-		const workbook = XLSX.utils.book_new();
-		const worksheet = XLSX.utils.json_to_sheet(rows);
-		XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-		return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }) as Buffer;
-	}
-
-	private renderSimplePdf(orders: Record<string, unknown>[]): Buffer {
-		const ordersAny = orders as any[];
-		const lines = [
-			'LogiSync Order Export',
-			`Generated at: ${new Date().toISOString()}`,
-			`Total orders: ${ordersAny.length}`,
-			'',
-			...ordersAny.map(
-				(order) =>
-					`${String(order.id)} | ${String(order.status)} | ${String(order.totalPrice)}`,
-			),
-		];
-		const content = [
-			'BT',
-			'/F1 10 Tf',
-			'50 780 Td',
-			...lines.flatMap((line, index) => [
-				index === 0 ? '' : '0 -14 Td',
-				`(${this.escapePdfText(line)}) Tj`,
-			]),
-			'ET',
-		]
-			.filter(Boolean)
-			.join('\n');
-		const objects = [
-			'<< /Type /Catalog /Pages 2 0 R >>',
-			'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-			'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-			'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-			`<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
-		];
-		let body = '%PDF-1.4\n';
-		const offsets = [0];
-		for (const [index, object] of objects.entries()) {
-			offsets.push(Buffer.byteLength(body, 'utf8'));
-			body += `${index + 1} 0 obj\n${object}\nendobj\n`;
-		}
-		const xrefOffset = Buffer.byteLength(body, 'utf8');
-		body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-		body += offsets
-			.slice(1)
-			.map((offset) => `${offset.toString().padStart(10, '0')} 00000 n \n`)
-			.join('');
-		body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-		return Buffer.from(body, 'utf8');
-	}
-
-	private escapePdfText(value: string): string {
-		return value
-			.replace(/\\/g, '\\\\')
-			.replace(/\(/g, '\\(')
-			.replace(/\)/g, '\\)');
 	}
 }
