@@ -9,9 +9,9 @@ jest.mock('nodemailer', () => ({
 	})),
 }));
 
-import { AuditStatus } from '../src/core/audit/audit.enums';
-import { AuditLoggerService } from '../src/core/audit/audit-logger.service';
-import { HealthCheckService } from '../src/core/health/health-check.service';
+import { AuditStatus } from '../src/core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../src/core/audit/services/audit-logger.service';
+import { HealthCheckService } from '../src/core/health/services/health-check.service';
 import { SessionRegistryService } from '../src/core/session/session-registry.service';
 import { schema } from '../src/infrastructure/database';
 import { ObjectStorageService } from '../src/infrastructure/object-storage/object-storage.service';
