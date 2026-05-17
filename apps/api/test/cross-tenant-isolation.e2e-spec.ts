@@ -26,7 +26,18 @@ describe('Cross-tenant isolation', () => {
 
 	describe('Authentication', () => {
 		it('rejects requests without a token', async () => {
-			await request(app.getHttpServer()).get('/catalog/products').expect(401);
+			const response = await request(app.getHttpServer())
+				.get('/catalog/products')
+				.expect(401);
+
+			expect(response.body).toEqual(
+				expect.objectContaining({
+					success: false,
+					data: null,
+					error: expect.objectContaining({ statusCode: 401 }),
+					meta: expect.objectContaining({ path: '/catalog/products' }),
+				}),
+			);
 		});
 
 		it('rejects requests with a malformed token', async () => {
@@ -72,12 +83,14 @@ describe('Cross-tenant isolation', () => {
 				.get('/catalog/products')
 				.set(bearer(tokenA))
 				.expect(200);
-			const idsA = listA.body.items.map((item: { id: string }) => item.id);
+			expect(listA.body.success).toBe(true);
+			expect(listA.body.error).toBeNull();
+			const idsA = listA.body.data.map((item: { id: string }) => item.id);
 
 			expect(idsA).toContain(productA.product.id);
 			expect(idsA).not.toContain(productB.product.id);
 			expect(
-				listA.body.items.every(
+				listA.body.data.every(
 					(item: { workspaceId: string }) =>
 						item.workspaceId === workspaceA.workspace.id,
 				),
@@ -98,7 +111,7 @@ describe('Cross-tenant isolation', () => {
 				.get('/catalog/products')
 				.set(bearer(tokenB))
 				.expect(200);
-			const idsB = listB.body.items.map((item: { id: string }) => item.id);
+			const idsB = listB.body.data.map((item: { id: string }) => item.id);
 
 			expect(idsB).not.toContain(productA.product.id);
 			expect(idsB).toContain(productB.product.id);
@@ -130,7 +143,7 @@ describe('Cross-tenant isolation', () => {
 				.expect(200);
 
 			expect(
-				response.body.items.some((item: { id: string }) => item.id === rfqA.id),
+				response.body.data.some((item: { id: string }) => item.id === rfqA.id),
 			).toBe(false);
 
 			await request(app.getHttpServer())

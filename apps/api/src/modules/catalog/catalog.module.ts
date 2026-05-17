@@ -4,12 +4,12 @@ import { ObjectStorageModule } from '../../infrastructure/object-storage/object-
 import { IamModule } from '../iam/iam.module';
 import { MasterDataModule } from '../master-data/master-data.module';
 import { MediaModule } from '../media/media.module';
-import { ProductController } from './product/product.controller';
-import { ProductRepository } from './product/product.repository';
-import { ProductService } from './product/product.service';
-import { SupplierCategoryController } from './supplier-category/supplier-category.controller';
-import { SupplierCategoryRepository } from './supplier-category/supplier-category.repository';
-import { SupplierCategoryService } from './supplier-category/supplier-category.service';
+import { ProductController } from './product/controllers/product.controller';
+import { ProductRepository } from './product/repositories/product.repository';
+import { ProductService } from './product/services/product.service';
+import { SupplierCategoryController } from './supplier-category/controllers/supplier-category.controller';
+import { SupplierCategoryRepository } from './supplier-category/repositories/supplier-category.repository';
+import { SupplierCategoryService } from './supplier-category/services/supplier-category.service';
 
 @Module({
 	imports: [

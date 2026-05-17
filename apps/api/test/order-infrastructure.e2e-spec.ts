@@ -9,6 +9,7 @@ import {
 	createE2eApp,
 	createIdentity,
 	createOrderFixture,
+	createUser,
 	db,
 	login,
 	pool,
@@ -95,5 +96,27 @@ describe('Order infrastructure test cases from docs/api/order', () => {
 			.get(`/orders/${fixture.order.id}`)
 			.set(bearer(outsiderToken))
 			.expect(404);
+	});
+
+	it('TC-ORD-12 Supplier Export Authorization', async () => {
+		const fixture = await createOrderFixture();
+		const supplierAdmin = await createUser(
+			fixture.supplier.workspace.id,
+			UserRole.COMPANY_ADMIN,
+		);
+		const token = await login(app, supplierAdmin.email);
+
+		await request(app.getHttpServer())
+			.get('/orders/export')
+			.query({
+				start_date: new Date(Date.now() - 86_400_000)
+					.toISOString()
+					.slice(0, 10),
+				end_date: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+				format: 'xlsx',
+			})
+			.set(bearer(token))
+			.expect(200)
+			.expect('Content-Type', /spreadsheetml/);
 	});
 });

@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import { schema } from '../src/infrastructure/database';
 import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
-import { QuotationService } from '../src/modules/sourcing/quotation/quotation.service';
+import { QuotationService } from '../src/modules/sourcing/quotation/services/quotation.service';
 import {
 	bearer,
 	createE2eApp,
@@ -49,8 +49,13 @@ describe('Sourcing infrastructure test cases from docs/api/sourcing', () => {
 			.expect(200);
 
 		expect(performance.now() - startedAt).toBeLessThan(3000);
+		expect(response.body.success).toBe(true);
+		expect(response.body.error).toBeNull();
+		expect(response.body.meta).toEqual(
+			expect.objectContaining({ appliedSupplierWorkspaceIds: null }),
+		);
 		expect(
-			response.body.items.some(
+			response.body.data.some(
 				(item: { name: string }) => item.name === searchableName,
 			),
 		).toBe(true);

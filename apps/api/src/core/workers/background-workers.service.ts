@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { lt } from 'drizzle-orm';
 import { getDatabase, schema } from '../../infrastructure/database';
-import { OrderService } from '../../modules/order/order.service';
+import { OrderService } from '../../modules/order/services/order.service';
 import { DatabaseBackupService } from './database-backup.service';
 
 @Injectable()
