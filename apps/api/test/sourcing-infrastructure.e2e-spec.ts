@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import { schema } from '../src/infrastructure/database';
 import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
-import { QuotationService } from '../src/modules/sourcing/quotation/quotation.service';
+import { QuotationService } from '../src/modules/sourcing/quotation/services/quotation.service';
 import {
 	bearer,
 	createE2eApp,
