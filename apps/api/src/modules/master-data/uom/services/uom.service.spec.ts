@@ -3,12 +3,7 @@ import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
-import { getDatabase } from '../../../../infrastructure/database';
 import { UomService } from './uom.service';
-
-jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
-}));
 
 describe('UomService', () => {
 	const uomRepo = {
@@ -29,15 +24,16 @@ describe('UomService', () => {
 		findBySlug: jest.fn(),
 	};
 	const tx = {};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: UomService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		uomRepo.findByNameOrCode.mockResolvedValue(null);
 		uomRepo.findById.mockResolvedValue({
 			id: 'uom-1',
@@ -62,6 +58,7 @@ describe('UomService', () => {
 			auditLoggerService as never,
 			messageQueueService as never,
 			workspaceRepository as never,
+			databaseService as never,
 		);
 	});
 

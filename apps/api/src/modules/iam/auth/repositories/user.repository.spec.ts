@@ -30,7 +30,9 @@ describe('UserRepository', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		(getDatabase as jest.Mock).mockReturnValue(db);
-		cls.get.mockReturnValue('workspace-1');
+		cls.get.mockImplementation((key: string) =>
+			key === 'workspaceId' ? 'workspace-1' : undefined,
+		);
 		repository = new UserRepository(cls as never);
 	});
 

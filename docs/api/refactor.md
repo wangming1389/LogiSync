@@ -142,13 +142,11 @@ Commit after every phase. Each commit must build and test before continuing.
 
 5. **Unit of Work with CLS**
    - Refactor transaction handling separately.
-   - Keep compatibility with existing manual `tx` arguments until all callers are
-     migrated.
+   - Keep compatibility with existing manual `tx` arguments until all callers are migrated.
 
 6. **Order module critical fix**
    - Extract pure state-transition logic.
-   - Move large export/rendering work to background processing and object
-     storage.
+   - Move large export/rendering work to background processing and object storage.
    - Apply strategy pattern only where it reduces real branching complexity.
 
 7. **Auth security and global filters**

@@ -10,7 +10,7 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import { WorkspaceRepository } from '../../../iam/workspace/repositories/workspace.repository';
 import type {
@@ -31,6 +31,7 @@ export class CatalogCategoryService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly messageQueueService: MessageQueueService,
 		private readonly workspaceRepository: WorkspaceRepository,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	private async getPlatformId(): Promise<string> {
@@ -57,7 +58,7 @@ export class CatalogCategoryService {
 		}
 
 		const platformId = await this.getPlatformId();
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const category = await this.catalogCategoryRepo.create(
 				{
 					name: dto.name,
@@ -68,7 +69,7 @@ export class CatalogCategoryService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.CATALOG_CATEGORY_CREATE_SUCCESS,
@@ -131,7 +132,7 @@ export class CatalogCategoryService {
 		};
 		const platformId = await this.getPlatformId();
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.catalogCategoryRepo.update(
 				id,
 				{
@@ -144,7 +145,7 @@ export class CatalogCategoryService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.CATALOG_CATEGORY_UPDATE_SUCCESS,
@@ -167,10 +168,10 @@ export class CatalogCategoryService {
 		await this.findById(id);
 
 		const platformId = await this.getPlatformId();
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.catalogCategoryRepo.disable(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.CATALOG_CATEGORY_DISABLE_SUCCESS,
@@ -193,10 +194,10 @@ export class CatalogCategoryService {
 		await this.findById(id);
 
 		const platformId = await this.getPlatformId();
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.catalogCategoryRepo.enable(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.CATALOG_CATEGORY_ENABLE_SUCCESS,

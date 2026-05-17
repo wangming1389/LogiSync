@@ -11,7 +11,7 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { ObjectStorageService } from '../../../../infrastructure/object-storage/object-storage.service';
 import { UomRepository } from '../../../master-data/uom/repositories/uom.repository';
 import {
@@ -35,6 +35,7 @@ export class ProductService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly objectStorageService: ObjectStorageService,
 		private readonly mediaService: MediaService,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	async create(
@@ -55,7 +56,7 @@ export class ProductService {
 			);
 		}
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const product = await this.productRepo.create(
 				{
 					workspaceId,
@@ -74,7 +75,7 @@ export class ProductService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_CREATE_SUCCESS,
@@ -160,7 +161,7 @@ export class ProductService {
 		const priceChanged =
 			dto.unitPrice !== undefined && dto.unitPrice !== product.unitPrice;
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			if (priceChanged) {
 				await this.productRepo.insertPriceHistory(
 					{
@@ -190,7 +191,7 @@ export class ProductService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_UPDATE_SUCCESS,
@@ -225,14 +226,14 @@ export class ProductService {
 			);
 		}
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.productRepo.update(
 				id,
 				{ status: 'active' },
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_PUBLISH_SUCCESS,
@@ -270,14 +271,14 @@ export class ProductService {
 
 		const openRfqCount = await this.productRepo.countByRfqPendingResponse(id);
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.productRepo.update(
 				id,
 				{ status: 'inactive' },
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_UNPUBLISH_SUCCESS,
@@ -320,10 +321,10 @@ export class ProductService {
 			);
 		}
 
-		await getDatabase().transaction(async (tx) => {
+		await this.databaseService.withTransaction(async (tx) => {
 			await this.productRepo.delete(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_DELETE_SUCCESS,
@@ -397,14 +398,14 @@ export class ProductService {
 			? [result.url]
 			: [...(product.imageUrls || []), result.url];
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const updatedProduct = await this.productRepo.update(
 				productId,
 				{ imageUrls: updatedUrls },
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_IMAGE_UPLOAD_SUCCESS,
@@ -467,14 +468,14 @@ export class ProductService {
 			? newImageUrls
 			: [...(product.imageUrls || []), ...newImageUrls];
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const updatedProduct = await this.productRepo.update(
 				productId,
 				{ imageUrls: updatedUrls },
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.PRODUCT_IMAGE_BATCH_UPLOAD_FROM_URL_SUCCESS,
