@@ -6,8 +6,8 @@ import { getDatabase, initializeDatabase, schema } from './index';
 
 // ─── Seed data constants ───
 
-const PLATFORM_ADMIN_EMAIL = 'admin@logisync.vn';
-const PLATFORM_ADMIN_PASSWORD = 'password';
+const PLATFORM_ADMIN_EMAIL = 'platform@logisync.local';
+const PLATFORM_ADMIN_PASSWORD = 'Admin@123456';
 
 const CATALOG_CATEGORIES = [
 	{
@@ -169,15 +169,15 @@ async function seedSupplierUsers(
 ) {
 	const users = [
 		{
-			email: 'supplier@logisync.vn',
-			password: 'password',
+			email: 'supplier.admin@logisync.local',
+			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Manager',
 			role: 'supplier',
 		},
 		{
-			email: 'supplier.staff@logisync.vn',
-			password: 'password',
+			email: 'supplier.staff@logisync.local',
+			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Staff',
 			role: 'supplier_staff',
@@ -217,15 +217,15 @@ async function seedBuyerUsers(
 ) {
 	const users = [
 		{
-			email: 'buyer.admin@logisync.vn',
-			password: 'password',
+			email: 'buyer.admin@logisync.local',
+			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Admin',
 			role: 'buyer',
 		},
 		{
-			email: 'buyer.staff@logisync.vn',
-			password: 'password',
+			email: 'buyer.staff@logisync.local',
+			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Staff',
 			role: 'buyer_staff',
@@ -293,8 +293,8 @@ async function seedCarrierUsers(
 ) {
 	const users = [
 		{
-			email: 'carrier@logisync.vn',
-			password: 'password',
+			email: 'carrier.admin@logisync.local',
+			password: 'Carrier@123456',
 			firstName: 'Carrier',
 			lastName: 'Manager',
 			role: 'carrier',
@@ -362,8 +362,8 @@ async function seedHRUsers(
 ) {
 	const users = [
 		{
-			email: 'hr@logisync.vn',
-			password: 'password',
+			email: 'hr.admin@logisync.local',
+			password: 'HR@123456',
 			firstName: 'HR',
 			lastName: 'Manager',
 			role: 'hr',

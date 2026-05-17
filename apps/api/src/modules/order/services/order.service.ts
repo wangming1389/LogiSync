@@ -8,11 +8,17 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import type { Counter } from 'prom-client';
 import {
 	AuditAction,
 	AuditStatus,
 } from '../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
+import {
+	METRIC_ORDER_APPROVED,
+	METRIC_ORDER_REJECTED,
+} from '../../../core/metrics/business-metrics.providers';
 import { MessageQueueService } from '../../../infrastructure/message-queue/message-queue.service';
 import { UserRole } from '../../iam/auth/enums/user-role.enum';
 import {
@@ -52,6 +58,10 @@ export class OrderService {
 		private readonly messageQueueService: MessageQueueService,
 		private readonly stateTransitions: OrderStateTransitionService,
 		private readonly orderExportService: OrderExportService,
+		@InjectMetric(METRIC_ORDER_APPROVED)
+		private readonly orderApprovedCounter: Counter<string>,
+		@InjectMetric(METRIC_ORDER_REJECTED)
+		private readonly orderRejectedCounter: Counter<string>,
 	) {}
 
 	async listOrders(
@@ -159,6 +169,8 @@ export class OrderService {
 			buyerWorkspaceId,
 		});
 
+		this.orderApprovedCounter.inc();
+
 		return result;
 	}
 
@@ -169,7 +181,7 @@ export class OrderService {
 		workspaceId: string,
 		ipAddress: string,
 	) {
-		return this.orderRepo.runInTransaction(async (tx) => {
+		const result = await this.orderRepo.runInTransaction(async (tx) => {
 			const order = await this.orderRepo.findForUpdateBySupplier(
 				orderId,
 				workspaceId,
@@ -219,6 +231,10 @@ export class OrderService {
 
 			return updated;
 		});
+
+		this.orderRejectedCounter.inc();
+
+		return result;
 	}
 
 	async confirmReceiptManually(

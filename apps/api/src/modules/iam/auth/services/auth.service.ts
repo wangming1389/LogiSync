@@ -6,13 +6,16 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import * as bcrypt from 'bcryptjs';
+import type { Counter } from 'prom-client';
 import { v4 as uuid } from 'uuid';
 import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
+import { METRIC_LOGIN_FAILED } from '../../../../core/metrics/business-metrics.providers';
 import { SecurityService } from '../../../../core/security/security.service';
 import { SessionRegistryService } from '../../../../core/session/session-registry.service';
 import { WorkspaceRepository } from '../../workspace/repositories/workspace.repository';
@@ -44,6 +47,8 @@ export class AuthService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly userRepository: UserRepository,
 		private readonly workspaceRepository: WorkspaceRepository,
+		@InjectMetric(METRIC_LOGIN_FAILED)
+		private readonly loginFailedCounter: Counter<string>,
 	) {}
 
 	async login(
@@ -56,6 +61,7 @@ export class AuthService {
 		const user = await this.userRepository.findByEmailForAuth(email);
 
 		if (!user || !user.isActive) {
+			this.loginFailedCounter.inc({ reason: 'invalid_credentials' });
 			throw new UnauthorizedException('Email or password is incorrect');
 		}
 
@@ -83,6 +89,8 @@ export class AuthService {
 				errorMessage: 'Account is locked due to too many failed login attempts',
 			});
 
+			this.loginFailedCounter.inc({ reason: 'account_locked' });
+
 			throw new ForbiddenException(
 				'Account is locked. Please try again after 15 minutes.',
 			);
@@ -93,6 +101,7 @@ export class AuthService {
 		const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
 		if (!isPasswordValid) {
+			this.loginFailedCounter.inc({ reason: 'invalid_password' });
 			await this.securityService.recordFailedLogin(email);
 
 			await this.auditLoggerService.log({
