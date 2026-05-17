@@ -14,6 +14,12 @@ import {
 	METRIC_HTTP_REQUESTS_TOTAL,
 } from '../metrics.providers';
 
+type HttpMetricRequest = Omit<Request, 'route'> & {
+	route?: {
+		path?: string;
+	};
+};
+
 /**
  * Route-prefix → module mapping.
  *
@@ -56,7 +62,7 @@ export class HttpMetricsInterceptor implements NestInterceptor {
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const httpContext = context.switchToHttp();
-		const request = httpContext.getRequest<Request>();
+		const request = httpContext.getRequest<HttpMetricRequest>();
 		const response = httpContext.getResponse<Response>();
 
 		const method = request.method;
