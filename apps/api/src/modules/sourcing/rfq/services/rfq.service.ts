@@ -7,11 +7,14 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import type { Counter } from 'prom-client';
 import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
+import { METRIC_RFQ_CREATED } from '../../../../core/metrics/business-metrics.providers';
 import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import {
@@ -38,6 +41,8 @@ export class RfqService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly messageQueueService: MessageQueueService,
 		private readonly databaseService: DatabaseService,
+		@InjectMetric(METRIC_RFQ_CREATED)
+		private readonly rfqCreatedCounter: Counter<string>,
 	) {}
 
 	async createDraft(
@@ -71,6 +76,7 @@ export class RfqService {
 		});
 
 		this.logger.log(`RFQ draft created: ${result.id}`);
+		this.rfqCreatedCounter.inc();
 		return result;
 	}
 

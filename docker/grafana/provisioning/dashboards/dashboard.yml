@@ -1,0 +1,16 @@
+# Auto-provision dashboard from JSON files.
+# Docs: https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
+
+apiVersion: 1
+
+providers:
+  - name: 'LogiSync'
+    orgId: 1
+    folder: 'LogiSync'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
