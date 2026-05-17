@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -65,6 +66,7 @@ export class ProductController {
 		description: 'UoM not found or inactive',
 	})
 	@ApiResponse({ status: 409, description: 'Duplicate SKU' })
+	@SkipGlobalAudit()
 	async create(@Body() dto: CreateProductDto, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -159,6 +161,7 @@ export class ProductController {
 	@ApiBody({ type: UpdateProductDto })
 	@ApiResponse({ status: 200, description: 'Product updated' })
 	@ApiResponse({ status: 404, description: 'Product not found' })
+	@SkipGlobalAudit()
 	async update(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UpdateProductDto,
@@ -188,6 +191,7 @@ export class ProductController {
 		description: 'Invalid status transition',
 	})
 	@ApiResponse({ status: 404, description: 'Product not found' })
+	@SkipGlobalAudit()
 	async publish(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -212,6 +216,7 @@ export class ProductController {
 		description: 'Only active products can be unpublished',
 	})
 	@ApiResponse({ status: 404, description: 'Product not found' })
+	@SkipGlobalAudit()
 	async unpublish(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -249,6 +254,7 @@ export class ProductController {
 	})
 	@ApiResponse({ status: 201, description: 'Product image uploaded' })
 	@UseInterceptors(FileInterceptor('file'))
+	@SkipGlobalAudit()
 	async uploadProductImage(
 		@Param('id', ParseUUIDPipe) id: string,
 		@UploadedFile() file: IMulterFile,
@@ -279,6 +285,7 @@ export class ProductController {
 		status: 201,
 		description: 'Product images batch uploaded from URLs',
 	})
+	@SkipGlobalAudit()
 	async uploadProductImageFromUrl(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UploadProductImageFromUrlDto,
@@ -312,6 +319,7 @@ export class ProductController {
 		description: 'Only draft products can be deleted',
 	})
 	@ApiResponse({ status: 404, description: 'Product not found' })
+	@SkipGlobalAudit()
 	async deleteProduct(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Req() req: Request,

@@ -275,7 +275,7 @@ export class WorkspaceService {
 		await this.auditLoggerService.log({
 			actorId,
 			workspaceId: id,
-			action: AuditAction.UNKNOWN_MUTATION_SUCCESS,
+			action: AuditAction.WORKSPACE_REVOKE_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
 			changes: { status: 'revoked', isActive: false },

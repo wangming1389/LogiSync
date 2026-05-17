@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { RateLimit } from '../../../../common/decorators/rate-limit.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -84,6 +85,7 @@ export class AuthController {
 		status: 403,
 		description: 'Workspace not active / Account is locked',
 	})
+	@SkipGlobalAudit()
 	async login(@Body() dto: LoginDto, @Req() req: Request) {
 		const ipAddress = getClientIp(req);
 		const userAgent = req.get('user-agent');
@@ -107,6 +109,7 @@ export class AuthController {
 	})
 	@ApiResponse({ status: 200, description: 'Logout successful' })
 	@ApiResponse({ status: 401, description: 'Token is invalid or expired' })
+	@SkipGlobalAudit()
 	async logout(@Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -182,6 +185,7 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 		},
 	})
 	@ApiResponse({ status: 401, description: 'Current password is incorrect' })
+	@SkipGlobalAudit()
 	async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
