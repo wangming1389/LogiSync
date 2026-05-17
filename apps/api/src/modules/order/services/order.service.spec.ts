@@ -37,6 +37,8 @@ describe('OrderService', () => {
 	const orderExportService = {
 		renderAndStore: jest.fn(),
 	};
+	const orderApprovedCounter = { inc: jest.fn() };
+	const orderRejectedCounter = { inc: jest.fn() };
 	const tx = {};
 
 	let service: OrderService;
@@ -136,6 +138,8 @@ describe('OrderService', () => {
 			messageQueueService as never,
 			stateTransitions,
 			orderExportService as never,
+			orderApprovedCounter as never,
+			orderRejectedCounter as never,
 		);
 	});
 

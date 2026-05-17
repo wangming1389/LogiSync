@@ -28,6 +28,7 @@ describe('AuthService core security contract', () => {
 		update: jest.fn(),
 	};
 	const workspaceRepository = { findById: jest.fn() };
+	const loginFailedCounter = { inc: jest.fn() };
 
 	let service: AuthService;
 
@@ -40,6 +41,7 @@ describe('AuthService core security contract', () => {
 			auditLoggerService as never,
 			userRepository as never,
 			workspaceRepository as never,
+			loginFailedCounter as never,
 		);
 		jwtService.sign.mockReturnValue('signed-token');
 		sessionRegistryService.createSession.mockResolvedValue('session-1');

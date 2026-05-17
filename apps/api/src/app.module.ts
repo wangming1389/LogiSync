@@ -10,6 +10,7 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-enve
 import { ENV_FILE_PATHS } from './config/env-paths';
 import { AuditModule } from './core/audit/audit.module';
 import { HealthModule } from './core/health/health.module';
+import { MetricsModule } from './core/metrics/metrics.module';
 import { SecurityModule } from './core/security/security.module';
 import { SessionModule } from './core/session/session.module';
 import { WorkersModule } from './core/workers/workers.module';
@@ -41,6 +42,7 @@ import { SourcingModule } from './modules/sourcing/sourcing.module';
 		SessionModule,
 		SecurityModule,
 		HealthModule,
+		MetricsModule,
 		ObjectStorageModule,
 		MessageQueueModule,
 		WorkersModule,
