@@ -1,11 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AuditAction } from '../../../../core/audit/enums/audit.enums';
-import { getDatabase } from '../../../../infrastructure/database';
 import { RfqService } from './rfq.service';
-
-jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
-}));
 
 describe('RfqService', () => {
 	const rfqRepo = {
@@ -24,8 +19,10 @@ describe('RfqService', () => {
 		isReady: jest.fn(),
 	};
 	const tx = {};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: RfqService;
@@ -39,7 +36,6 @@ describe('RfqService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		rfqRepo.findByIdForBuyer.mockResolvedValue(draftRfq);
 		rfqRepo.countItems.mockResolvedValue(0);
 		rfqRepo.listItems.mockResolvedValue([]);
@@ -67,6 +63,7 @@ describe('RfqService', () => {
 			rfqRepo as never,
 			auditLoggerService as never,
 			messageQueueService as never,
+			databaseService as never,
 		);
 	});
 

@@ -3,12 +3,10 @@ import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
-import { getDatabase } from '../../../../infrastructure/database';
 import { UserRole } from '../../../iam/auth/enums/user-role.enum';
 import { QuotationService } from './quotation.service';
 
 jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
 	schema: {
 		rfqs: { id: 'rfqs.id', parentRfqId: 'rfqs.parentRfqId' },
 	},
@@ -35,8 +33,10 @@ describe('QuotationService', () => {
 	const tx = {
 		select: jest.fn(),
 	};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: QuotationService;
@@ -55,7 +55,6 @@ describe('QuotationService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		tx.select.mockReturnValue({
 			from: jest.fn().mockReturnValue({
 				where: jest.fn().mockResolvedValue([{ id: 'sibling-rfq-1' }]),
@@ -95,6 +94,7 @@ describe('QuotationService', () => {
 			quotationRepo as never,
 			rfqRepo as never,
 			auditLoggerService as never,
+			databaseService as never,
 		);
 	});
 
@@ -167,7 +167,7 @@ describe('QuotationService', () => {
 			'127.0.0.1',
 		);
 
-		expect(db.transaction).toHaveBeenCalledTimes(1);
+		expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
 		expect(quotationRepo.updateQuotation).toHaveBeenCalledWith(
 			'quotation-1',
 			{ status: 'selected', isLocked: true },

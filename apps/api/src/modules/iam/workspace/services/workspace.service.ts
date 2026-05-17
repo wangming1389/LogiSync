@@ -12,7 +12,7 @@ import {
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
 import { SessionRegistryService } from '../../../../core/session/session-registry.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { UserRepository } from '../../auth/repositories/user.repository';
 import type {
 	EnableRoleDto,
@@ -33,6 +33,7 @@ export class WorkspaceService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly workspaceRepository: WorkspaceRepository,
 		private readonly userRepository: UserRepository,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	async register(dto: RegisterWorkspaceDto, ipAddress: string) {
@@ -55,7 +56,7 @@ export class WorkspaceService {
 
 		const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const workspace = await this.workspaceRepository.create(
 				{
 					name: dto.name,
@@ -84,7 +85,7 @@ export class WorkspaceService {
 			);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId: adminUser.id,
 				workspaceId: workspace.id,
 				action: AuditAction.WORKSPACE_REGISTER_SUCCESS,

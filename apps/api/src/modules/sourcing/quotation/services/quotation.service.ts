@@ -13,7 +13,8 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase, schema } from '../../../../infrastructure/database';
+import { schema } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { UserRole } from '../../../iam/auth/enums/user-role.enum';
 import {
 	SOURCING_BUYER_ROLES,
@@ -37,6 +38,7 @@ export class QuotationService {
 		private readonly quotationRepo: QuotationRepository,
 		private readonly rfqRepo: RfqRepository,
 		private readonly auditLoggerService: AuditLoggerService,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	async respondToRfq(
@@ -95,7 +97,7 @@ export class QuotationService {
 			dto.estimatedDeliveryDate,
 		);
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			let quotationId: string;
 
 			if (existing) {
@@ -157,7 +159,7 @@ export class QuotationService {
 					.where(eq(schema.rfqs.id, rfqId));
 			}
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action:
@@ -219,7 +221,7 @@ export class QuotationService {
 
 		const callerRole = this.resolveNegotiationRole(role);
 
-		const round = await getDatabase().transaction(async (tx) => {
+		const round = await this.databaseService.withTransaction(async (tx) => {
 			const latest = await this.quotationRepo.findLatestNegotiationRound(
 				id,
 				tx,
@@ -244,7 +246,7 @@ export class QuotationService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.NEGOTIATION_ROUND_SUBMIT_SUCCESS,
@@ -286,7 +288,7 @@ export class QuotationService {
 
 		const callerRole = this.resolveNegotiationRole(role);
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const target = dto.roundId
 				? await this.quotationRepo.findNegotiationRoundById(dto.roundId, tx)
 				: await this.quotationRepo.findLatestNegotiationRound(quotationId, tx);
@@ -320,7 +322,7 @@ export class QuotationService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.NEGOTIATION_ROUND_ACCEPT_SUCCESS,
@@ -360,7 +362,7 @@ export class QuotationService {
 			throw new ForbiddenException('Only Buyers can select quotations');
 		}
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			// Step 1 — pessimistic lock
 			const quotation = await this.quotationRepo.findByIdForUpdate(
 				quotationId,
@@ -458,7 +460,7 @@ export class QuotationService {
 			);
 
 			// Step 8 — audit log inside the transaction
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.QUOTATION_SELECT_SUCCESS,

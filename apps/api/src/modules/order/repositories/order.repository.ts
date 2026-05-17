@@ -3,7 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { BaseRepository } from '../../../core/database/base.repository';
-import { schema } from '../../../infrastructure/database';
+import {
+	getActiveTransaction,
+	runInTransactionContext,
+} from '../../../core/database/transaction-context';
+import { getDatabase, schema } from '../../../infrastructure/database';
 import type {
 	GoodsReceiptConfirmationType,
 	OrderStatus,
@@ -32,7 +36,14 @@ export class OrderRepository extends BaseRepository {
 	}
 
 	async runInTransaction<T>(callback: (tx: any) => Promise<T>): Promise<T> {
-		return this.db.transaction(callback);
+		const activeTx = getActiveTransaction(this.cls);
+		if (activeTx) {
+			return callback(activeTx);
+		}
+
+		return getDatabase().transaction((tx) =>
+			runInTransactionContext(this.cls, tx, callback),
+		);
 	}
 
 	async listOrders(params: ListOrdersParams, tx?: any) {

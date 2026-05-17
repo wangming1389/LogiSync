@@ -3,12 +3,7 @@ import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
-import { getDatabase } from '../../../../infrastructure/database';
 import { ProductService } from './product.service';
-
-jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
-}));
 
 describe('ProductService', () => {
 	const productRepo = {
@@ -36,8 +31,10 @@ describe('ProductService', () => {
 		uploadFromUrl: jest.fn(),
 	};
 	const tx = {};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: ProductService;
@@ -59,7 +56,6 @@ describe('ProductService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		uomRepo.findById.mockResolvedValue({ id: 'uom-1', isActive: true });
 		productRepo.findBySku.mockResolvedValue(null);
 		productRepo.findById.mockResolvedValue(product);
@@ -84,6 +80,7 @@ describe('ProductService', () => {
 			auditLoggerService as never,
 			objectStorageService as never,
 			mediaService as never,
+			databaseService as never,
 		);
 	});
 

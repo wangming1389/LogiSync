@@ -1,14 +1,9 @@
 import { ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { getDatabase } from '../../../../infrastructure/database';
 import { WorkspaceService } from './workspace.service';
 
 jest.mock('bcryptjs', () => ({
 	hash: jest.fn(),
-}));
-
-jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
 }));
 
 describe('WorkspaceService', () => {
@@ -31,8 +26,10 @@ describe('WorkspaceService', () => {
 		create: jest.fn(),
 	};
 	const tx = {};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: WorkspaceService;
@@ -49,7 +46,6 @@ describe('WorkspaceService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		(bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 		workspaceRepository.findByTaxId.mockResolvedValue(null);
 		workspaceRepository.findBySlug.mockResolvedValue(null);
@@ -80,6 +76,7 @@ describe('WorkspaceService', () => {
 			auditLoggerService as never,
 			workspaceRepository as never,
 			userRepository as never,
+			databaseService as never,
 		);
 	});
 

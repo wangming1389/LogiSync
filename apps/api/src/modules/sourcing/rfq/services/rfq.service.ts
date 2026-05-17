@@ -12,7 +12,7 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import {
 	SOURCING_BUYER_ROLES,
@@ -37,6 +37,7 @@ export class RfqService {
 		private readonly rfqRepo: RfqRepository,
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly messageQueueService: MessageQueueService,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	async createDraft(
@@ -45,7 +46,7 @@ export class RfqService {
 		workspaceId: string,
 		ipAddress: string,
 	) {
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const rfq = await this.rfqRepo.createDraftRfq(
 				{
 					buyerWorkspaceId: workspaceId,
@@ -55,7 +56,7 @@ export class RfqService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_CREATE_SUCCESS,
@@ -146,7 +147,7 @@ export class RfqService {
 			);
 		}
 
-		const item = await getDatabase().transaction(async (tx) => {
+		const item = await this.databaseService.withTransaction(async (tx) => {
 			const upserted = await this.rfqRepo.upsertItem(
 				{
 					rfqId,
@@ -161,7 +162,7 @@ export class RfqService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_ITEM_UPSERT_SUCCESS,
@@ -207,7 +208,7 @@ export class RfqService {
 			notes: item.notes,
 		};
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.rfqRepo.updateItem(
 				rfqId,
 				itemId,
@@ -227,7 +228,7 @@ export class RfqService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_ITEM_UPDATE_SUCCESS,
@@ -258,10 +259,10 @@ export class RfqService {
 		const item = await this.rfqRepo.findItemById(rfqId, itemId);
 		if (!item) throw new NotFoundException('RFQ item not found');
 
-		await getDatabase().transaction(async (tx) => {
+		await this.databaseService.withTransaction(async (tx) => {
 			await this.rfqRepo.deleteItem(rfqId, itemId, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_ITEM_DELETE_SUCCESS,
@@ -300,7 +301,7 @@ export class RfqService {
 		}
 
 		// US-63: group by supplier → spawn one Child RFQ per supplier inside a single tx
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const supplierIds = await this.rfqRepo.groupDraftItemsBySupplier(id, tx);
 
 			const childRfqs: { id: string; supplierWorkspaceId: string }[] = [];
@@ -340,7 +341,7 @@ export class RfqService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_SUBMIT_SUCCESS,
@@ -379,14 +380,14 @@ export class RfqService {
 			throw new ConflictException('Only unlocked draft RFQs can be deleted');
 		}
 
-		await getDatabase().transaction(async (tx) => {
+		await this.databaseService.withTransaction(async (tx) => {
 			const items = await this.rfqRepo.listItems(id, tx);
 			for (const item of items) {
 				await this.rfqRepo.deleteItem(id, item.id, tx);
 			}
 			await this.rfqRepo.deleteRfq(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.RFQ_DELETE_SUCCESS,

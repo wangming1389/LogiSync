@@ -10,7 +10,7 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import { WorkspaceRepository } from '../../../iam/workspace/repositories/workspace.repository';
 import type { CreateUomDto, UpdateUomDto } from '../dtos/uom.dto';
@@ -28,6 +28,7 @@ export class UomService {
 		private readonly auditLoggerService: AuditLoggerService,
 		private readonly messageQueueService: MessageQueueService,
 		private readonly workspaceRepository: WorkspaceRepository,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	private async getPlatformId(): Promise<string> {
@@ -47,7 +48,7 @@ export class UomService {
 		}
 
 		const platformId = await this.getPlatformId();
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const uom = await this.uomRepo.create(
 				{
 					name: dto.name,
@@ -57,7 +58,7 @@ export class UomService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.UOM_CREATE_SUCCESS,
@@ -116,7 +117,7 @@ export class UomService {
 		const oldValues = { name: uom.name, code: uom.code };
 		const platformId = await this.getPlatformId();
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.uomRepo.update(
 				id,
 				{
@@ -126,7 +127,7 @@ export class UomService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.UOM_UPDATE_SUCCESS,
@@ -149,10 +150,10 @@ export class UomService {
 		await this.findById(id);
 
 		const platformId = await this.getPlatformId();
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.uomRepo.disable(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.UOM_DISABLE_SUCCESS,
@@ -175,10 +176,10 @@ export class UomService {
 		await this.findById(id);
 
 		const platformId = await this.getPlatformId();
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.uomRepo.enable(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId: platformId,
 				action: AuditAction.UOM_ENABLE_SUCCESS,

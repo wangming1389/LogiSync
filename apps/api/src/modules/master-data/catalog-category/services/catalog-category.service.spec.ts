@@ -3,12 +3,7 @@ import {
 	AuditAction,
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
-import { getDatabase } from '../../../../infrastructure/database';
 import { CatalogCategoryService } from './catalog-category.service';
-
-jest.mock('../../../../infrastructure/database', () => ({
-	getDatabase: jest.fn(),
-}));
 
 describe('CatalogCategoryService', () => {
 	const catalogCategoryRepo = {
@@ -29,15 +24,16 @@ describe('CatalogCategoryService', () => {
 		findBySlug: jest.fn(),
 	};
 	const tx = {};
-	const db = {
-		transaction: jest.fn((task: (tx: unknown) => Promise<unknown>) => task(tx)),
+	const databaseService = {
+		withTransaction: jest.fn((task: (tx: unknown) => Promise<unknown>) =>
+			task(tx),
+		),
 	};
 
 	let service: CatalogCategoryService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getDatabase as jest.Mock).mockReturnValue(db);
 		catalogCategoryRepo.findByNameOrCode.mockResolvedValue(null);
 		catalogCategoryRepo.findById.mockResolvedValue({
 			id: 'category-1',
@@ -71,6 +67,7 @@ describe('CatalogCategoryService', () => {
 			auditLoggerService as never,
 			messageQueueService as never,
 			workspaceRepository as never,
+			databaseService as never,
 		);
 	});
 

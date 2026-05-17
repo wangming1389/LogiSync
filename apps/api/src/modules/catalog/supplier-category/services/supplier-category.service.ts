@@ -11,7 +11,7 @@ import {
 	AuditStatus,
 } from '../../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
-import { getDatabase } from '../../../../infrastructure/database';
+import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { CatalogCategoryRepository } from '../../../master-data/catalog-category/repositories/catalog-category.repository';
 import type {
 	CreateSupplierCategoryDto,
@@ -27,6 +27,7 @@ export class SupplierCategoryService {
 		private readonly supplierCategoryRepo: SupplierCategoryRepository,
 		private readonly catalogCategoryRepo: CatalogCategoryRepository,
 		private readonly auditLoggerService: AuditLoggerService,
+		private readonly databaseService: DatabaseService,
 	) {}
 
 	async create(
@@ -51,7 +52,7 @@ export class SupplierCategoryService {
 			);
 		}
 
-		const result = await getDatabase().transaction(async (tx) => {
+		const result = await this.databaseService.withTransaction(async (tx) => {
 			const category = await this.supplierCategoryRepo.create(
 				{
 					workspaceId,
@@ -63,7 +64,7 @@ export class SupplierCategoryService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.SUPPLIER_CATEGORY_CREATE_SUCCESS,
@@ -128,7 +129,7 @@ export class SupplierCategoryService {
 			description: category.description,
 		};
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.supplierCategoryRepo.update(
 				id,
 				{
@@ -140,7 +141,7 @@ export class SupplierCategoryService {
 				tx,
 			);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.SUPPLIER_CATEGORY_UPDATE_SUCCESS,
@@ -174,10 +175,10 @@ export class SupplierCategoryService {
 			);
 		}
 
-		const updated = await getDatabase().transaction(async (tx) => {
+		const updated = await this.databaseService.withTransaction(async (tx) => {
 			const result = await this.supplierCategoryRepo.softDelete(id, tx);
 
-			await this.auditLoggerService.logInTx(tx as any, {
+			await this.auditLoggerService.logInTx(tx, {
 				actorId,
 				workspaceId,
 				action: AuditAction.SUPPLIER_CATEGORY_SOFT_DELETE_SUCCESS,
