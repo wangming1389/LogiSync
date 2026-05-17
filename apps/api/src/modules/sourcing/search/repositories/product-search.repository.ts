@@ -13,6 +13,7 @@ import {
 	or,
 } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
+import { buildPaginationMeta } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
 import { schema } from '../../../../infrastructure/database';
 
@@ -145,11 +146,19 @@ export class ProductSearchRepository extends BaseRepository {
 			countQuery,
 		]);
 
-		return {
-			items,
-			total: countResult.length,
+		const total = countResult.length;
+		const pagination = {
 			limit: params.limit,
 			offset: params.offset,
+			page: Math.floor(params.offset / params.limit) + 1,
+		};
+
+		return {
+			items,
+			total,
+			limit: params.limit,
+			offset: params.offset,
+			meta: buildPaginationMeta(pagination, total),
 		};
 	}
 }

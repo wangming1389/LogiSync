@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
+import { buildPaginationMeta } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
 import { schema } from '../../../../infrastructure/database';
 
@@ -90,11 +91,19 @@ export class ProductRepository extends BaseRepository {
 				.where(whereClause),
 		]);
 
-		return {
-			items,
-			total: countResult[0]?.count ?? 0,
+		const total = Number(countResult[0]?.count ?? 0);
+		const pagination = {
 			limit: params.limit,
 			offset: params.offset,
+			page: Math.floor(params.offset / params.limit) + 1,
+		};
+
+		return {
+			items,
+			total,
+			limit: params.limit,
+			offset: params.offset,
+			meta: buildPaginationMeta(pagination, total),
 		};
 	}
 
