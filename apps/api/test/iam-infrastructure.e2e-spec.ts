@@ -48,9 +48,13 @@ describe('IAM infrastructure test cases from docs/api/iam', () => {
 
 		expect(revokeResponse.body).toEqual(
 			expect.objectContaining({
-				id: target.workspace.id,
-				status: 'revoked',
-				isActive: false,
+				success: true,
+				error: null,
+				data: expect.objectContaining({
+					id: target.workspace.id,
+					status: 'revoked',
+					isActive: false,
+				}),
 			}),
 		);
 	});

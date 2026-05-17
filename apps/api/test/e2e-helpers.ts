@@ -133,7 +133,8 @@ export async function login(
 		.send({ email, password })
 		.expect(200);
 
-	return response.body.accessToken as string;
+	return (response.body.data?.accessToken ??
+		response.body.accessToken) as string;
 }
 
 export function bearer(token: string) {

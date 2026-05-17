@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { SessionRegistryService } from '../../../../core/session/session-registry.service';
 import type { ProductSearchQueryDto } from '../dtos/product-search.dto';
@@ -72,9 +72,6 @@ export class ProductSearchService {
 
 		return {
 			items: ordered,
-			total: result.total,
-			limit: result.limit,
-			offset: result.offset,
 			meta: result.meta,
 			appliedSupplierWorkspaceIds: supplierWorkspaceIds ?? null,
 		};
