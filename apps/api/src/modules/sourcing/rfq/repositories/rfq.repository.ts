@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await */
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, SQL, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { createPaginatedResponse } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
@@ -110,7 +110,7 @@ export class RfqRepository extends BaseRepository {
 	async listForBuyer(params: ListRfqsParams, tx?: any) {
 		const workspaceId = this.getRequiredWorkspaceId();
 		const runner = tx || this.db;
-		const conditions: any[] = [eq(schema.rfqs.buyerWorkspaceId, workspaceId)];
+		const conditions: SQL[] = [eq(schema.rfqs.buyerWorkspaceId, workspaceId)];
 		if (params.status) {
 			conditions.push(eq(schema.rfqs.status, params.status));
 		}
@@ -142,7 +142,7 @@ export class RfqRepository extends BaseRepository {
 		const workspaceId = this.getRequiredWorkspaceId();
 		const runner = tx || this.db;
 		// Suppliers only see Child RFQs explicitly addressed to their workspace
-		const conditions: any[] = [
+		const conditions: SQL[] = [
 			eq(schema.rfqs.supplierWorkspaceId, workspaceId),
 			isNotNull(schema.rfqs.parentRfqId),
 		];

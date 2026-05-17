@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -22,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -61,7 +64,7 @@ export class QuotationController {
 		@Body() dto: SubmitQuotationDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.respondToRfq(
 			rfqId,
 			dto,
@@ -79,7 +82,7 @@ export class QuotationController {
 	@ApiResponse({ status: 200, description: 'Quotation detail' })
 	@ApiResponse({ status: 404, description: 'Quotation not found' })
 	async detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.getQuotationDetail(
 			id,
 			payload.role,
@@ -108,7 +111,7 @@ export class QuotationController {
 		@Body() dto: NegotiateDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.negotiate(
 			id,
 			dto,
@@ -137,7 +140,7 @@ export class QuotationController {
 		@Body() dto: AcceptRoundDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.acceptLatestRound(
 			id,
 			dto,
@@ -161,7 +164,7 @@ export class QuotationController {
 	@ApiResponse({ status: 409, description: 'Quotation already locked' })
 	@HttpCode(HttpStatus.CREATED)
 	async select(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.selectQuotation(
 			id,
 			payload.sub,

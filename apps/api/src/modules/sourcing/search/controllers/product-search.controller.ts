@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import {
 	ApiBearerAuth,
@@ -9,6 +8,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { getRequestUser } from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -52,7 +52,7 @@ export class ProductSearchController {
 	@ApiQuery({ name: 'offset', required: false, type: 'number' })
 	@ApiResponse({ status: 200, description: 'Paginated cross-tenant products' })
 	async search(@Query() query: ProductSearchQueryDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.productSearchService.search(
 			query,
 			payload.workspaceId,

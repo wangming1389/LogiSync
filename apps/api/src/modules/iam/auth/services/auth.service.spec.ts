@@ -54,7 +54,10 @@ describe('AuthService core security contract', () => {
 			role: 'buyer',
 			isActive: true,
 		});
-		workspaceRepository.findById.mockResolvedValue({ status: 'active' });
+		workspaceRepository.findById.mockResolvedValue({
+			status: 'active',
+			type: 'buyer',
+		});
 		(bcrypt.compare as jest.Mock).mockResolvedValue(true);
 	});
 
@@ -107,6 +110,7 @@ describe('AuthService core security contract', () => {
 			{
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
+				workspaceType: 'buyer',
 				role: 'buyer',
 				sessionId: 'session-1',
 				jti: 'jwt-1',
@@ -142,6 +146,7 @@ describe('AuthService core security contract', () => {
 			{
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
+				workspaceType: 'buyer',
 				role: 'buyer',
 				sessionId: 'session-1',
 				jti: expect.any(String),

@@ -46,6 +46,7 @@ The Order module handles the complete lifecycle of Purchase Orders (PO), from ap
 | **TC-ORD-09** | Tenant Isolation | ADD 1.7 | Ensure no cross-workspace order access. |
 | **TC-ORD-10** | Approval Pure Transition | ADD QAR-03 | Build approval transition data without side effects. |
 | **TC-ORD-11** | Receipt Pure Transition | ADD QAR-03 | Build receipt confirmation transition data. |
+| **TC-ORD-12** | Supplier Export Authorization | BR-431 | Supplier company admins can successfully export their order history via `/orders/export`. |
 
 ## 4. Technical Constraints
 - **Concurrency**: `FOR UPDATE SKIP LOCKED` used in background workers.

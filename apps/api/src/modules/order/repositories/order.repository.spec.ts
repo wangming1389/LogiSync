@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { getDatabase } from '../../../infrastructure/database';
 import { UserRole } from '../../iam/auth/enums/user-role.enum';
 import { OrderRepository } from './order.repository';
@@ -110,6 +110,27 @@ describe('OrderRepository', () => {
 		expect(eq).toHaveBeenCalledWith(
 			'purchaseOrders.supplierWorkspaceId',
 			'supplier-workspace-1',
+		);
+	});
+
+	it('scopes company admins to either buyer or supplier workspace orders', async () => {
+		await repository.listOrders({
+			role: UserRole.COMPANY_ADMIN,
+			userId: 'company-admin-1',
+			workspaceId: 'company-workspace-1',
+			limit: 25,
+			offset: 0,
+		});
+
+		expect(or).toHaveBeenCalledWith(
+			expect.objectContaining({
+				left: 'purchaseOrders.buyerWorkspaceId',
+				right: 'company-workspace-1',
+			}),
+			expect.objectContaining({
+				left: 'purchaseOrders.supplierWorkspaceId',
+				right: 'company-workspace-1',
+			}),
 		);
 	});
 });

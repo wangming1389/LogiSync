@@ -1,6 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import {
+	and,
+	desc,
+	eq,
+	gte,
+	inArray,
+	isNull,
+	lte,
+	or,
+	SQL,
+	sql,
+} from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { createPaginatedResponse } from '../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../core/database/base.repository';
@@ -49,9 +60,11 @@ export class OrderRepository extends BaseRepository {
 
 	async listOrders(params: ListOrdersParams, tx?: any) {
 		const runner = tx || this.db;
-		const conditions: any[] = [
-			this.scopeCondition(params.role, params.workspaceId),
-		];
+		const conditions: SQL[] = [];
+		const scopeCondition = this.scopeCondition(params.role, params.workspaceId);
+		if (scopeCondition) {
+			conditions.push(scopeCondition);
+		}
 		if (this.isStaffRole(params.role)) {
 			conditions.push(eq(schema.purchaseOrders.assignedTo, params.userId));
 		}
@@ -59,8 +72,7 @@ export class OrderRepository extends BaseRepository {
 			conditions.push(eq(schema.purchaseOrders.status, params.status));
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		const whereClause = and(...(conditions as any));
+		const whereClause = and(...conditions);
 		const [items, countResult] = await Promise.all([
 			runner
 				.select()
@@ -93,10 +105,11 @@ export class OrderRepository extends BaseRepository {
 		tx?: any,
 	) {
 		const runner = tx || this.db;
-		const conditions: any[] = [
-			eq(schema.purchaseOrders.id, orderId),
-			this.scopeCondition(role, workspaceId),
-		];
+		const conditions: SQL[] = [eq(schema.purchaseOrders.id, orderId)];
+		const scopeCondition = this.scopeCondition(role, workspaceId);
+		if (scopeCondition) {
+			conditions.push(scopeCondition);
+		}
 		if (userId && this.isStaffRole(role)) {
 			conditions.push(eq(schema.purchaseOrders.assignedTo, userId));
 		}
@@ -104,8 +117,7 @@ export class OrderRepository extends BaseRepository {
 		const [order] = await runner
 			.select()
 			.from(schema.purchaseOrders)
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			.where(and(...(conditions as any)));
+			.where(and(...conditions));
 		return order;
 	}
 
@@ -284,7 +296,13 @@ export class OrderRepository extends BaseRepository {
 	}
 
 	private scopeCondition(role: string, workspaceId: string) {
-		if (role.startsWith('buyer') || role === 'company_admin') {
+		if (role === 'company_admin') {
+			return or(
+				eq(schema.purchaseOrders.buyerWorkspaceId, workspaceId),
+				eq(schema.purchaseOrders.supplierWorkspaceId, workspaceId),
+			);
+		}
+		if (role.startsWith('buyer')) {
 			return eq(schema.purchaseOrders.buyerWorkspaceId, workspaceId);
 		}
 		if (role.startsWith('supplier')) {

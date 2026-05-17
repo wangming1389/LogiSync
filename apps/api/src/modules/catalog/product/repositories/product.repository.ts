@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, lte, or, SQL, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { createPaginatedResponse } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
@@ -28,15 +28,16 @@ export class ProductRepository extends BaseRepository {
 		const workspaceId = this.getRequiredWorkspaceId();
 		const runner = tx || this.db;
 
-		const conditions: any[] = [eq(schema.products.workspaceId, workspaceId)];
+		const conditions: SQL[] = [eq(schema.products.workspaceId, workspaceId)];
 
 		if (params.keyword) {
-			conditions.push(
-				or(
-					ilike(schema.products.name, `%${params.keyword}%`),
-					ilike(schema.products.sku, `%${params.keyword}%`),
-				),
+			const keywordCondition = or(
+				ilike(schema.products.name, `%${params.keyword}%`),
+				ilike(schema.products.sku, `%${params.keyword}%`),
 			);
+			if (keywordCondition) {
+				conditions.push(keywordCondition);
+			}
 		}
 
 		if (params.categoryId) {

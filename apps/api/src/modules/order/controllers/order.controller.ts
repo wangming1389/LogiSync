@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	Body,
 	Controller,
@@ -23,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../common/utils/request.utils';
 import { RbacGuard } from '../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
@@ -51,7 +53,7 @@ export class OrderController {
 	@ApiQuery({ name: 'offset', required: false, type: 'number' })
 	@ApiResponse({ status: 200, description: 'Paginated order list' })
 	async list(@Query() query: ListOrdersQueryDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.listOrders(
 			query,
 			payload.sub,
@@ -74,7 +76,7 @@ export class OrderController {
 		@Req() req: Request,
 		@Res() res: Response,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const file = await this.orderService.exportOrders(
 			query,
 			payload.role,
@@ -95,7 +97,7 @@ export class OrderController {
 	@ApiResponse({ status: 200, description: 'Order detail' })
 	@ApiResponse({ status: 404, description: 'Order not found' })
 	detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.getOrderDetail(
 			id,
 			payload.sub,
@@ -111,7 +113,7 @@ export class OrderController {
 	@ApiResponse({ status: 200, description: 'Order approved' })
 	@ApiResponse({ status: 409, description: 'Order is not pending approval' })
 	approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.approveOrder(
 			id,
 			payload.sub,
@@ -134,7 +136,7 @@ export class OrderController {
 		@Body() dto: RejectOrderDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.rejectOrder(
 			id,
 			dto,
@@ -150,7 +152,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Goods receipt confirmed' })
 	confirmReceipt(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.confirmReceiptManually(
 			id,
 			payload.sub,
@@ -172,7 +174,7 @@ export class OrderController {
 		@Body() dto: AssignOrderDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.assignOrder(
 			id,
 			dto,

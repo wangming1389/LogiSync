@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	Controller,
 	ForbiddenException,
@@ -17,7 +16,10 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { getClientIp } from '../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../common/utils/request.utils';
 import type { JwtPayload } from '../../../modules/iam/auth/dtos/auth.dto';
 import { UserRole } from '../../../modules/iam/auth/enums/user-role.enum';
 import { AuditLogQueryDto } from '../dtos/audit-log-query.dto';
@@ -73,7 +75,7 @@ export class AuditLogController {
 	}
 
 	private requirePlatformAdmin(request: Request): JwtPayload {
-		const payload = (request as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(request);
 		if (payload.role !== (UserRole.PLATFORM_ADMIN as unknown)) {
 			throw new ForbiddenException('Only PLATFORM_ADMIN can access audit logs');
 		}

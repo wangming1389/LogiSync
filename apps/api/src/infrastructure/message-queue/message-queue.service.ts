@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import {
 	Injectable,
 	Logger,
@@ -6,15 +5,16 @@ import {
 	OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
 import * as amqp from 'amqplib';
 
 @Injectable()
 export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(MessageQueueService.name);
 
-	private connection: any;
+	private connection?: ChannelModel;
 
-	private channel: any;
+	private channel?: Channel;
 	private isConnected = false;
 
 	constructor(private readonly configService: ConfigService) {}
@@ -91,22 +91,33 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 			throw new Error('RabbitMQ is not connected');
 		}
 
-		await this.channel.assertQueue(queue, { durable: true });
-		await this.channel.consume(queue, async (message) => {
-			if (message) {
-				try {
-					const content = JSON.parse(message.content.toString());
-					await callback(content);
-					this.channel.ack(message);
-				} catch (error) {
-					this.logger.error('Error processing message', error);
-					this.channel.nack(message, false, true);
-				}
-			}
+		const channel = this.channel;
+		await channel.assertQueue(queue, { durable: true });
+		await channel.consume(queue, (message) => {
+			void this.handleConsumedMessage(channel, message, callback);
 		});
 	}
 
 	isReady(): boolean {
 		return this.isConnected;
+	}
+
+	private async handleConsumedMessage(
+		channel: Channel,
+		message: ConsumeMessage | null,
+		callback: (message: unknown) => Promise<void>,
+	): Promise<void> {
+		if (!message) {
+			return;
+		}
+
+		try {
+			const content = JSON.parse(message.content.toString()) as unknown;
+			await callback(content);
+			channel.ack(message);
+		} catch (error) {
+			this.logger.error('Error processing message', error);
+			channel.nack(message, false, true);
+		}
 	}
 }

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -25,7 +25,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -55,7 +58,7 @@ export class RfqController {
 	@ApiBody({ type: CreateRfqDto })
 	@ApiResponse({ status: 201, description: 'Draft RFQ created' })
 	async create(@Body() dto: CreateRfqDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.rfqService.createDraft(
 			dto,
@@ -78,7 +81,7 @@ export class RfqController {
 	@ApiQuery({ name: 'offset', required: false, type: 'number' })
 	@ApiResponse({ status: 200, description: 'Paginated RFQ list' })
 	async list(@Query() query: ListRfqQueryDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.listAccessible(query, payload.role);
 	}
 
@@ -90,7 +93,7 @@ export class RfqController {
 	@ApiResponse({ status: 200, description: 'RFQ detail' })
 	@ApiResponse({ status: 404, description: 'RFQ not found' })
 	async detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.getRfqDetail(id, payload.role);
 	}
 
@@ -118,7 +121,7 @@ export class RfqController {
 		@Body() dto: AddRfqItemDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.addItem(
 			id,
 			dto,
@@ -143,7 +146,7 @@ export class RfqController {
 		@Body() dto: UpdateRfqItemDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.updateItem(
 			id,
 			itemId,
@@ -167,7 +170,7 @@ export class RfqController {
 		@Param('itemId', ParseUUIDPipe) itemId: string,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.deleteItem(
 			id,
 			itemId,
@@ -191,7 +194,7 @@ export class RfqController {
 	})
 	@ApiResponse({ status: 409, description: 'RFQ is not a draft' })
 	async submit(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.submitRfq(
 			id,
 			payload.sub,
@@ -213,7 +216,7 @@ export class RfqController {
 		description: 'Only unlocked draft RFQs can be deleted',
 	})
 	async delete(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.deleteDraft(
 			id,
 			payload.sub,
@@ -232,7 +235,7 @@ export class RfqController {
 		@Param('rfqId', ParseUUIDPipe) rfqId: string,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.listQuotationsForRfq(rfqId, payload.role);
 	}
 }

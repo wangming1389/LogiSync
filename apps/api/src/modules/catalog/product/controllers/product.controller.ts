@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -29,7 +29,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -63,7 +66,7 @@ export class ProductController {
 	})
 	@ApiResponse({ status: 409, description: 'Duplicate SKU' })
 	async create(@Body() dto: CreateProductDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.productService.create(
 			dto,
@@ -161,7 +164,7 @@ export class ProductController {
 		@Body() dto: UpdateProductDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.productService.update(
 			id,
@@ -186,7 +189,7 @@ export class ProductController {
 	})
 	@ApiResponse({ status: 404, description: 'Product not found' })
 	async publish(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.productService.publish(
 			id,
@@ -210,7 +213,7 @@ export class ProductController {
 	})
 	@ApiResponse({ status: 404, description: 'Product not found' })
 	async unpublish(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.productService.unpublish(
 			id,
@@ -252,7 +255,7 @@ export class ProductController {
 		@Req() req: Request,
 		@Query('replaceExisting') replaceExisting?: string,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		// Convert query string 'true'/'false' to boolean
 		const replace = replaceExisting === 'true';
@@ -281,7 +284,7 @@ export class ProductController {
 		@Body() dto: UploadProductImageFromUrlDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		// Batch upload with parallel Promise.all (efficient for multiple URLs)
 		// If replaceExisting=true, old images are deleted before uploading
@@ -313,7 +316,7 @@ export class ProductController {
 		@Param('id', ParseUUIDPipe) id: string,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.productService.deleteProduct(
 			id,

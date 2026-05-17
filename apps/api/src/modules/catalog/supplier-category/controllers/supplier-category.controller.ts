@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -25,7 +25,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -56,7 +59,7 @@ export class SupplierCategoryController {
 	})
 	@ApiResponse({ status: 409, description: 'Duplicate name' })
 	async create(@Body() dto: CreateSupplierCategoryDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.supplierCategoryService.create(
 			dto,
@@ -122,7 +125,7 @@ export class SupplierCategoryController {
 		@Body() dto: UpdateSupplierCategoryDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.supplierCategoryService.update(
 			id,
@@ -151,7 +154,7 @@ export class SupplierCategoryController {
 		@Param('id', ParseUUIDPipe) id: string,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.supplierCategoryService.softDelete(
 			id,

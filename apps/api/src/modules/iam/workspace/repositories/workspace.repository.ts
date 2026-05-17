@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import { Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, SQL, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import {
 	createPaginatedResponse,
@@ -65,7 +65,7 @@ export class WorkspaceRepository extends BaseRepository {
 		tx?: any,
 	) {
 		const runner = tx || this.db;
-		const conditions: any[] = [];
+		const conditions: SQL[] = [];
 		if (filter.status) {
 			conditions.push(eq(schema.workspaces.status, filter.status));
 		}
@@ -78,7 +78,6 @@ export class WorkspaceRepository extends BaseRepository {
 			runner
 				.select()
 				.from(schema.workspaces)
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				.where(conditions.length > 0 ? and(...conditions) : undefined)
 				.limit(pagination.limit)
 				.offset(pagination.offset)
@@ -86,7 +85,6 @@ export class WorkspaceRepository extends BaseRepository {
 			runner
 				.select({ count: sql<number>`count(*)` })
 				.from(schema.workspaces)
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				.where(conditions.length > 0 ? and(...conditions) : undefined),
 		]);
 
