@@ -75,6 +75,7 @@ export class ProductSearchService {
 			total: result.total,
 			limit: result.limit,
 			offset: result.offset,
+			meta: result.meta,
 			appliedSupplierWorkspaceIds: supplierWorkspaceIds ?? null,
 		};
 	}

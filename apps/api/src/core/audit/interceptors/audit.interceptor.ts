@@ -7,6 +7,7 @@ import {
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { getClientIp } from '../../../common/utils/request.utils';
 import { AuditAction, AuditStatus } from '../enums/audit.enums';
 import { AuditLoggerService } from '../services/audit-logger.service';
 
@@ -20,7 +21,7 @@ export class AuditInterceptor implements NestInterceptor {
 		// Extract metadata
 		const user = (request as { user?: { sub: string; workspaceId: string } })
 			.user;
-		const ipAddress = this.getClientIp(request);
+		const ipAddress = getClientIp(request);
 		const userAgent = request.get('user-agent') ?? '';
 
 		return next.handle().pipe(
@@ -58,14 +59,6 @@ export class AuditInterceptor implements NestInterceptor {
 
 				throw error;
 			}),
-		);
-	}
-
-	private getClientIp(request: Request): string {
-		return (
-			(request.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-			request.socket.remoteAddress ||
-			'unknown'
 		);
 	}
 

@@ -2,6 +2,10 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
+import {
+	buildPaginationMeta,
+	normalizePagePagination,
+} from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
 import { schema } from '../../../../infrastructure/database';
 
@@ -65,7 +69,10 @@ export class WorkspaceRepository extends BaseRepository {
 		if (filter.status) {
 			conditions.push(eq(schema.workspaces.status, filter.status));
 		}
-		const offset = (filter.page - 1) * filter.limit;
+		const pagination = normalizePagePagination(filter, {
+			defaultLimit: filter.limit,
+			maxLimit: 100,
+		});
 
 		const [items, countResult] = await Promise.all([
 			runner
@@ -73,8 +80,8 @@ export class WorkspaceRepository extends BaseRepository {
 				.from(schema.workspaces)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				.where(conditions.length > 0 ? and(...conditions) : undefined)
-				.limit(filter.limit)
-				.offset(offset)
+				.limit(pagination.limit)
+				.offset(pagination.offset)
 				.orderBy(schema.workspaces.createdAt),
 			runner
 				.select({ count: sql<number>`count(*)` })
@@ -83,11 +90,14 @@ export class WorkspaceRepository extends BaseRepository {
 				.where(conditions.length > 0 ? and(...conditions) : undefined),
 		]);
 
+		const total = Number(countResult[0]?.count ?? 0);
+
 		return {
 			items,
-			total: Number(countResult[0]?.count ?? 0),
-			page: filter.page,
-			limit: filter.limit,
+			total,
+			page: pagination.page,
+			limit: pagination.limit,
+			meta: buildPaginationMeta(pagination, total),
 		};
 	}
 
