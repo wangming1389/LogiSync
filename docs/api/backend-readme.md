@@ -85,6 +85,14 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 - **Security Tests**: Specialized suites for audit logs and tenant isolation.
 - **CI/CD**: GitHub Actions pipeline for linting, testing, and Docker builds.
 
+#### Infrastructure Test Cases Mapping
+| ID | Test Scenario | Expected Result |
+| :--- | :--- | :--- |
+| **TC-INFRA-01** | Active CLS Transaction Priority | Repository uses the active CLS transaction before the root database. |
+| **TC-INFRA-02** | Root Database Fallback | Repository falls back to the root database without an active transaction. |
+| **TC-INFRA-03** | Nested Unit-of-Work CLS | Database service reuses the active CLS transaction for nested unit-of-work calls. |
+| **TC-INFRA-04** | Unbound Transaction CLS Creation | Database service creates a CLS context when a transaction starts outside one. |
+
 ### Deployment
 - **Containerization**: Multi-stage Docker builds using `Dockerfile.api`.
 - **Orchestration**: Production-ready `docker-compose.prod.yml` configuration.

@@ -8,7 +8,7 @@ describe('HealthRegistryService', () => {
 		registry = new HealthRegistryService();
 	});
 
-	it('runs registered health checks', async () => {
+	it('TC-HLT-05 Check Execution', async () => {
 		registry.register({
 			name: 'database',
 			required: true,
@@ -20,7 +20,7 @@ describe('HealthRegistryService', () => {
 		]);
 	});
 
-	it('returns failed optional checks without throwing', async () => {
+	it('TC-HLT-06 Optional Check Failure', async () => {
 		registry.register({
 			name: 'redis',
 			check: jest.fn().mockRejectedValue(new Error('down')),

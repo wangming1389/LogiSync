@@ -42,7 +42,7 @@ describe('JwtStrategy', () => {
 		).rejects.toThrow(UnauthorizedException);
 	});
 
-	it('rejects a token when the workspace is suspended', async () => {
+	it('TC-IAM-12 Suspended Workspace Rejection', async () => {
 		sessionRegistryService.getSession.mockResolvedValue({
 			expiresAt: Date.now() + 60_000,
 		});

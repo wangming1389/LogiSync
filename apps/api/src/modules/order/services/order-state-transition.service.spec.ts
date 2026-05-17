@@ -8,7 +8,7 @@ describe('OrderStateTransitionService', () => {
 	const service = new OrderStateTransitionService();
 	const now = new Date('2026-05-17T00:00:00.000Z');
 
-	it('builds approval transition data without side effects', () => {
+	it('TC-ORD-10 Approval Pure Transition', () => {
 		const result = service.approve(
 			{ status: OrderStatus.PENDING_APPROVAL },
 			now,
@@ -31,7 +31,7 @@ describe('OrderStateTransitionService', () => {
 		});
 	});
 
-	it('builds receipt confirmation transition data', () => {
+	it('TC-ORD-11 Receipt Pure Transition', () => {
 		const result = service.confirmReceipt(
 			{ status: OrderStatus.APPROVED },
 			GoodsReceiptConfirmationType.AUTO,

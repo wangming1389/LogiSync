@@ -35,7 +35,7 @@ describe('DatabaseService', () => {
 		service = new DatabaseService(cls as never);
 	});
 
-	it('reuses the active CLS transaction for nested unit-of-work calls', async () => {
+	it('TC-INFRA-03 Nested Unit-of-Work CLS', async () => {
 		await service.withTransaction(async (outerTx) => {
 			await Promise.resolve();
 			expect(outerTx).toBe(tx);
@@ -49,7 +49,7 @@ describe('DatabaseService', () => {
 		expect(db.transaction).toHaveBeenCalledTimes(1);
 	});
 
-	it('creates a CLS context when a transaction starts outside one', async () => {
+	it('TC-INFRA-04 Unbound Transaction CLS Creation', async () => {
 		cls.isActive.mockReturnValueOnce(false);
 
 		await service.withTransaction(async (activeTx) => {
