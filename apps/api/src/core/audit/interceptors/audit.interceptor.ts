@@ -4,16 +4,27 @@ import {
 	Injectable,
 	NestInterceptor,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { SKIP_GLOBAL_AUDIT_KEY } from '../../../common/decorators/skip-audit.decorator';
 import { getClientIp } from '../../../common/utils/request.utils';
 import { AuditAction, AuditStatus } from '../enums/audit.enums';
 import { AuditLoggerService } from '../services/audit-logger.service';
 
+/**
+ * Routes where the service layer already writes detailed audit logs (with JSONB
+ * `changes`) should be marked with `@SkipGlobalAudit()` on the controller method.
+ * When the decorator is present, the interceptor skips the success-path log but
+ * still captures failure/error logs via `catchError`.
+ */
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-	constructor(private auditLoggerService: AuditLoggerService) {}
+	constructor(
+		private auditLoggerService: AuditLoggerService,
+		private reflector: Reflector,
+	) {}
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const request = context.switchToHttp().getRequest<Request>();
@@ -24,11 +35,19 @@ export class AuditInterceptor implements NestInterceptor {
 		const ipAddress = getClientIp(request);
 		const userAgent = request.get('user-agent') ?? '';
 
+		// Check if the handler is annotated with @SkipGlobalAudit()
+		const skipAudit = this.reflector.get<boolean>(
+			SKIP_GLOBAL_AUDIT_KEY,
+			context.getHandler(),
+		);
+
 		return next.handle().pipe(
 			tap(() => {
 				// Only audit important operations (POST, PUT, DELETE, PATCH)
+				// Skip if the service layer already handles audit logging
 				if (
 					user &&
+					!skipAudit &&
 					['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)
 				) {
 					void this.auditLoggerService.log({
@@ -83,6 +102,14 @@ export class AuditInterceptor implements NestInterceptor {
 		);
 		const success = status === AuditStatus.SUCCESS;
 
+		// Route → [successAction, failureAction] mapping.
+		//
+		// Routes whose Service layer writes its own audit log are marked with
+		// @SkipGlobalAudit() on the controller and will never reach the success
+		// branch of this map. Mapping them here is still useful because the
+		// catchError path is NOT skipped: if the request fails before the
+		// service can run its own log (e.g. validation/guard error), the
+		// interceptor provides the correct failure action label.
 		const routeActions: Record<string, [AuditAction, AuditAction]> = {
 			'POST /auth/login': [
 				AuditAction.AUTH_LOGIN_SUCCESS,
@@ -92,10 +119,9 @@ export class AuditInterceptor implements NestInterceptor {
 				AuditAction.AUTH_LOGOUT_SUCCESS,
 				AuditAction.AUTH_LOGOUT_FAILED,
 			],
-			'POST /auth/refresh': [
-				AuditAction.AUTH_REFRESH_TOKEN_SUCCESS,
-				AuditAction.AUTH_REFRESH_TOKEN_FAILED,
-			],
+			// POST /auth/refresh is intentionally excluded — refresh token
+			// events fire every ~15 min per active user and would bloat the
+			// immutable audit_logs table with millions of low-value rows.
 			'PATCH /auth/change-password': [
 				AuditAction.AUTH_CHANGE_PASSWORD_SUCCESS,
 				AuditAction.AUTH_CHANGE_PASSWORD_FAILED,
@@ -119,6 +145,10 @@ export class AuditInterceptor implements NestInterceptor {
 			'PATCH /workspaces/:id/suspend': [
 				AuditAction.WORKSPACE_SUSPEND_SUCCESS,
 				AuditAction.WORKSPACE_SUSPEND_FAILED,
+			],
+			'PATCH /workspaces/:id/revoke': [
+				AuditAction.WORKSPACE_REVOKE_SUCCESS,
+				AuditAction.WORKSPACE_REVOKE_FAILED,
 			],
 			'POST /workspaces/:id/roles/enable': [
 				AuditAction.WORKSPACE_ENABLE_ROLE_SUCCESS,
@@ -252,14 +282,9 @@ export class AuditInterceptor implements NestInterceptor {
 				AuditAction.ORDER_ASSIGN_SUCCESS,
 				AuditAction.ORDER_ASSIGN_FAILED,
 			],
-			'GET /admin/audit-logs': [
-				AuditAction.AUDIT_LOG_QUERY,
-				AuditAction.AUDIT_LOG_QUERY_FAILED,
-			],
-			'GET /admin/audit-logs/export': [
-				AuditAction.LOG_EXPORT,
-				AuditAction.LOG_EXPORT_FAILED,
-			],
+			// GET /admin/audit-logs and GET /admin/audit-logs/export are handled
+			// directly by AuditLogQueryService (service-level logging with full
+			// query context). No interceptor mapping needed.
 		};
 
 		const [successAction, failureAction] =

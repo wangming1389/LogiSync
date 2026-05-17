@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -112,6 +113,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Order approved' })
 	@ApiResponse({ status: 409, description: 'Order is not pending approval' })
+	@SkipGlobalAudit()
 	approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.approveOrder(
@@ -131,6 +133,7 @@ export class OrderController {
 	@ApiBody({ type: RejectOrderDto })
 	@ApiResponse({ status: 200, description: 'Order rejected' })
 	@ApiResponse({ status: 400, description: 'rejectionReason is required' })
+	@SkipGlobalAudit()
 	reject(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: RejectOrderDto,
@@ -151,6 +154,7 @@ export class OrderController {
 	@ApiOperation({ summary: 'Confirm goods received manually (US-73)' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Goods receipt confirmed' })
+	@SkipGlobalAudit()
 	confirmReceipt(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		return this.orderService.confirmReceiptManually(
@@ -169,6 +173,7 @@ export class OrderController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiBody({ type: AssignOrderDto })
 	@ApiResponse({ status: 200, description: 'Order assigned' })
+	@SkipGlobalAudit()
 	assign(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: AssignOrderDto,

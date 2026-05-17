@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -59,6 +60,7 @@ export class QuotationController {
 	@ApiResponse({ status: 201, description: 'Quotation saved' })
 	@ApiResponse({ status: 403, description: 'RFQ not addressed to caller' })
 	@ApiResponse({ status: 409, description: 'Quotation locked or RFQ closed' })
+	@SkipGlobalAudit()
 	async respond(
 		@Param('rfqId', ParseUUIDPipe) rfqId: string,
 		@Body() dto: SubmitQuotationDto,
@@ -106,6 +108,7 @@ export class QuotationController {
 		status: 409,
 		description: 'Same party twice in a row or quotation locked',
 	})
+	@SkipGlobalAudit()
 	async negotiate(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: NegotiateDto,
@@ -135,6 +138,7 @@ export class QuotationController {
 		status: 409,
 		description: 'Cannot accept own round or round already accepted',
 	})
+	@SkipGlobalAudit()
 	async acceptRound(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: AcceptRoundDto,
@@ -163,6 +167,7 @@ export class QuotationController {
 	@ApiResponse({ status: 201, description: 'Selection succeeded; PO created' })
 	@ApiResponse({ status: 409, description: 'Quotation already locked' })
 	@HttpCode(HttpStatus.CREATED)
+	@SkipGlobalAudit()
 	async select(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		return this.quotationService.selectQuotation(

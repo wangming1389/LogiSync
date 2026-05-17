@@ -25,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -58,6 +59,7 @@ export class SupplierCategoryController {
 		description: 'Catalog category not found or inactive',
 	})
 	@ApiResponse({ status: 409, description: 'Duplicate name' })
+	@SkipGlobalAudit()
 	async create(@Body() dto: CreateSupplierCategoryDto, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -120,6 +122,7 @@ export class SupplierCategoryController {
 	@ApiResponse({ status: 200, description: 'Category updated' })
 	@ApiResponse({ status: 404, description: 'Category not found' })
 	@ApiResponse({ status: 409, description: 'Duplicate name' })
+	@SkipGlobalAudit()
 	async update(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UpdateSupplierCategoryDto,
@@ -150,6 +153,7 @@ export class SupplierCategoryController {
 		status: 409,
 		description: 'Cannot delete category with linked products',
 	})
+	@SkipGlobalAudit()
 	async softDelete(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Req() req: Request,
