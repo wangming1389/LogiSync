@@ -45,7 +45,19 @@ The system enforces strict Role-Based Access Control (RBAC) across all modules u
 | **`driver`** | Logistics | *(Planned)* Delivery execution and proof of delivery. |
 | **`hr_manager`** | Tenant | *(Planned)* Employee management. |
 
-## System Components
+## 6. Design Patterns Applied
+
+The project leverages several established software design patterns to maintain clean, scalable, and testable code:
+
+| Pattern | Where it is used | Purpose & Implementation |
+| :--- | :--- | :--- |
+| **Strict Repository Pattern** | `src/modules/**/repositories/` | Encapsulates all Drizzle ORM database queries. Enforces multi-tenant isolation by automatically injecting `workspaceId` into queries via `BaseRepository`. |
+| **Strategy Pattern** | `src/modules/iam/auth/strategies/` | Used via Passport.js (`JwtStrategy`) to decouple the authentication mechanism from the core business logic. Allows easy swapping or adding of new auth methods (e.g., OAuth). |
+| **Registry Pattern** | `src/core/health/` | `HealthRegistryService` dynamically registers and executes various system health checks (Postgres, Redis, MinIO) without tightly coupling the controller to the individual check implementations. |
+| **Decorator Pattern** | Global (NestJS) | Extensively used for declarative routing (`@Get()`), input validation (Zod DTOs), and RBAC security (`@Roles()`), keeping business logic clean of boilerplate infrastructure code. |
+| **Unit of Work (Implicit)** | `src/core/database/` | Utilizes `nestjs-cls` (Continuation Local Storage) to propagate active database transactions across service boundaries, ensuring atomic operations without deep prop-drilling. |
+
+## 7. System Components
 
 - **[IAM Module](./iam/README.md)**: User auth, workspace management, and security policies.
 - **[Catalog Module](./catalog/README.md)**: Product management with SKU uniqueness and price history.
