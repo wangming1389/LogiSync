@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../../common/decorators/roles.decorator';
-import { PermissionService } from '../../modules/iam/auth/permission.service';
+import { PermissionService } from '../../modules/iam/auth/services/permission.service';
 
 export const Permissions = Reflector.createDecorator<string[]>();
 
