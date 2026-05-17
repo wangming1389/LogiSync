@@ -29,6 +29,14 @@ describe('OrderService', () => {
 	const messageQueueService = {
 		publishMessage: jest.fn(),
 	};
+	const stateTransitions = {
+		approve: jest.fn(),
+		reject: jest.fn(),
+		confirmReceipt: jest.fn(),
+	};
+	const orderExportService = {
+		renderAndStore: jest.fn(),
+	};
 	const tx = {};
 
 	let service: OrderService;
@@ -58,11 +66,65 @@ describe('OrderService', () => {
 		orderRepo.listForExport.mockResolvedValue([]);
 		auditLoggerService.logInTx.mockResolvedValue(undefined);
 		messageQueueService.publishMessage.mockResolvedValue(undefined);
+		stateTransitions.approve.mockReturnValue({
+			status: OrderStatus.APPROVED,
+			approvedAt: new Date('2026-05-17T00:00:00.000Z'),
+			autoConfirmAt: new Date('2026-05-19T00:00:00.000Z'),
+			rejectionReason: null,
+			statusHistory: {
+				statusValue: OrderStatus.APPROVED,
+				changedAt: new Date('2026-05-17T00:00:00.000Z'),
+			},
+			changes: {
+				oldStatus: OrderStatus.PENDING_APPROVAL,
+				newStatus: OrderStatus.APPROVED,
+				autoConfirmAt: new Date('2026-05-19T00:00:00.000Z'),
+			},
+		});
+		stateTransitions.reject.mockReturnValue({
+			status: OrderStatus.REJECTED,
+			rejectionReason: 'Out of stock',
+			autoConfirmAt: null,
+			statusHistory: {
+				statusValue: OrderStatus.REJECTED,
+				changedAt: new Date('2026-05-17T00:00:00.000Z'),
+			},
+			changes: {
+				oldStatus: OrderStatus.PENDING_APPROVAL,
+				newStatus: OrderStatus.REJECTED,
+				rejectionReason: 'Out of stock',
+			},
+		});
+		stateTransitions.confirmReceipt.mockReturnValue({
+			status: OrderStatus.GOODS_RECEIVED,
+			autoConfirmAt: null,
+			statusHistory: {
+				statusValue: OrderStatus.GOODS_RECEIVED,
+				changedAt: new Date('2026-05-17T00:00:00.000Z'),
+			},
+			goodsReceipt: {
+				confirmationType: GoodsReceiptConfirmationType.AUTO,
+				confirmedAt: new Date('2026-05-17T00:00:00.000Z'),
+			},
+			changes: {
+				oldStatus: OrderStatus.APPROVED,
+				newStatus: OrderStatus.GOODS_RECEIVED,
+				confirmationType: GoodsReceiptConfirmationType.AUTO,
+			},
+		});
+		orderExportService.renderAndStore.mockResolvedValue({
+			contentType:
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			filename: 'orders.xlsx',
+			buffer: Buffer.from('xlsx'),
+		});
 
 		service = new OrderService(
 			orderRepo as never,
 			auditLoggerService as never,
 			messageQueueService as never,
+			stateTransitions,
+			orderExportService as never,
 		);
 	});
 
