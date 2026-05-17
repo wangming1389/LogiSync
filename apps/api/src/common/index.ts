@@ -3,6 +3,7 @@
  * Re-exports pipes, schemas, and utilities for validation
  */
 
+export * from './decorators/rate-limit.decorator';
 export * from './decorators/roles.decorator';
 export * from './filters/http-exception.filter';
 export * from './interceptors/response-envelope.interceptor';

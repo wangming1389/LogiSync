@@ -18,7 +18,9 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { RateLimit } from '../../../../common/decorators/rate-limit.decorator';
 import { getClientIp } from '../../../../common/utils/request.utils';
+import { RateLimitGuard } from '../../../../core/security/rate-limit.guard';
 import { SESSION_WARNING_SECONDS } from '../constants/auth.constants';
 import { ChangePasswordDto, type JwtPayload, LoginDto } from '../dtos/auth.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -32,6 +34,13 @@ export class AuthController {
 	// POST /auth/login (Public)
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
+	@RateLimit({
+		name: 'auth-login',
+		limit: 10,
+		windowMs: 60_000,
+		keyBy: 'ip',
+	})
+	@UseGuards(RateLimitGuard)
 	@ApiOperation({
 		summary: 'Login',
 		description: `Authenticate with email/password → issue JWT (TTL 30 min).
@@ -108,7 +117,13 @@ export class AuthController {
 	// POST /auth/refresh (Authenticated)
 	@Post('refresh')
 	@HttpCode(HttpStatus.OK)
-	@UseGuards(JwtAuthGuard)
+	@RateLimit({
+		name: 'auth-refresh',
+		limit: 30,
+		windowMs: 60_000,
+		keyBy: 'user',
+	})
+	@UseGuards(JwtAuthGuard, RateLimitGuard)
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Extend login session',
@@ -138,7 +153,13 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 
 	// PATCH /auth/change-password (Authenticated)
 	@Patch('change-password')
-	@UseGuards(JwtAuthGuard)
+	@RateLimit({
+		name: 'auth-change-password',
+		limit: 5,
+		windowMs: 60_000,
+		keyBy: 'user',
+	})
+	@UseGuards(JwtAuthGuard, RateLimitGuard)
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Change password',
