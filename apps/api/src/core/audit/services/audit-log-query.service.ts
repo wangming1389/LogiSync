@@ -2,6 +2,10 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { and, count, desc, eq, gte, lt, lte, type SQL } from 'drizzle-orm';
 import type { Response } from 'express';
 import {
+	buildPaginationMeta,
+	normalizePagePagination,
+} from '../../../common/utils/pagination.utils';
+import {
 	getReadReplicaDatabase,
 	schema,
 } from '../../../infrastructure/database';
@@ -38,7 +42,10 @@ export class AuditLogQueryService {
 		const db = getReadReplicaDatabase();
 		const filters = this.buildFilters(normalized);
 		const where = filters.length > 0 ? and(...filters) : undefined;
-		const offset = (normalized.page - 1) * normalized.limit;
+		const pagination = normalizePagePagination(normalized, {
+			defaultLimit: normalized.limit,
+			maxLimit: 25,
+		});
 
 		const [items, totalResult] = await this.withReplicaErrorMessage(() =>
 			Promise.all([
@@ -47,8 +54,8 @@ export class AuditLogQueryService {
 					.from(schema.auditLogs)
 					.where(where)
 					.orderBy(desc(schema.auditLogs.timestamp))
-					.limit(normalized.limit)
-					.offset(offset),
+					.limit(pagination.limit)
+					.offset(pagination.offset),
 				db.select({ total: count() }).from(schema.auditLogs).where(where),
 			]),
 		);
@@ -67,14 +74,14 @@ export class AuditLogQueryService {
 			status: AuditStatus.SUCCESS,
 		});
 
+		const total = totalResult[0]?.total ?? 0;
+
 		return {
 			items: items.map((item) => ({
 				...item,
 				changes: this.maskChanges(item.changes),
 			})),
-			page: normalized.page,
-			limit: normalized.limit,
-			total: totalResult[0]?.total ?? 0,
+			meta: buildPaginationMeta(pagination, total),
 		};
 	}
 

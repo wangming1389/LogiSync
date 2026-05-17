@@ -51,7 +51,13 @@ describe('Catalog infrastructure test cases from docs/api/catalog', () => {
 			.set(bearer(token))
 			.expect(200);
 
-		const ids = response.body.items.map((item: { id: string }) => item.id);
+		expect(response.body.success).toBe(true);
+		expect(response.body.error).toBeNull();
+		expect(response.body.meta).toEqual(
+			expect.objectContaining({ total: expect.any(Number) }),
+		);
+
+		const ids = response.body.data.map((item: { id: string }) => item.id);
 		expect(ids).toContain(productA.product.id);
 		expect(ids).not.toContain(productB.product.id);
 	});

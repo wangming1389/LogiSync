@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
-import { buildPaginationMeta } from '../../../../common/utils/pagination.utils';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
 import { schema } from '../../../../infrastructure/database';
 
@@ -135,13 +135,7 @@ export class RfqRepository extends BaseRepository {
 			page: Math.floor(params.offset / params.limit) + 1,
 		};
 
-		return {
-			items,
-			total,
-			limit: params.limit,
-			offset: params.offset,
-			meta: buildPaginationMeta(pagination, total),
-		};
+		return createPaginatedResponse(items, total, pagination);
 	}
 
 	async listForSupplier(params: ListRfqsParams, tx?: any) {
@@ -176,13 +170,7 @@ export class RfqRepository extends BaseRepository {
 			page: Math.floor(params.offset / params.limit) + 1,
 		};
 
-		return {
-			items,
-			total,
-			limit: params.limit,
-			offset: params.offset,
-			meta: buildPaginationMeta(pagination, total),
-		};
+		return createPaginatedResponse(items, total, pagination);
 	}
 
 	async updateRfq(

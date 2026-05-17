@@ -30,14 +30,12 @@ describe('HealthController', () => {
 	it('TC-HLT-01 Database Outage', () => {
 		healthCheckService.isHealthy.mockReturnValue(false);
 
-		controller.getReadiness(response as never);
+		const result = controller.getReadiness(response as never);
 
 		expect(response.status).toHaveBeenCalledWith(
 			HttpStatus.SERVICE_UNAVAILABLE,
 		);
-		expect(response.json).toHaveBeenCalledWith(
-			expect.objectContaining({ ready: false }),
-		);
+		expect(result).toEqual(expect.objectContaining({ ready: false }));
 	});
 
 	it('TC-HLT-02 Redis Degraded', () => {
@@ -50,10 +48,10 @@ describe('HealthController', () => {
 			timestamp: Date.now(),
 		});
 
-		controller.getHealth(response as never);
+		const health = controller.getHealth(response as never);
 
 		expect(response.status).toHaveBeenCalledWith(HttpStatus.OK);
-		expect(response.json).toHaveBeenCalledWith(
+		expect(health).toEqual(
 			expect.objectContaining({
 				status: 'healthy',
 				details: expect.objectContaining({ degraded: true, redis: false }),
@@ -61,11 +59,9 @@ describe('HealthController', () => {
 		);
 
 		jest.clearAllMocks();
-		controller.getReadiness(response as never);
+		const readiness = controller.getReadiness(response as never);
 
 		expect(response.status).toHaveBeenCalledWith(HttpStatus.OK);
-		expect(response.json).toHaveBeenCalledWith(
-			expect.objectContaining({ ready: true }),
-		);
+		expect(readiness).toEqual(expect.objectContaining({ ready: true }));
 	});
 });

@@ -51,7 +51,18 @@ describe('OrderService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		orderRepo.runInTransaction.mockImplementation((task) => task(tx));
-		orderRepo.listOrders.mockResolvedValue({ items: [], total: 0 });
+		orderRepo.listOrders.mockResolvedValue({
+			items: [],
+			meta: {
+				page: 1,
+				limit: 25,
+				offset: 0,
+				total: 0,
+				totalPages: 0,
+				hasNextPage: false,
+				hasPreviousPage: false,
+			},
+		});
 		orderRepo.findForUpdateBySupplier.mockResolvedValue(order);
 		orderRepo.findForUpdateByBuyer.mockResolvedValue({
 			...order,

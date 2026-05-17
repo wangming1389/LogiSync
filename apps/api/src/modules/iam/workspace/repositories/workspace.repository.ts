@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import {
-	buildPaginationMeta,
+	createPaginatedResponse,
 	normalizePagePagination,
 } from '../../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../../core/database/base.repository';
@@ -92,13 +92,7 @@ export class WorkspaceRepository extends BaseRepository {
 
 		const total = Number(countResult[0]?.count ?? 0);
 
-		return {
-			items,
-			total,
-			page: pagination.page,
-			limit: pagination.limit,
-			meta: buildPaginationMeta(pagination, total),
-		};
+		return createPaginatedResponse(items as unknown[], total, pagination);
 	}
 
 	// Update a workspace.

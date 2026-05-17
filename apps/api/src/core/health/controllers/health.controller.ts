@@ -24,21 +24,16 @@ export class HealthController {
 		type: HealthResponseDto,
 	})
 	@Get()
-	getHealth(@Res() res: Response) {
+	getHealth(@Res({ passthrough: true }) res: Response) {
 		const status = this.healthCheckService.getStatus();
 		const healthy = this.healthCheckService.isHealthy();
 
-		return res
-			.status(healthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
-			.json({
-				status: healthy
-					? 'healthy'
-					: status.degraded
-						? 'degraded'
-						: 'unhealthy',
-				details: status,
-				timestamp: new Date().toISOString(),
-			});
+		res.status(healthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE);
+		return {
+			status: healthy ? 'healthy' : status.degraded ? 'degraded' : 'unhealthy',
+			details: status,
+			timestamp: new Date().toISOString(),
+		};
 	}
 
 	@ApiOperation({
@@ -52,15 +47,14 @@ export class HealthController {
 		type: ReadinessResponseDto,
 	})
 	@Get('ready')
-	getReadiness(@Res() res: Response) {
+	getReadiness(@Res({ passthrough: true }) res: Response) {
 		const ready = this.healthCheckService.isHealthy();
 
-		return res
-			.status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
-			.json({
-				ready,
-				timestamp: new Date().toISOString(),
-			});
+		res.status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE);
+		return {
+			ready,
+			timestamp: new Date().toISOString(),
+		};
 	}
 
 	@ApiOperation({

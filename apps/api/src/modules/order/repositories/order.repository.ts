@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
-import { buildPaginationMeta } from '../../../common/utils/pagination.utils';
+import { createPaginatedResponse } from '../../../common/utils/pagination.utils';
 import { BaseRepository } from '../../../core/database/base.repository';
 import {
 	getActiveTransaction,
@@ -82,13 +82,7 @@ export class OrderRepository extends BaseRepository {
 			page: Math.floor(params.offset / params.limit) + 1,
 		};
 
-		return {
-			items,
-			total,
-			limit: params.limit,
-			offset: params.offset,
-			meta: buildPaginationMeta(pagination, total),
-		};
+		return createPaginatedResponse(items as unknown[], total, pagination);
 	}
 
 	async findVisibleById(

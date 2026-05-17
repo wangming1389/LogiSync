@@ -19,9 +19,15 @@ describe('ProductSearchService', () => {
 				{ id: 'product-1', workspaceId: 'supplier-1' },
 				{ id: 'product-2', workspaceId: 'supplier-2' },
 			],
-			total: 2,
-			limit: 25,
-			offset: 0,
+			meta: {
+				page: 1,
+				limit: 25,
+				offset: 0,
+				total: 2,
+				totalPages: 1,
+				hasNextPage: false,
+				hasPreviousPage: false,
+			},
 		});
 		sessionRegistry.get.mockImplementation((key: string) => {
 			if (key === 'reputation:supplier-1') return '80';
