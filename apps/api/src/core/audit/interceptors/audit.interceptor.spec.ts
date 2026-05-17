@@ -1,10 +1,12 @@
 import { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { firstValueFrom, of } from 'rxjs';
 import { AuditAction, AuditStatus } from '../enums/audit.enums';
 import { AuditInterceptor } from './audit.interceptor';
 
 describe('AuditInterceptor', () => {
 	const auditLoggerService = { log: jest.fn() };
+	const reflector = new Reflector();
 	const request = {
 		method: 'PATCH',
 		path: '/catalog/products/123e4567-e89b-12d3-a456-426614174000',
@@ -13,18 +15,21 @@ describe('AuditInterceptor', () => {
 		get: jest.fn().mockReturnValue('jest-agent'),
 		user: { sub: 'user-1', workspaceId: 'workspace-1' },
 	};
+	const handler = jest.fn();
 	const context = {
 		switchToHttp: () => ({ getRequest: () => request }),
+		getHandler: () => handler,
 	} as unknown as ExecutionContext;
 
 	let interceptor: AuditInterceptor;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.restoreAllMocks();
 		request.method = 'PATCH';
 		request.path = '/catalog/products/123e4567-e89b-12d3-a456-426614174000';
 		auditLoggerService.log.mockResolvedValue(undefined);
-		interceptor = new AuditInterceptor(auditLoggerService as never);
+		interceptor = new AuditInterceptor(auditLoggerService as never, reflector);
 	});
 
 	it('TC-AUD-01 Mandatory Logging', async () => {

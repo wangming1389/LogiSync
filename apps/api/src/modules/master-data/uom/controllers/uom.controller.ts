@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -47,6 +48,7 @@ export class UomController {
 	@ApiBody({ type: CreateUomDto })
 	@ApiResponse({ status: 201, description: 'UoM created' })
 	@ApiResponse({ status: 409, description: 'Duplicate name or code' })
+	@SkipGlobalAudit()
 	async create(@Body() dto: CreateUomDto, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -93,6 +95,7 @@ export class UomController {
 	@ApiResponse({ status: 200, description: 'UoM updated' })
 	@ApiResponse({ status: 404, description: 'UoM not found' })
 	@ApiResponse({ status: 409, description: 'Duplicate name or code' })
+	@SkipGlobalAudit()
 	async update(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UpdateUomDto,
@@ -114,6 +117,7 @@ export class UomController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'UoM disabled' })
 	@ApiResponse({ status: 404, description: 'UoM not found' })
+	@SkipGlobalAudit()
 	async disable(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -131,6 +135,7 @@ export class UomController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'UoM re-enabled' })
 	@ApiResponse({ status: 404, description: 'UoM not found' })
+	@SkipGlobalAudit()
 	async enable(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
