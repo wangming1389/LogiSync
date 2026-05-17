@@ -96,24 +96,21 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 	async downloadFile(objectName: string): Promise<Buffer> {
 		this.ensureConnected();
 
-		const stream: any = await this.minioClient.getObject(
+		const stream = await this.minioClient.getObject(
 			this.bucketName,
 			objectName,
 		);
 		const chunks: Buffer[] = [];
 
 		return new Promise((resolve, reject) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			stream.on('data', (chunk: Buffer) => {
 				chunks.push(chunk);
 			});
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			stream.on('end', () => {
 				resolve(Buffer.concat(chunks));
 			});
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			stream.on('error', reject);
 		});
 	}

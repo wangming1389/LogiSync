@@ -11,6 +11,7 @@ import {
 	lte,
 	ne,
 	or,
+	SQL,
 } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { createPaginatedResponse } from '../../../../common/utils/pagination.utils';
@@ -39,7 +40,7 @@ export class ProductSearchRepository extends BaseRepository {
 	async search(params: ProductSearchParams, tx?: any) {
 		const runner = tx || this.db;
 
-		const conditions: any[] = [
+		const conditions: SQL[] = [
 			eq(schema.products.status, 'active'),
 			eq(schema.workspaces.status, 'active'),
 			// Buyers must never see their own workspace's products in cross-tenant search
@@ -47,12 +48,13 @@ export class ProductSearchRepository extends BaseRepository {
 		];
 
 		if (params.keyword) {
-			conditions.push(
-				or(
-					ilike(schema.products.name, `%${params.keyword}%`),
-					ilike(schema.products.sku, `%${params.keyword}%`),
-				),
+			const keywordCondition = or(
+				ilike(schema.products.name, `%${params.keyword}%`),
+				ilike(schema.products.sku, `%${params.keyword}%`),
 			);
+			if (keywordCondition) {
+				conditions.push(keywordCondition);
+			}
 		}
 
 		if (params.catalogCategoryId) {

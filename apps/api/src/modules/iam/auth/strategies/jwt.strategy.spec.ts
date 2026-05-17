@@ -33,6 +33,7 @@ describe('JwtStrategy', () => {
 			strategy.validate({
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
+				workspaceType: 'buyer',
 				role: 'buyer',
 				sessionId: 'revoked-session',
 				jti: 'jwt-1',
@@ -56,6 +57,7 @@ describe('JwtStrategy', () => {
 			strategy.validate({
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
+				workspaceType: 'buyer',
 				role: 'buyer',
 				sessionId: 'active-session',
 				jti: 'jwt-1',

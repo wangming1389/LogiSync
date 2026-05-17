@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -19,7 +19,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { RateLimit } from '../../../../common/decorators/rate-limit.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RateLimitGuard } from '../../../../core/security/rate-limit.guard';
 import { SESSION_WARNING_SECONDS } from '../constants/auth.constants';
 import { ChangePasswordDto, type JwtPayload, LoginDto } from '../dtos/auth.dto';
@@ -105,7 +108,7 @@ export class AuthController {
 	@ApiResponse({ status: 200, description: 'Logout successful' })
 	@ApiResponse({ status: 401, description: 'Token is invalid or expired' })
 	async logout(@Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		const userAgent = req.get('user-agent');
 
@@ -144,7 +147,7 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 	})
 	@ApiResponse({ status: 401, description: 'Current token is invalid' })
 	async refresh(@Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		const userAgent = req.get('user-agent');
 
@@ -180,7 +183,7 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 	})
 	@ApiResponse({ status: 401, description: 'Current password is incorrect' })
 	async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		const userAgent = req.get('user-agent');
 
@@ -218,7 +221,7 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 	})
 	@ApiResponse({ status: 401, description: 'Token is invalid' })
 	async getMe(@Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		return this.authService.getMe(payload.sub);
 	}
 }

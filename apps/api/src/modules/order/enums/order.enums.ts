@@ -21,6 +21,7 @@ export const ORDER_READ_ROLES = [
 export const ORDER_MANAGER_ROLES = [
 	'buyer_manager',
 	'supplier_manager',
+	'company_admin',
 ] as const;
 
 export const ORDER_BUYER_ASSIGNABLE_ROLES = ['buyer_staff'] as const;

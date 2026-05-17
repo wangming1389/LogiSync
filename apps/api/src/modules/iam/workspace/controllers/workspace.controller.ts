@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -24,7 +24,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -127,7 +130,7 @@ export class WorkspaceController {
 		@Body() dto: UpdateWorkspaceDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.update(id, dto, payload.sub, ipAddress);
 	}
@@ -149,7 +152,7 @@ export class WorkspaceController {
 		description: 'Workspace is not in pending status',
 	})
 	async approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.approve(id, payload.sub, ipAddress);
 	}
@@ -176,7 +179,7 @@ export class WorkspaceController {
 		@Body() dto: RejectWorkspaceDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.reject(id, dto, payload.sub, ipAddress);
 	}
@@ -198,7 +201,7 @@ export class WorkspaceController {
 	})
 	@ApiResponse({ status: 409, description: 'Workspace is already suspended' })
 	async suspend(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.suspend(id, payload.sub, ipAddress);
 	}
@@ -225,7 +228,7 @@ export class WorkspaceController {
 		@Body() dto: RevokeWorkspaceDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.revoke(id, dto, payload.sub, ipAddress);
 	}
@@ -249,7 +252,7 @@ export class WorkspaceController {
 		@Body() dto: EnableRoleDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.enableRole(id, dto, payload.sub, ipAddress);
 	}

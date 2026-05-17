@@ -7,6 +7,7 @@ const PASSWORD_COMPLEXITY_REGEX =
 export interface JwtPayload {
 	sub: string; // userId
 	workspaceId: string;
+	workspaceType: string;
 	role: string;
 	sessionId: string;
 	jti: string; // jwtId used for blacklist on logout

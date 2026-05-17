@@ -28,6 +28,23 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 - **Automatic**: Global interceptors capture request metadata and outcomes.
 - **Traceability**: Every log entry includes actor ID, workspace ID, action, IP address, and value diffs.
 
+## 5. Roles & Permissions Matrix
+
+The system enforces strict Role-Based Access Control (RBAC) across all modules using the `@Roles()` decorator.
+
+| Role | Scope | Applicable Modules & Functions |
+| :--- | :--- | :--- |
+| **`platform_admin`** | System | **Master Data**: Full control over UOMs, Global Categories.<br>**IAM**: Approve/Suspend Workspaces, System Audit Logs. |
+| **`company_admin`** | Tenant | **IAM**: Manage own workspace, users, and roles.<br>**All Modules**: Full read/write access to all domain data within their tenant. |
+| **`buyer_manager`** | Tenant | **Order**: Approve POs, View all orders.<br>**Sourcing**: Manage RFQs, Select winning Quotations.<br>**Catalog**: Search products. |
+| **`buyer_staff`** | Tenant | **Order**: Draft POs, View assigned orders.<br>**Sourcing**: Create RFQs.<br>**Catalog**: Search products. |
+| **`supplier_manager`** | Tenant | **Catalog**: Full control over Supplier Catalog & Products.<br>**Sourcing**: Submit Quotations.<br>**Order**: Process and Confirm all assigned Orders. |
+| **`supplier_staff`** | Tenant | **Catalog**: Add/Edit Products.<br>**Sourcing**: Draft Quotations.<br>**Order**: Process assigned Orders. |
+| **`supplier_accountant`** | Tenant | *(Planned)* Invoicing and payment reconciliation. |
+| **`carrier_dispatcher`** | Tenant | *(Planned)* Shipment dispatching and logistics. |
+| **`driver`** | Logistics | *(Planned)* Delivery execution and proof of delivery. |
+| **`hr_manager`** | Tenant | *(Planned)* Employee management. |
+
 ## System Components
 
 - **[IAM Module](./iam/README.md)**: User auth, workspace management, and security policies.

@@ -128,6 +128,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: user.id,
 			workspaceId: user.workspaceId,
+			workspaceType: workspace.type,
 			role: user.role,
 			sessionId,
 			jti,
@@ -210,6 +211,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: currentPayload.sub,
 			workspaceId: currentPayload.workspaceId,
+			workspaceType: currentPayload.workspaceType,
 			role: currentPayload.role,
 			sessionId: newSessionId,
 			jti,
@@ -290,6 +292,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: payload.sub,
 			workspaceId: payload.workspaceId,
+			workspaceType: payload.workspaceType,
 			role: payload.role,
 			sessionId: newSessionId,
 			jti,
@@ -339,6 +342,7 @@ export class AuthService {
 			{
 				sub: claims.sub,
 				workspaceId: claims.workspaceId,
+				workspaceType: claims.workspaceType,
 				role: claims.role,
 				sessionId: claims.sessionId,
 				jti: claims.jti,

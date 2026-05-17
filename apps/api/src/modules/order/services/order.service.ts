@@ -398,12 +398,14 @@ export class OrderService {
 		workspaceId: string,
 	) {
 		if (
-			![UserRole.BUYER_MANAGER, UserRole.SUPPLIER_MANAGER].includes(
-				role as UserRole,
-			)
+			![
+				UserRole.BUYER_MANAGER,
+				UserRole.SUPPLIER_MANAGER,
+				UserRole.COMPANY_ADMIN,
+			].includes(role as UserRole)
 		) {
 			throw new ForbiddenException(
-				'Only buyer or supplier managers can export orders',
+				'Only company admins or buyer/supplier managers can export orders',
 			);
 		}
 		if (query.end_date < query.start_date) {
@@ -460,7 +462,15 @@ export class OrderService {
 			return [...ORDER_BUYER_ASSIGNABLE_ROLES];
 		if (role === UserRole.SUPPLIER_MANAGER)
 			return [...ORDER_SUPPLIER_ASSIGNABLE_ROLES];
-		throw new ForbiddenException('Only managers can assign orders');
+		if (role === UserRole.COMPANY_ADMIN) {
+			return [
+				...ORDER_BUYER_ASSIGNABLE_ROLES,
+				...ORDER_SUPPLIER_ASSIGNABLE_ROLES,
+			];
+		}
+		throw new ForbiddenException(
+			'Only company admins or managers can assign orders',
+		);
 	}
 
 	private hasRole(roles: readonly string[], role: string) {

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
 	Body,
 	Controller,
@@ -22,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
-import { getClientIp } from '../../../../common/utils/request.utils';
+import {
+	getClientIp,
+	getRequestUser,
+} from '../../../../common/utils/request.utils';
 import { RbacGuard } from '../../../../core/security/rbac.guard';
 import type { JwtPayload } from '../../../iam/auth/dtos/auth.dto';
 import { JwtAuthGuard } from '../../../iam/auth/guards/jwt-auth.guard';
@@ -53,7 +56,7 @@ export class CatalogCategoryController {
 		description: 'Duplicate name or code',
 	})
 	async create(@Body() dto: CreateCatalogCategoryDto, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.catalogCategoryService.create(dto, payload.sub, ipAddress);
 	}
@@ -105,7 +108,7 @@ export class CatalogCategoryController {
 		@Body() dto: UpdateCatalogCategoryDto,
 		@Req() req: Request,
 	) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.catalogCategoryService.update(id, dto, payload.sub, ipAddress);
 	}
@@ -122,7 +125,7 @@ export class CatalogCategoryController {
 	@ApiResponse({ status: 200, description: 'Category disabled' })
 	@ApiResponse({ status: 404, description: 'Category not found' })
 	async disable(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.catalogCategoryService.disable(id, payload.sub, ipAddress);
 	}
@@ -139,7 +142,7 @@ export class CatalogCategoryController {
 	@ApiResponse({ status: 200, description: 'Category re-enabled' })
 	@ApiResponse({ status: 404, description: 'Category not found' })
 	async enable(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-		const payload = (req as any).user as JwtPayload;
+		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
 		return this.catalogCategoryService.enable(id, payload.sub, ipAddress);
 	}

@@ -153,6 +153,26 @@ describe('OrderService', () => {
 		).rejects.toThrow(BadRequestException);
 	});
 
+	it('allows company admins to export order history', async () => {
+		await service.exportOrders(
+			{
+				start_date: new Date('2026-01-01T00:00:00.000Z'),
+				end_date: new Date('2026-01-31T00:00:00.000Z'),
+				format: 'xlsx',
+			},
+			UserRole.COMPANY_ADMIN,
+			'company-workspace-1',
+		);
+
+		expect(orderRepo.listForExport).toHaveBeenCalledWith(
+			UserRole.COMPANY_ADMIN,
+			'company-workspace-1',
+			new Date('2026-01-01T00:00:00.000Z'),
+			new Date('2026-01-31T00:00:00.000Z'),
+		);
+		expect(orderExportService.renderAndStore).toHaveBeenCalled();
+	});
+
 	it('TC-ORD-05 Auto-Confirm Logic', async () => {
 		const result = await service.settleDueConfirmations();
 
