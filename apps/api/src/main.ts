@@ -59,6 +59,9 @@ async function bootstrap() {
 	logger.log(`📚 API Documentation: http://localhost:${port}/docs`);
 	logger.log(`❤️  Health Check: http://localhost:${port}/health`);
 	logger.log(`🔍 Liveness Probe: http://localhost:${port}/health/live`);
+	logger.log(`📊 Metrics (Prometheus): http://localhost:${port}/metrics`);
+	logger.log(`🔥 Prometheus UI: http://localhost:9090`);
+	logger.log(`📈 Grafana Dashboard: http://localhost:3001`);
 }
 
 bootstrap().catch((err: unknown) => {

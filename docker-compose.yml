@@ -107,6 +107,37 @@ services:
 
 # Định nghĩa thêm API, Worker, và GPS Ingestion sau
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: logisync-prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - logisync-network
+    restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: logisync-grafana
+    ports:
+      - '3001:3000'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - logisync-network
+    restart: unless-stopped
+
 networks:
   logisync-network:
     driver: bridge
@@ -118,3 +149,5 @@ volumes:
   minio-data:
   rabbitmq-data:
   postgres-replica-data:
+  prometheus-data:
+  grafana-data:
