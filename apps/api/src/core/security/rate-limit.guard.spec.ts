@@ -24,7 +24,7 @@ describe('RateLimitGuard', () => {
 			}),
 		}) as unknown as ExecutionContext;
 
-	it('allows routes without a rate limit policy', () => {
+	it('TC-SEC-05 Bypass Unprotected Routes', () => {
 		const reflector = {
 			getAllAndOverride: jest.fn().mockReturnValue(undefined),
 		} as unknown as Reflector;
@@ -34,7 +34,7 @@ describe('RateLimitGuard', () => {
 		guard.onModuleDestroy();
 	});
 
-	it('rejects public requests over the configured IP limit', () => {
+	it('TC-SEC-06 IP Rate Limit Enforcement', () => {
 		const policy: RateLimitOptions = {
 			name: 'auth-login',
 			limit: 2,
@@ -53,7 +53,7 @@ describe('RateLimitGuard', () => {
 		guard.onModuleDestroy();
 	});
 
-	it('tracks authenticated user buckets separately when configured', () => {
+	it('TC-SEC-07 User Rate Limit Isolation', () => {
 		const policy: RateLimitOptions = {
 			name: 'auth-change-password',
 			limit: 1,
@@ -73,7 +73,7 @@ describe('RateLimitGuard', () => {
 		guard.onModuleDestroy();
 	});
 
-	it('requires an authenticated user for user-scoped policies', () => {
+	it('TC-SEC-08 Missing Context Rejection', () => {
 		const policy: RateLimitOptions = {
 			name: 'auth-refresh',
 			limit: 1,

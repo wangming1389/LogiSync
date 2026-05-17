@@ -29,6 +29,8 @@ Located at `apps/api/src/core/health/health-check.service.ts`.
 | **TC-HLT-02** | Redis Degraded | `/health` returns `degraded: true`, but `/health/ready` still returns 200. |
 | **TC-HLT-03** | Alert Trigger | Killing MinIO service should trigger an email alert within 15-30 seconds. |
 | **TC-HLT-04** | Alert Cooldown | Repeated failures within 2 minutes must NOT send duplicate emails. |
+| **TC-HLT-05** | Check Execution | Registry runs registered health checks correctly. |
+| **TC-HLT-06** | Optional Check Failure | Registry returns failed optional checks without throwing. |
 
 ## 6. Technical Constraints
 - **Reliability**: Alert emails are sent directly (bypassing the message queue) to ensure delivery even if RabbitMQ is down.

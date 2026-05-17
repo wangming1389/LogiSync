@@ -43,6 +43,7 @@ The IAM module is the core security and multi-tenancy layer of the LogiSync plat
 | **TC-IAM-09** | Multi-tenancy Isolation | ADD 1.7 | No cross-tenant data leakage via Repository filters. |
 | **TC-IAM-10** | Audit Log Immutability | ADD 5.1 / SAD | Ensure `UPDATE` or `DELETE` on `Audit_Logs` fails. |
 | **TC-IAM-11** | Password Hashing | ADD 1.3 | Use Bcrypt with cost factor 12; raw password never logged. |
+| **TC-IAM-12** | Suspended Workspace Rejection | BR-21 | Strategy rejects a token when the workspace is suspended. |
 
 ## 4. Technical Constraints
 - **Architecture**: Domain-driven design with strict repository pattern for multi-tenancy.

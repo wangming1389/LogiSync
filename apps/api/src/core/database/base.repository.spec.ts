@@ -33,7 +33,7 @@ describe('BaseRepository', () => {
 		(getDatabase as jest.Mock).mockReturnValue(db);
 	});
 
-	it('uses the active CLS transaction before the root database', () => {
+	it('TC-INFRA-01 Active CLS Transaction Priority', () => {
 		store[DATABASE_TRANSACTION_KEY] = tx;
 
 		const repository = new TestRepository(cls as never);
@@ -42,7 +42,7 @@ describe('BaseRepository', () => {
 		expect(getDatabase).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the root database without an active transaction', () => {
+	it('TC-INFRA-02 Root Database Fallback', () => {
 		const repository = new TestRepository(cls as never);
 
 		expect(repository.runner).toBe(db);
