@@ -25,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -57,6 +58,7 @@ export class RfqController {
 	@ApiOperation({ summary: 'Create draft RFQ (US-62)' })
 	@ApiBody({ type: CreateRfqDto })
 	@ApiResponse({ status: 201, description: 'Draft RFQ created' })
+	@SkipGlobalAudit()
 	async create(@Body() dto: CreateRfqDto, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -116,6 +118,7 @@ export class RfqController {
 		description: 'Product invalid or 200-item cap exceeded',
 	})
 	@ApiResponse({ status: 409, description: 'RFQ is locked or not draft' })
+	@SkipGlobalAudit()
 	async addItem(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: AddRfqItemDto,
@@ -140,6 +143,7 @@ export class RfqController {
 	@ApiBody({ type: UpdateRfqItemDto })
 	@ApiResponse({ status: 200, description: 'RFQ item updated' })
 	@ApiResponse({ status: 409, description: 'RFQ is locked or not draft' })
+	@SkipGlobalAudit()
 	async updateItem(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Param('itemId', ParseUUIDPipe) itemId: string,
@@ -165,6 +169,7 @@ export class RfqController {
 	@ApiParam({ name: 'itemId', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'RFQ item deleted' })
 	@ApiResponse({ status: 409, description: 'RFQ is locked or not draft' })
+	@SkipGlobalAudit()
 	async deleteItem(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Param('itemId', ParseUUIDPipe) itemId: string,
@@ -193,6 +198,7 @@ export class RfqController {
 		description: 'Draft RFQ has no items',
 	})
 	@ApiResponse({ status: 409, description: 'RFQ is not a draft' })
+	@SkipGlobalAudit()
 	async submit(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.submitRfq(
@@ -215,6 +221,7 @@ export class RfqController {
 		status: 409,
 		description: 'Only unlocked draft RFQs can be deleted',
 	})
+	@SkipGlobalAudit()
 	async delete(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		return this.rfqService.deleteDraft(

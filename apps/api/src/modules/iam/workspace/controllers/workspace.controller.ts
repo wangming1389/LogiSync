@@ -24,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Roles } from '../../../../common/decorators/roles.decorator';
+import { SkipGlobalAudit } from '../../../../common/decorators/skip-audit.decorator';
 import {
 	getClientIp,
 	getRequestUser,
@@ -64,6 +65,7 @@ export class WorkspaceController {
 		description: 'Workspace created (status: pending)',
 	})
 	@ApiResponse({ status: 409, description: 'Duplicate taxId, slug, or email' })
+	@SkipGlobalAudit()
 	async register(@Body() dto: RegisterWorkspaceDto, @Req() req: Request) {
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.register(dto, ipAddress);
@@ -125,6 +127,7 @@ export class WorkspaceController {
 	@ApiBody({ type: UpdateWorkspaceDto })
 	@ApiResponse({ status: 200, description: 'Workspace updated' })
 	@ApiResponse({ status: 404, description: 'Workspace does not exist' })
+	@SkipGlobalAudit()
 	async update(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UpdateWorkspaceDto,
@@ -151,6 +154,7 @@ export class WorkspaceController {
 		status: 409,
 		description: 'Workspace is not in pending status',
 	})
+	@SkipGlobalAudit()
 	async approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -174,6 +178,7 @@ export class WorkspaceController {
 		status: 409,
 		description: 'Workspace is not in pending status',
 	})
+	@SkipGlobalAudit()
 	async reject(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: RejectWorkspaceDto,
@@ -200,6 +205,7 @@ export class WorkspaceController {
 		description: 'Workspace suspended, sessions revoked',
 	})
 	@ApiResponse({ status: 409, description: 'Workspace is already suspended' })
+	@SkipGlobalAudit()
 	async suspend(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
@@ -223,6 +229,7 @@ export class WorkspaceController {
 		status: 409,
 		description: 'Company name confirmation does not match',
 	})
+	@SkipGlobalAudit()
 	async revoke(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: RevokeWorkspaceDto,
@@ -247,6 +254,7 @@ export class WorkspaceController {
 	@ApiBody({ type: EnableRoleDto })
 	@ApiResponse({ status: 201, description: 'Role enabled' })
 	@ApiResponse({ status: 409, description: 'Role already enabled' })
+	@SkipGlobalAudit()
 	async enableRole(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: EnableRoleDto,
