@@ -15,6 +15,7 @@ import type {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
 	RejectWorkspaceDto,
+	SuspendWorkspaceDto,
 	UpdateWorkspaceDto,
 	WorkspaceFilterDto,
 } from './workspace.dto';
@@ -210,7 +211,12 @@ export class WorkspaceService {
 		return updated;
 	}
 
-	async suspend(id: string, actorId: string, ipAddress: string) {
+	async suspend(
+		id: string,
+		dto: SuspendWorkspaceDto,
+		actorId: string,
+		ipAddress: string,
+	) {
 		const workspace = await this.findById(id);
 
 		if (workspace.status === 'suspended') {
@@ -231,6 +237,7 @@ export class WorkspaceService {
 			action: AuditAction.WORKSPACE_SUSPEND_SUCCESS,
 			resourceType: 'workspace',
 			resourceId: id,
+			changes: { suspensionReason: dto.suspensionReason },
 			ipAddress,
 			status: AuditStatus.SUCCESS,
 		});
@@ -249,30 +256,30 @@ export class WorkspaceService {
 	) {
 		await this.findById(workspaceId);
 
-		const result = await this.workspaceRepository.enableRole(
-			workspaceId,
-			dto.role,
-			actorId,
-		);
-
-		if (result.existing) {
-			throw new ConflictException(
-				`Role "${dto.role}" is already enabled for this workspace`,
+		const enabledRoles: Array<{ id: string; role: string }> = [];
+		for (const role of dto.roles) {
+			const result = await this.workspaceRepository.enableRole(
+				workspaceId,
+				role,
+				actorId,
 			);
+
+			if (!result.existing) {
+				enabledRoles.push(result.role);
+				await this.auditLoggerService.log({
+					actorId,
+					workspaceId,
+					action: AuditAction.WORKSPACE_ENABLE_ROLE_SUCCESS,
+					resourceType: 'workspace_enabled_roles',
+					resourceId: result.role.id,
+					changes: { role },
+					ipAddress,
+					status: AuditStatus.SUCCESS,
+				});
+				this.logger.log(`Role "${role}" enabled for workspace ${workspaceId}`);
+			}
 		}
 
-		await this.auditLoggerService.log({
-			actorId,
-			workspaceId,
-			action: AuditAction.WORKSPACE_ENABLE_ROLE_SUCCESS,
-			resourceType: 'workspace_enabled_roles',
-			resourceId: result.role.id,
-			changes: { role: dto.role },
-			ipAddress,
-			status: AuditStatus.SUCCESS,
-		});
-
-		this.logger.log(`Role "${dto.role}" enabled for workspace ${workspaceId}`);
-		return result.role;
+		return enabledRoles;
 	}
 }

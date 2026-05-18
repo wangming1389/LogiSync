@@ -41,8 +41,11 @@ const ORDER_READ_ROLES = [
 	UserRole.COMPANY_ADMIN,
 ];
 
-const BUYER_ASSIGNABLE_ROLES = [UserRole.BUYER_STAFF];
-const SUPPLIER_ASSIGNABLE_ROLES = [UserRole.SUPPLIER_STAFF];
+const BUYER_ASSIGNABLE_ROLES = [UserRole.BUYER_STAFF, UserRole.COMPANY_ADMIN];
+const SUPPLIER_ASSIGNABLE_ROLES = [
+	UserRole.SUPPLIER_STAFF,
+	UserRole.COMPANY_ADMIN,
+];
 
 @Injectable()
 export class OrderService {
@@ -480,6 +483,11 @@ export class OrderService {
 	private getAssignableRoles(role: string): string[] {
 		if (role === UserRole.BUYER_MANAGER) return BUYER_ASSIGNABLE_ROLES;
 		if (role === UserRole.SUPPLIER_MANAGER) return SUPPLIER_ASSIGNABLE_ROLES;
+		if (role === UserRole.COMPANY_ADMIN) {
+			// Company admin can assign to either buyer or supplier staff based on workspace
+			// For now, return both - the service will validate based on workspace type
+			return [...BUYER_ASSIGNABLE_ROLES, ...SUPPLIER_ASSIGNABLE_ROLES];
+		}
 		throw new ForbiddenException('Only managers can assign orders');
 	}
 

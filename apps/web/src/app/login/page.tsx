@@ -95,19 +95,13 @@ export default function LoginPage() {
 				throw new Error('No access token received from server');
 			}
 
-			localStorage.setItem('access_token', token);
-
-			// Giải mã JWT để lấy role
-			const payload = decodeJWT(token);
-			const role = payload.role as UserRole;
-
-			// Auto-route dựa trên role
-			if (role && ROLE_INITIAL_PATH[role]) {
-				router.push(ROLE_INITIAL_PATH[role]);
-			} else {
+			const claims = parseJwtClaims(token);
+			const destination = resolveAuthDestination(claims);
+			if (!destination) {
 				throw new Error('Invalid role in token');
 			}
 
+			setAuthSession(token);
 			router.push(destination);
 		} catch (err: any) {
 			const f = failCount + 1;

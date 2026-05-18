@@ -79,12 +79,20 @@ export function resolveAuthDestination(claims: AuthClaims | null | undefined) {
 		case 'platform_admin':
 			return '/platform-admin';
 		case 'supplier':
+		case 'supplier_manager':
+		case 'supplier_staff':
+		case 'supplier_accountant':
 			return '/supplier/catalog';
 		case 'carrier':
+		case 'carrier_dispatcher':
+		case 'driver':
 			return '/carrier/fleet';
 		case 'buyer':
+		case 'buyer_manager':
+		case 'buyer_staff':
 			return '/buyer/sourcing';
 		case 'hr':
+		case 'hr_manager':
 			return '/hr/management';
 		case 'company_admin':
 			switch (workspaceType) {
@@ -119,6 +127,31 @@ export function isAllowedPathForClaims(
 		if (workspaceType === 'carrier') return pathname.startsWith('/carrier');
 
 		return false;
+	}
+
+	if (
+		role === 'supplier' ||
+		role === 'supplier_manager' ||
+		role === 'supplier_staff' ||
+		role === 'supplier_accountant'
+	) {
+		return pathname.startsWith('/supplier');
+	}
+
+	if (role === 'buyer' || role === 'buyer_manager' || role === 'buyer_staff') {
+		return pathname.startsWith('/buyer');
+	}
+
+	if (
+		role === 'carrier' ||
+		role === 'carrier_dispatcher' ||
+		role === 'driver'
+	) {
+		return pathname.startsWith('/carrier');
+	}
+
+	if (role === 'hr' || role === 'hr_manager') {
+		return pathname.startsWith('/hr');
 	}
 
 	const destination = resolveAuthDestination(claims);
