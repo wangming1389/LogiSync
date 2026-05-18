@@ -2,7 +2,7 @@
 
 import { ChevronLeft, FileText, Save, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { getWorkflowClone, updateWorkflowState } from '@/lib/workflow-store';
+import { updateWorkflowState, useWorkflowState } from '@/lib/workflow-store';
 
 const statusColor: Record<string, { bg: string; color: string }> = {
 	pending: { bg: '#FFEFC6', color: '#7A4F00' },
@@ -11,7 +11,7 @@ const statusColor: Record<string, { bg: string; color: string }> = {
 };
 
 export default function SupplierRFQ() {
-	const [workflow, setWorkflow] = useState(() => getWorkflowClone());
+	const [workflow, setWorkflow] = useWorkflowState();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [form, setForm] = useState({ price: '', terms: '', notes: '' });
 	const [submittedMessage, setSubmittedMessage] = useState('');

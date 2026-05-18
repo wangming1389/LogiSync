@@ -12,7 +12,7 @@ import {
 	User,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { getWorkflowClone, updateWorkflowState } from '@/lib/workflow-store';
+import { updateWorkflowState, useWorkflowState } from '@/lib/workflow-store';
 
 const statusColor: Record<string, string> = {
 	pending_dispatch: 'bg-[#FFEFC6] text-[#7A4F00]',
@@ -22,7 +22,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function DispatchTracking() {
-	const [workflow, setWorkflow] = useState(() => getWorkflowClone());
+	const [workflow, setWorkflow] = useWorkflowState();
 	const [tab, setTab] = useState<'dispatch' | 'tracking' | 'tariffs' | 'quotations'>('dispatch');
 	const [dispatchModal, setDispatchModal] = useState<string | null>(null);
 	const [selectedVehicle, setSelectedVehicle] = useState('');

@@ -1,7 +1,8 @@
 'use client';
 import { Paperclip, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { messages as initialMessages } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
@@ -13,9 +14,16 @@ const contextStyle: Record<string, { bg: string; color: string }> = {
 };
 
 export function InAppMessaging() {
-	const [threads, setThreads] = useState(initialMessages);
-	const [selectedId, setSelectedId] = useState(initialMessages[0].id);
+	const [threads, setThreads] = useState<typeof initialMessages>([]);
+	const [selectedId, setSelectedId] = useState('');
 	const [newMsg, setNewMsg] = useState('');
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setThreads(initialMessages);
+			setSelectedId(initialMessages[0]?.id ?? '');
+		}
+	}, []);
 
 	const selected = threads.find((t) => t.id === selectedId)!;
 

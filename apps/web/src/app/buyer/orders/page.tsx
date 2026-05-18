@@ -10,8 +10,8 @@ import {
 	Star,
 	X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { getWorkflowClone, updateWorkflowState } from '@/lib/workflow-store';
+import { useEffect, useMemo, useState } from 'react';
+import { updateWorkflowState, useWorkflowState } from '@/lib/workflow-store';
 
 const orderStatusColor: Record<string, string> = {
 	confirmed: 'bg-blue-100 text-blue-700',
@@ -21,7 +21,7 @@ const orderStatusColor: Record<string, string> = {
 };
 
 export default function BuyerOrdersTracking() {
-	const [workflow, setWorkflow] = useState(() => getWorkflowClone());
+	const [workflow, setWorkflow] = useWorkflowState();
 	const [tab, setTab] = useState<'orders' | 'logistics' | 'delivery' | 'finance' | 'disputes'>('orders');
 	const [selectedFreight, setSelectedFreight] = useState<string | null>(null);
 	const [ePODAction, setEPODAction] = useState<'accepted' | 'disputed' | null>(workflow.epodStatus);
@@ -32,6 +32,10 @@ export default function BuyerOrdersTracking() {
 	const [showComplaintForm, setShowComplaintForm] = useState(false);
 	const [compForm, setCompForm] = useState({ type: 'Quality Issue', description: '', orderId: '' });
 	const [filter, setFilter] = useState('All');
+
+	useEffect(() => {
+		setEPODAction(workflow.epodStatus);
+	}, [workflow.epodStatus]);
 
 	const statusOptions = ['All', 'confirmed', 'in_transit', 'delivered'];
 	const filteredOrders = filter === 'All' ? workflow.buyerOrders : workflow.buyerOrders.filter((order) => order.status === filter);

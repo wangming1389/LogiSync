@@ -13,10 +13,12 @@ import {
 	X,
 	XSquare,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ePODData, expenses, incidents } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 export default function EPODAndIncidents() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'epod' | 'incidents' | 'expenses'>('epod');
 	const [currentStep, setCurrentStep] = useState(2); // Step 2 is current (0-based: step 3 = index 2)
 	const [expenseList, setExpenseList] = useState(expenses);
@@ -28,6 +30,23 @@ export default function EPODAndIncidents() {
 	});
 	const [showIncidentForm, setShowIncidentForm] = useState(false);
 	const [incForm, setIncForm] = useState({ type: 'Accident', description: '' });
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setDemoEnabled(true);
+		}
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 className="text-2xl text-gray-900">e-POD, Incidents & Expenses</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample carrier workflow data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	function advanceStep() {
 		if (currentStep < 3) setCurrentStep(currentStep + 1);

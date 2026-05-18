@@ -18,7 +18,9 @@ import {
 	XAxis,
 	YAxis,
 } from 'recharts';
+import { useEffect, useState } from 'react';
 import { drivers, vehicles } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type Vehicle = (typeof vehicles)[0] & { status: string };
 
@@ -39,9 +41,27 @@ const statusDotColor: Record<string, string> = {
 };
 
 export default function FleetManagement() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [fleet, setFleet] = useState<Vehicle[]>(vehicles);
 	const [tab, setTab] = useState<'list' | 'dashboard'>('dashboard');
 	const [showForm, setShowForm] = useState(false);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setDemoEnabled(true);
+		}
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Vehicle Fleet Monitor</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample fleet data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	function toggleActive(id: string) {
 		setFleet((fs) =>

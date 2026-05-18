@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
 	buyerComplaints,
 	buyerOrders,
@@ -14,6 +15,7 @@ import {
 	tariffs,
 	vehicles,
 } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type BuyerRfq = (typeof buyerRFQList)[number] & {
 	items?: { product: string; qty: number; unit: string; productId?: string }[];
@@ -39,6 +41,8 @@ type BuyerMatching = (typeof buyerThreeWayMatching)[number];
 type FreightQuoteBuyer = (typeof freightQuotesBuyer)[number];
 
 export type WorkflowState = {
+	drivers: typeof drivers;
+	vehicles: typeof vehicles;
 	buyerRfqs: BuyerRfq[];
 	supplierRfqs: SupplierRfq[];
 	negotiations: Negotiation[];
@@ -61,8 +65,31 @@ function clone<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function createDefaultState(): WorkflowState {
+export function createEmptyWorkflowState(): WorkflowState {
 	return {
+		drivers: [],
+		vehicles: [],
+		buyerRfqs: [],
+		supplierRfqs: [],
+		negotiations: [],
+		shipments: [],
+		tariffs: [],
+		freightQuotations: [],
+		buyerOrders: [],
+		buyerComplaints: [],
+		buyerMatching: [],
+		freightQuotesBuyer: [],
+		epodStatus: null,
+		confirmedCarrierId: null,
+		finalizedNegotiationIds: [],
+		disputeReason: '',
+	};
+}
+
+export function createDemoWorkflowState(): WorkflowState {
+	return {
+		drivers: clone(drivers),
+		vehicles: clone(vehicles),
 		buyerRfqs: clone(buyerRFQList),
 		supplierRfqs: clone(rfqList),
 		negotiations: clone(negotiations),
@@ -82,20 +109,41 @@ function createDefaultState(): WorkflowState {
 
 export function loadWorkflowState(): WorkflowState {
 	if (typeof window === 'undefined') {
-		return createDefaultState();
+		return createEmptyWorkflowState();
 	}
 
 	try {
 		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) return createDefaultState();
+		if (!raw) return createEmptyWorkflowState();
 		const parsed = JSON.parse(raw) as Partial<WorkflowState>;
 		return {
-			...createDefaultState(),
+			...createEmptyWorkflowState(),
 			...parsed,
+			drivers: Array.isArray(parsed.drivers)
+				? parsed.drivers
+				: createEmptyWorkflowState().drivers,
+			vehicles: Array.isArray(parsed.vehicles)
+				? parsed.vehicles
+				: createEmptyWorkflowState().vehicles,
 		};
 	} catch {
-		return createDefaultState();
+		return createEmptyWorkflowState();
 	}
+}
+
+export function useWorkflowState() {
+	const [state, setState] = useState<WorkflowState>(createEmptyWorkflowState());
+
+	useEffect(() => {
+		if (!isDemoWorkspaceSession()) {
+			setState(createEmptyWorkflowState());
+			return;
+		}
+
+		setState(loadWorkflowState());
+	}, []);
+
+	return [state, setState] as const;
 }
 
 export function saveWorkflowState(nextState: WorkflowState) {

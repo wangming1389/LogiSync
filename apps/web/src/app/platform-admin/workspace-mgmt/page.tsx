@@ -1,12 +1,26 @@
 'use client';
 
 import { AlertTriangle, PauseCircle, Search, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { managedWorkspaces } from '../../data/mockData';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
-type Workspace = (typeof managedWorkspaces)[0] & { status: string };
+type Workspace = {
+	id: string;
+	name: string;
+	slug: string;
+	type: string;
+	status: string;
+	taxId: string;
+	adminEmail?: string;
+	createdAt?: string;
+	registeredAt?: string;
+	enabledRoles?: string[];
+	roles?: string[];
+	activeShipments?: number;
+	approvedAt?: string;
+};
 
 function StatusChip({ status }: { status: string }) {
 	const map: Record<string, { bg: string; color: string }> = {
@@ -32,11 +46,35 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function WorkspaceManagement() {
-	const [workspaces, setWorkspaces] = useState<Workspace[]>(managedWorkspaces);
+	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [search, setSearch] = useState('');
 	const [suspendModal, setSuspendModal] = useState<Workspace | null>(null);
 	const [revokeModal, setRevokeModal] = useState<Workspace | null>(null);
 	const [confirmName, setConfirmName] = useState('');
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		let active = true;
+		async function loadWorkspaces() {
+			setLoading(true);
+			try {
+				const response: any = await api.get('/workspaces?limit=100');
+				const items = response?.data?.items ?? response?.items ?? [];
+				if (active && Array.isArray(items)) {
+					setWorkspaces(items);
+				}
+			} catch (error) {
+				console.error('Error loading workspaces', error);
+			} finally {
+				if (active) setLoading(false);
+			}
+		}
+
+		loadWorkspaces();
+		return () => {
+			active = false;
+		};
+	}, []);
 
 	const filtered = workspaces.filter((w) =>
 		w.company.toLowerCase().includes(search.toLowerCase()),
@@ -122,6 +160,13 @@ export default function WorkspaceManagement() {
 						</tr>
 					</thead>
 					<tbody>
+						{loading ? (
+							<tr>
+								<td className="px-5 py-6 text-sm text-slate-500" colSpan={6}>
+									Loading workspaces...
+								</td>
+							</tr>
+						) : null}
 						{filtered.map((w, i) => (
 							<tr
 								key={w.id}

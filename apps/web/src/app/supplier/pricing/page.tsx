@@ -8,16 +8,35 @@ import {
 	Users,
 	X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { creditLimits, priceLists } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 export default function SupplierPricingCredit() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'pricing' | 'credit'>('pricing');
 	const [lists, setLists] = useState(priceLists);
 	const [credits, setCredits] = useState(creditLimits);
 	const [bypassModal, setBypassModal] = useState<string | null>(null);
 	const [bypassReason, setBypassReason] = useState('');
 	const [showAddList, setShowAddList] = useState(false);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setDemoEnabled(true);
+		}
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Pricing & Credit Management</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample pricing data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	function approveBypass(buyerId: string) {
 		setBypassModal(null);
