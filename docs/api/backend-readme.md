@@ -115,12 +115,12 @@ The project leverages several established software design patterns to maintain c
 - **CI/CD**: GitHub Actions pipeline for linting, testing, and Docker builds.
 
 #### Infrastructure Test Cases Mapping
-| ID | Test Scenario | Expected Result |
-| :--- | :--- | :--- |
-| **TC-INFRA-01** | Active CLS Transaction Priority | Repository uses the active CLS transaction before the root database. |
-| **TC-INFRA-02** | Root Database Fallback | Repository falls back to the root database without an active transaction. |
-| **TC-INFRA-03** | Nested Unit-of-Work CLS | Database service reuses the active CLS transaction for nested unit-of-work calls. |
-| **TC-INFRA-04** | Unbound Transaction CLS Creation | Database service creates a CLS context when a transaction starts outside one. |
+| ID | Test Scenario | Requirement Mapping | Expected Result |
+| :--- | :--- | :--- | :--- |
+| **TC-INFRA-01** | Active CLS Transaction Priority | AD-03 / QAR-18 / ADD Section 2.2.2 | Repository uses the active CLS transaction before the root database. |
+| **TC-INFRA-02** | Root Database Fallback | AD-01 | Repository falls back to the root database without an active transaction. |
+| **TC-INFRA-03** | Nested Unit-of-Work CLS | AD-01 / AD-03 / QAR-18 / QAR-25 / ADD Section 2.2.2 | Database service reuses the active CLS transaction for nested unit-of-work calls. |
+| **TC-INFRA-04** | Unbound Transaction CLS Creation | AD-01 / AD-03 / QAR-18 / ADD Section 2.2.2 | Database service creates a CLS context when a transaction starts outside one. |
 
 ### Deployment
 - **Containerization**: Multi-stage Docker builds using `Dockerfile.api`.
