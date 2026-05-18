@@ -1,18 +1,24 @@
 'use client';
 
 import { Lock, Send, TrendingDown, TrendingUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { getWorkflowClone, updateWorkflowState } from '@/lib/workflow-store';
+import { useEffect, useMemo, useState } from 'react';
+import { updateWorkflowState, useWorkflowState } from '@/lib/workflow-store';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
 export default function SupplierNegotiation() {
-	const [workflow, setWorkflow] = useState(() => getWorkflowClone());
+	const [workflow, setWorkflow] = useWorkflowState();
 	const [selected, setSelected] = useState(workflow.negotiations[0]?.id ?? '');
 	const [newPrice, setNewPrice] = useState('');
 	const [newNote, setNewNote] = useState('');
 	const [showFinalize, setShowFinalize] = useState(false);
 	const [finalizedMessage, setFinalizedMessage] = useState('');
+
+	useEffect(() => {
+		if (!selected && workflow.negotiations[0]?.id) {
+			setSelected(workflow.negotiations[0].id);
+		}
+	}, [selected, workflow.negotiations]);
 
 	const neg = useMemo(
 		() => workflow.negotiations.find((item) => item.id === selected) ?? workflow.negotiations[0],

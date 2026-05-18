@@ -6,8 +6,9 @@ import {
 	UserPlus,
 	XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supplierOrders } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 const TEAM = ['Nguyen Van B', 'Tran Thi C', 'Le Minh D', 'Pham Thi E'];
@@ -38,12 +39,30 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function SupplierOrderManagement() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [orders, setOrders] = useState(supplierOrders);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [denyModal, setDenyModal] = useState<string | null>(null);
 	const [denyReason, setDenyReason] = useState('');
 	const [assignModal, setAssignModal] = useState<string | null>(null);
 	const [assignee, setAssignee] = useState('');
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setDemoEnabled(true);
+		}
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Supplier Orders</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample orders are loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	const detail = orders.find((o) => o.id === selected);
 

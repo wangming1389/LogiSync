@@ -125,6 +125,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: user.id,
 			workspaceId: user.workspaceId,
+			workspaceSlug: workspace.slug,
 			workspaceType: workspace.type,
 			role: user.role,
 			sessionId,
@@ -208,6 +209,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: currentPayload.sub,
 			workspaceId: currentPayload.workspaceId,
+			workspaceSlug: currentPayload.workspaceSlug,
 			workspaceType: currentPayload.workspaceType,
 			role: currentPayload.role,
 			sessionId: newSessionId,
@@ -289,6 +291,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: payload.sub,
 			workspaceId: payload.workspaceId,
+			workspaceSlug: payload.workspaceSlug,
 			workspaceType: payload.workspaceType,
 			role: payload.role,
 			sessionId: newSessionId,
@@ -322,8 +325,17 @@ export class AuthService {
 			throw new UnauthorizedException('User does not exist');
 		}
 
+		const workspace = await this.workspaceRepository.findById(user.workspaceId);
+
+		if (!workspace) {
+			throw new UnauthorizedException('Workspace does not exist');
+		}
+
 		return {
 			...user,
+			workspaceSlug: workspace.slug,
+			workspaceName: workspace.name,
+			workspaceType: workspace.type,
 			lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
 		};
 	}
@@ -339,6 +351,7 @@ export class AuthService {
 			{
 				sub: claims.sub,
 				workspaceId: claims.workspaceId,
+				workspaceSlug: claims.workspaceSlug,
 				workspaceType: claims.workspaceType,
 				role: claims.role,
 				sessionId: claims.sessionId,

@@ -71,6 +71,17 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function WorkspaceApprovals() {
+
+	function formatDateISO(dateStr?: string, includeTime = false) {
+		if (!dateStr) return '';
+		const d = new Date(dateStr);
+		if (Number.isNaN(d.getTime())) return dateStr;
+		if (includeTime) {
+			return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+		}
+		return d.toISOString().slice(0, 10);
+	}
+
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [approveModal, setApproveModal] = useState<string | null>(null);
@@ -108,11 +119,6 @@ export default function WorkspaceApprovals() {
 	const detail = workspaces.find((w) => w.id === selected);
 
 	async function approve(id: string) {
-		if (!rejectReason.trim()) {
-			setRejectError('Rejection reason is required.');
-			return;
-		}
-		setRejectError('');
 		const previous = workspaces;
 		setWorkspaces((items) =>
 			items.map((item) =>
@@ -260,7 +266,7 @@ export default function WorkspaceApprovals() {
 										<span>Tax ID: {w.taxId}</span>
 										<span>•</span>
 										<span>
-											Registered: {new Date(w.registeredAt ?? w.createdAt).toLocaleDateString()}
+											Registered: {formatDateISO(w.registeredAt ?? w.createdAt)}
 										</span>
 									</div>
 								</div>
@@ -336,7 +342,7 @@ export default function WorkspaceApprovals() {
 										Created At
 									</p>
 									<p className="font-medium" style={{ color: '#191C1E' }}>
-										{new Date(detail.createdAt).toLocaleString()}
+										{formatDateISO(detail.createdAt, true)}
 									</p>
 								</div>
 

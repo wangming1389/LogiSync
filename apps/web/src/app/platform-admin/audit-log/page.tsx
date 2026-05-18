@@ -1,8 +1,8 @@
 'use client';
 
 import { Activity, Download, Filter, Search } from 'lucide-react';
-import { useState } from 'react';
-import { auditLogs } from '../../data/mockData';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 const DOMAINS = ['All', 'Platform', 'Supplier', 'Carrier', 'Buyer', 'HR'];
@@ -21,12 +21,37 @@ const domainStyle: Record<string, { bg: string; color: string }> = {
 };
 
 export default function AuditLog() {
+	const [logs, setLogs] = useState<Array<{ id: string; timestamp: string; actor: string; action: string; target: string; ip: string; domain: string }>>([]);
 	const [search, setSearch] = useState('');
 	const [domain, setDomain] = useState('All');
 	const [dateFrom, setDateFrom] = useState('');
 	const [dateTo, setDateTo] = useState('');
+	const [loading, setLoading] = useState(true);
 
-	const filtered = auditLogs
+	useEffect(() => {
+		let active = true;
+		async function loadLogs() {
+			setLoading(true);
+			try {
+				const response: any = await api.get('/admin/audit-logs?limit=200');
+				const items = response?.data?.items ?? response?.items ?? [];
+				if (active && Array.isArray(items)) {
+					setLogs(items);
+				}
+			} catch (error) {
+				console.error('Error loading audit logs', error);
+			} finally {
+				if (active) setLoading(false);
+			}
+		}
+
+		loadLogs();
+		return () => {
+			active = false;
+		};
+	}, []);
+
+	const filtered = logs
 		.filter((log) => {
 		const matchSearch =
 			!search ||
@@ -207,6 +232,13 @@ export default function AuditLog() {
 						</tr>
 					</thead>
 					<tbody>
+						{loading ? (
+							<tr>
+								<td className="px-4 py-6 text-sm text-slate-500" colSpan={6}>
+									Loading audit logs...
+								</td>
+							</tr>
+						) : null}
 						{filtered.map((log, i) => (
 							<tr
 								key={log.id}

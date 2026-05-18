@@ -4,6 +4,7 @@ import { z } from 'zod';
 export interface JwtPayload {
 	sub: string; // userId
 	workspaceId: string;
+	workspaceSlug?: string;
 	workspaceType?: string;
 	role: string;
 	sessionId: string;
@@ -55,6 +56,9 @@ export const MeResponseSchema = z.object({
 	lastName: z.string().nullable(),
 	role: z.string(),
 	workspaceId: z.string().uuid(),
+	workspaceSlug: z.string(),
+	workspaceName: z.string(),
+	workspaceType: z.string(),
 	lastLoginAt: z.string().nullable(),
 });
 
