@@ -25,6 +25,10 @@ describe('RfqService', () => {
 		),
 	};
 
+	const rfqCreatedCounter = {
+		inc: jest.fn(),
+	};
+
 	let service: RfqService;
 
 	const draftRfq = {
@@ -55,6 +59,7 @@ describe('RfqService', () => {
 			deliveryDate: null,
 			deliveryLocation: null,
 			notes: null,
+			status: 'pending',
 		});
 		rfqRepo.updateItem.mockResolvedValue({ id: 'rfq-item-1', quantity: 10 });
 		auditLoggerService.logInTx.mockResolvedValue(undefined);
@@ -64,6 +69,7 @@ describe('RfqService', () => {
 			auditLoggerService as never,
 			messageQueueService as never,
 			databaseService as never,
+			rfqCreatedCounter as never,
 		);
 	});
 

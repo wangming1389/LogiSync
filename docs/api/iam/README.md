@@ -19,9 +19,9 @@ The IAM module is the core security and multi-tenancy layer of the LogiSync plat
 | Feature | Use Case | Business Rules | Implementation Status |
 | :--- | :--- | :--- | :--- |
 | **Login** | UC7 | BR-37 to BR-42 | Implemented (Auth Service + JWT Strategy) |
-| **Change Password** | UC8 | - | Implemented (Auth Service + Bcrypt) |
-| **Forgot Password** | UC9 | - | Implemented (Token-based reset) |
-| **Session Management** | UC10 | - | Implemented (Redis session tracking) |
+| **Change Password** | UC8 | BR-43 to BR-51 | Implemented (Auth Service + Bcrypt) |
+| **Forgot Password** | UC9 | BR-52 to BR-58 | Implemented (Token-based reset) |
+| **Session Management** | UC10 | BR-59 to BR-65 | Implemented (Redis session tracking) |
 
 ## 3. Test Cases Mapping
 
