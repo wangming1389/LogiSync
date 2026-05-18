@@ -8,23 +8,23 @@ The Order module handles the complete lifecycle of Purchase Orders (PO), from ap
 ### 2.1 Order Lifecycle
 | Feature | Use Case | Business Rules | Implementation Status |
 | :--- | :--- | :--- | :--- |
-| **Approve Order** | US-25 | - | Implemented (Atomic TX + Audit) |
-| **Reject Order** | US-26 | BR-187 (Reason Required) | Implemented (Atomic TX + Guard) |
-| **Confirm Goods Receipt** | US-73 | BR-452 (Reputation) | Implemented (Manual & Auto) |
-| **Auto-Confirm Receipt** | - | - | Implemented (Background Worker) |
+| **Approve Order** | US-25 / UC25 | BR-181 to BR-185 | Implemented (Atomic TX + Audit) |
+| **Reject Order** | US-26 / UC26 | BR-186 to BR-189 | Implemented (Atomic TX + Guard) |
+| **Confirm Goods Receipt** | US-73 / UC73 | BR-452 (Reputation) | Implemented (Manual & Auto) |
+| **Auto-Confirm Receipt** | UC73 | BR-450 | Implemented (Background Worker) |
 
 ### 2.2 Task Management
 | Feature | Use Case | Business Rules | Implementation Status |
 | :--- | :--- | :--- | :--- |
 | **Assign Order Task** | UC27, UC65 | BR-197, BR-416 | Implemented (Assignment History) |
-| **Reassign Order Task** | UC28, UC66 | - | Implemented (Closes previous assignment) |
+| **Reassign Order Task** | UC28, UC66 | BR-194 to BR-199, BR-416 | Implemented (Closes previous assignment) |
 | **View Assigned Tasks** | UC29, UC67 | BR-200, BR-419 | Implemented (Role-based filtering) |
 
 ### 2.3 Reporting & History
 | Feature | Use Case | Business Rules | Implementation Status |
 | :--- | :--- | :--- | :--- |
 | **Export Order History** | UC69 | BR-431, BR-433 | Implemented (XLSX/PDF, Max 366 days) |
-| **Status History** | - | BR-427 | Implemented (Append-only tracking) |
+| **Status History** | UC68 | BR-427 | Implemented (Append-only tracking) |
 
 ## 3. Test Cases Mapping
 
@@ -35,7 +35,7 @@ The Order module handles the complete lifecycle of Purchase Orders (PO), from ap
 | **TC-ORD-02** | Rejection Reason | BR-187 | `PATCH /reject` returns 400 if reason is empty. |
 | **TC-ORD-03** | Status History Immutability | BR-427 | Verify `order_status_history` is append-only. |
 | **TC-ORD-04** | Export Range Validation | BR-433 | Return 400 if export range > 366 days. |
-| **TC-ORD-05** | Auto-Confirm Logic | - | Background worker processes orders after 48h. |
+| **TC-ORD-05** | Auto-Confirm Logic | BR-450 | Background worker processes orders after 48h. |
 
 ### 3.2 Architectural & Security Test Cases (ADD/SAD Mapping)
 | ID | Test Scenario | ADD/SAD Reference | Expected Result |

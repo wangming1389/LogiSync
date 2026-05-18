@@ -17,8 +17,8 @@ The Media module provides secure file storage and delivery services for the enti
 | ID | Test Scenario | BR Mapping | Expected Result |
 | :--- | :--- | :--- | :--- |
 | **TC-MED-01** | File Size Enforcement | BR-04 | Reject uploads > 5MB for images / 10MB for documents. |
-| **TC-MED-02** | File Format Validation | - | Only allow .pdf, .jpg, .png for legal documents. |
-| **TC-MED-03** | Audit Log (Signed URL) | - | Every request to generate a signed URL must be logged. |
+| **TC-MED-02** | File Format Validation | BR-537 / BR-04 | Only allow .pdf, .jpg, .png for legal documents. |
+| **TC-MED-03** | Audit Log (Signed URL) | BR-547 | Every request to generate a signed URL must be logged. |
 
 ### 3.2 Architectural & Security Test Cases (ADD/SAD Mapping)
 | ID | Test Scenario | ADD/SAD Reference | Expected Result |
