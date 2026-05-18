@@ -98,7 +98,7 @@ describe('OrderRepository', () => {
 	});
 
 	it('TC-ORD-09 Tenant Isolation', async () => {
-		where.mockResolvedValueOnce([]);
+		(where as any).mockResolvedValueOnce([]);
 
 		await repository.findVisibleById(
 			'order-1',

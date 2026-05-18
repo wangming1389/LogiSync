@@ -25,16 +25,16 @@ Located at `apps/api/src/core/session/session-registry.service.ts`.
 ## 3. Test Cases Mapping
 
 ### 3.1 Security Test Cases
-| ID | Test Scenario | Expected Result |
-| :--- | :--- | :--- |
-| **TC-SEC-01** | Brute Force Protection | After 5th failed login, the 6th attempt must return 403 Forbidden even if credentials are correct. |
-| **TC-SEC-02** | Session Revocation | Revoking a session in Redis must make the corresponding JWT invalid immediately (next request). |
-| **TC-SEC-03** | Password Change | Changing password via `PATCH /auth/password` must empty the user's session list in Redis. |
-| **TC-SEC-04** | JWT Claims Leakage | Ensure JWT payload does not contain PII (only `sub`, `workspaceId`, `role`, `sessionId`). |
-| **TC-SEC-05** | Bypass Unprotected Routes | Rate limit guard should allow routes without a rate limit policy. |
-| **TC-SEC-06** | IP Rate Limit Enforcement | Guard rejects public requests over the configured IP limit. |
-| **TC-SEC-07** | User Rate Limit Isolation | Tracks authenticated user buckets separately when configured. |
-| **TC-SEC-08** | Missing Context Rejection | Guard requires an authenticated user for user-scoped policies. |
+| ID | Test Scenario | Requirement Mapping | Expected Result |
+| :--- | :--- | :--- | :--- |
+| **TC-SEC-01** | Brute Force Protection | BR-39 / QAR-13 / ADD 1.3 | After 5th failed login, the 6th attempt must return 403 Forbidden even if credentials are correct. |
+| **TC-SEC-02** | Session Revocation | BR-21, BR-28 / QAR-09 / ADD 1.2 | Revoking a session in Redis must make the corresponding JWT invalid immediately (next request). |
+| **TC-SEC-03** | Password Change | BR-49 / QAR-14 / ADD 1.3 | Changing password via `PATCH /auth/password` must empty the user's session list in Redis. |
+| **TC-SEC-04** | JWT Claims Leakage | BR-42 / QAR-27 / ADD 1.3 | Ensure JWT payload does not contain PII (only `sub`, `workspaceId`, `role`, `sessionId`). |
+| **TC-SEC-05** | Bypass Unprotected Routes | BR-63 / QAR-15 / ADD 1.3 | Rate limit guard should allow routes without a rate limit policy. |
+| **TC-SEC-06** | IP Rate Limit Enforcement | BR-52 / QAR-07 / ADD 1.3 | Guard rejects public requests over the configured IP limit. |
+| **TC-SEC-07** | User Rate Limit Isolation | BR-52 / QAR-07, QAR-27 / ADD 1.3 | Tracks authenticated user buckets separately when configured. |
+| **TC-SEC-08** | Missing Context Rejection | BR-63 / QAR-27 / ADD 1.3 | Guard requires an authenticated user for user-scoped policies. |
 
 ## 4. Technical Constraints
 - **Performance**: Security checks (lockout/session) add < 10ms to each authenticated request.
