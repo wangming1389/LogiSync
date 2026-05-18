@@ -32,6 +32,7 @@ import {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
 	RejectWorkspaceDto,
+	SuspendWorkspaceDto,
 	UpdateWorkspaceDto,
 	WorkspaceFilterDto,
 } from './workspace.dto';
@@ -191,15 +192,20 @@ export class WorkspaceController {
       All currently active JWTs of users in this workspace will be invalidated immediately via Redis session revocation.`,
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+	@ApiBody({ type: SuspendWorkspaceDto })
 	@ApiResponse({
 		status: 200,
 		description: 'Workspace suspended, sessions revoked',
 	})
 	@ApiResponse({ status: 409, description: 'Workspace is already suspended' })
-	async suspend(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+	async suspend(
+		@Param('id', ParseUUIDPipe) id: string,
+		@Body() dto: SuspendWorkspaceDto,
+		@Req() req: Request,
+	) {
 		const payload = (req as any).user as JwtPayload;
 		const ipAddress = getClientIp(req);
-		return this.workspaceService.suspend(id, payload.sub, ipAddress);
+		return this.workspaceService.suspend(id, dto, payload.sub, ipAddress);
 	}
 
 	// POST /workspaces/:id/roles/enable (COMPANY_ADMIN)

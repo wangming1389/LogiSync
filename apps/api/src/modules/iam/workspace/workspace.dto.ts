@@ -58,23 +58,35 @@ export const RejectWorkspaceSchema = z.object({
 
 export class RejectWorkspaceDto extends createZodDto(RejectWorkspaceSchema) {}
 
+export const SuspendWorkspaceSchema = z.object({
+	suspensionReason: z
+		.string()
+		.min(1, 'Suspension reason cannot be empty')
+		.max(2000),
+});
+
+export class SuspendWorkspaceDto extends createZodDto(SuspendWorkspaceSchema) {}
+
+const ENABLE_ROLE_VALUES = [
+	'company_admin',
+	'supplier_manager',
+	'supplier_staff',
+	'supplier_accountant',
+	'buyer_manager',
+	'buyer_staff',
+	'carrier_dispatcher',
+	'driver',
+	'hr_manager',
+] as const;
+
 export const EnableRoleSchema = z.object({
-	role: z.enum(
-		[
-			'company_admin',
-			'supplier_manager',
-			'supplier_staff',
-			'supplier_accountant',
-			'buyer_manager',
-			'buyer_staff',
-			'carrier_dispatcher',
-			'driver',
-			'hr_manager',
-		],
-		{
-			errorMap: () => ({ message: 'Invalid role' }),
-		},
-	),
+	roles: z
+		.array(
+			z.enum(ENABLE_ROLE_VALUES, {
+				errorMap: () => ({ message: 'Invalid role' }),
+			}),
+		)
+		.min(1, 'At least one role is required'),
 });
 
 export class EnableRoleDto extends createZodDto(EnableRoleSchema) {}

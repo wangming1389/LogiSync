@@ -20,6 +20,15 @@ function isValidTaxId(value: string) {
 	return /^\d{10}(?:\d{3})?$/.test(value);
 }
 
+function slugify(value: string) {
+	return value
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 255);
+}
+
 export default function RegisterWorkspace() {
 	const router = useRouter();
 	const [step, setStep] = useState<1 | 2>(1);
@@ -61,14 +70,17 @@ export default function RegisterWorkspace() {
 
 		setSubmitting(true);
 		try {
-			await api.post('/workspaces', {
-				name: workspaceName.trim(),
-				taxId: taxId.trim(),
-				type: workspaceType,
-				adminEmail: adminEmail.trim(),
-				adminPassword: password,
-				acceptedTermsVersion: ACCEPTED_TERMS_VERSION,
-			});
+				const payload = {
+					name: workspaceName.trim(),
+					slug: slugify(workspaceName),
+					taxId: taxId.trim(),
+					type: workspaceType,
+					adminEmail: adminEmail.trim(),
+					adminPassword: password,
+					acceptedTermsVersion: ACCEPTED_TERMS_VERSION,
+				};
+
+				await api.post('/workspaces', payload);
 
 			setSubmitSuccess(
 				'Workspace submitted successfully. Status is now pending approval.',

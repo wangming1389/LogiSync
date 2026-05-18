@@ -76,8 +76,10 @@ export default function WorkspaceApprovals() {
 	const [approveModal, setApproveModal] = useState<string | null>(null);
 	const [rejectModal, setRejectModal] = useState<string | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
+	const [rejectError, setRejectError] = useState('');
 	const [suspendModal, setSuspendModal] = useState<string | null>(null);
 	const [suspendReason, setSuspendReason] = useState('');
+	const [suspendError, setSuspendError] = useState('');
 	const [roleModal, setRoleModal] = useState<string | null>(null);
 	const [rolesToEnable, setRolesToEnable] = useState<string[]>([]);
 
@@ -89,9 +91,10 @@ export default function WorkspaceApprovals() {
 				statusFilter !== 'all'
 					? `?status=${statusFilter}&limit=100`
 					: `?limit=100`;
-			const data: any = await api.get('/workspaces' + query);
-			if (data?.items) {
-				setWorkspaces(data.items);
+			const response: any = await api.get('/workspaces' + query);
+			const items = response?.data?.items ?? response?.items ?? [];
+			if (Array.isArray(items)) {
+				setWorkspaces(items);
 			}
 		} catch (e) {
 			console.error('Error fetching workspaces', e);
@@ -105,6 +108,11 @@ export default function WorkspaceApprovals() {
 	const detail = workspaces.find((w) => w.id === selected);
 
 	async function approve(id: string) {
+		if (!rejectReason.trim()) {
+			setRejectError('Rejection reason is required.');
+			return;
+		}
+		setRejectError('');
 		const previous = workspaces;
 		setWorkspaces((items) =>
 			items.map((item) =>
@@ -130,9 +138,12 @@ export default function WorkspaceApprovals() {
 			),
 		);
 		try {
-			await api.patch(`/workspaces/${id}/reject`, { reason: rejectReason });
+			await api.patch(`/workspaces/${id}/reject`, {
+				rejectionReason: rejectReason,
+			});
 			setRejectModal(null);
 			setRejectReason('');
+			setRejectError('');
 			setSelected(null);
 		} catch (e) {
 			console.error(e);
@@ -142,6 +153,11 @@ export default function WorkspaceApprovals() {
 	}
 
 	async function suspend(id: string) {
+		if (!suspendReason.trim()) {
+			setSuspendError('Suspension reason is required.');
+			return;
+		}
+		setSuspendError('');
 		const previous = workspaces;
 		setWorkspaces((items) =>
 			items.map((item) =>
@@ -149,9 +165,12 @@ export default function WorkspaceApprovals() {
 			),
 		);
 		try {
-			await api.patch(`/workspaces/${id}/suspend`, { reason: suspendReason });
+			await api.patch(`/workspaces/${id}/suspend`, {
+				suspensionReason: suspendReason,
+			});
 			setSuspendModal(null);
 			setSuspendReason('');
+			setSuspendError('');
 			setSelected(null);
 		} catch (e) {
 			console.error(e);
@@ -240,9 +259,9 @@ export default function WorkspaceApprovals() {
 									>
 										<span>Tax ID: {w.taxId}</span>
 										<span>•</span>
-											<span>
-												Registered: {new Date(w.registeredAt ?? w.createdAt).toLocaleDateString()}
-											</span>
+										<span>
+											Registered: {new Date(w.registeredAt ?? w.createdAt).toLocaleDateString()}
+										</span>
 									</div>
 								</div>
 							</div>
@@ -451,6 +470,7 @@ export default function WorkspaceApprovals() {
 								onClick={() => {
 									setRejectModal(null);
 									setRejectReason('');
+									setSuspendError('');
 								}}
 								className="px-5 py-2 rounded-xl font-medium"
 								style={{ color: '#40484C' }}
@@ -493,6 +513,9 @@ export default function WorkspaceApprovals() {
 							style={{ borderColor: '#E0E4EB' }}
 							placeholder="Suspension reason..."
 						/>
+						{suspendError && (
+							<p className="mb-4 text-sm text-red-600">{suspendError}</p>
+						)}
 						<div className="flex gap-3 justify-end">
 							<button
 								onClick={() => {

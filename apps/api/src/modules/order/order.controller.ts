@@ -42,12 +42,16 @@ const ORDER_READ_ROLES = [
 	'supplier_manager',
 	'company_admin',
 ] as const;
-const MANAGER_ROLES = ['buyer_manager', 'supplier_manager'] as const;
+const MANAGER_ROLES = [
+	'buyer_manager',
+	'supplier_manager',
+	'company_admin',
+] as const;
 
-@ApiTags('Order Management')
-@ApiBearerAuth('access-token')
-@Controller('orders')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RbacGuard)
+@ApiTags('Order Management')
+@Controller('orders')
 export class OrderController {
 	constructor(private readonly orderService: OrderService) {}
 
@@ -113,7 +117,7 @@ export class OrderController {
 	}
 
 	@Patch(':id/approve')
-	@Roles('supplier_staff')
+	@Roles('supplier_staff', 'supplier_manager', 'company_admin')
 	@ApiOperation({ summary: 'Approve purchase order (US-25)' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Order approved' })
@@ -129,7 +133,7 @@ export class OrderController {
 	}
 
 	@Patch(':id/reject')
-	@Roles('supplier_staff')
+	@Roles('supplier_staff', 'supplier_manager', 'company_admin')
 	@ApiOperation({
 		summary: 'Reject purchase order (US-26)',
 	})
@@ -153,7 +157,7 @@ export class OrderController {
 	}
 
 	@Patch(':id/confirm-receipt')
-	@Roles('buyer_staff')
+	@Roles('buyer_staff', 'buyer_manager', 'company_admin')
 	@ApiOperation({ summary: 'Confirm goods received manually (US-73)' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'Goods receipt confirmed' })

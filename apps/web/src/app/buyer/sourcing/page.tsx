@@ -9,6 +9,7 @@ import {
 	ShoppingCart,
 	SortAsc,
 	Star,
+	Send,
 	X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
