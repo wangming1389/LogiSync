@@ -148,6 +148,11 @@ export class WorkspaceService {
 		return updated;
 	}
 
+	async findNames(ids: string[]) {
+		if (!Array.isArray(ids) || ids.length === 0) return [];
+		return this.workspaceRepository.findNamesByIds(ids);
+	}
+
 	async approve(id: string, actorId: string, ipAddress: string) {
 		const workspace = await this.findById(id);
 

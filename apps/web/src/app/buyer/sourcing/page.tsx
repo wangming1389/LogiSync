@@ -17,32 +17,85 @@ import {
 	buyerProducts,
 	quotationComparisons,
 } from '@/app/data/mockData';
+import { api } from '@/lib/api';
 import {
 	BuyerRfqItem,
 	getWorkflowClone,
 	makeWorkflowId,
 	updateWorkflowState,
 } from '@/lib/workflow-store';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type SortBy = 'score' | 'price';
 type Tab = 'search' | 'rfq' | 'compare';
+
+type BuyerProduct = (typeof buyerProducts)[number];
+
+type BuyerSearchProduct = {
+	id: string;
+	name: string;
+	workspaceId?: string;
+	supplierWorkspaceName?: string | null;
+	supplierWorkspaceSlug?: string | null;
+	unitPrice: number;
+	minOrderQty?: number | null;
+	uomCode?: string | null;
+	uomName?: string | null;
+	catalogCategoryName?: string | null;
+	reputationScore?: number | null;
+};
 
 function formatCurrency(value: number) {
 	return `₫${value.toLocaleString('vi-VN')}`;
 }
 
+function inferCategory(product: BuyerSearchProduct) {
+	if (product.catalogCategoryName) return product.catalogCategoryName;
+
+	const text = `${product.name} ${product.supplierWorkspaceName ?? ''}`.toLowerCase();
+	if (text.includes('rice')) return 'Rice';
+	if (text.includes('wheat') || text.includes('corn') || text.includes('grain')) {
+		return 'Grain';
+	}
+	if (text.includes('soy') || text.includes('bean')) return 'Legume';
+	if (text.includes('nut') || text.includes('cashew')) return 'Nut';
+	return 'Other';
+}
+
+function toBuyerProduct(product: BuyerSearchProduct): BuyerProduct {
+	return {
+		id: product.id,
+		name: product.name,
+		supplier: product.supplierWorkspaceName ?? product.supplierWorkspaceSlug ?? 'Unknown Supplier',
+		supplierScore: product.reputationScore ?? 0,
+		category: inferCategory(product),
+		basePrice: product.unitPrice,
+		unit: product.uomCode ?? product.uomName ?? 'unit',
+		minQty: product.minOrderQty ?? 1,
+	};
+}
+
 export default function BuyerSourcing() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<Tab>('search');
 	const [search, setSearch] = useState('');
 	const [filterCat, setFilterCat] = useState('All');
 	const [sortBy, setSortBy] = useState<SortBy>('score');
 	const [workflow, setWorkflow] = useState(() => getWorkflowClone());
+	const [products, setProducts] = useState<BuyerProduct[]>([]);
+	const [loadingProducts, setLoadingProducts] = useState(false);
+	const [productsError, setProductsError] = useState<string | null>(null);
+	const [submittingRfq, setSubmittingRfq] = useState(false);
 	const [cart, setCart] = useState<string[]>([]);
 	const [deliveryDate, setDeliveryDate] = useState('2026-05-01');
 	const [notes, setNotes] = useState('');
 	const [submittedMessage, setSubmittedMessage] = useState('');
 	const [selectedQuotation, setSelectedQuotation] = useState<string | null>(null);
 	const [selectedRfqId, setSelectedRfqId] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
 
 	const categories = ['All', 'Rice', 'Grain', 'Legume', 'Nut'];
 	useEffect(() => {
@@ -57,7 +110,7 @@ export default function BuyerSourcing() {
 
 	const filteredProducts = useMemo(
 		() =>
-			buyerProducts
+			products
 				.filter(
 					(product) =>
 						(filterCat === 'All' || product.category === filterCat) &&
@@ -65,12 +118,89 @@ export default function BuyerSourcing() {
 							product.supplier.toLowerCase().includes(search.toLowerCase())),
 				)
 				.sort((a, b) =>
-					sortBy === 'score'
-						? b.supplierScore - a.supplierScore
-						: a.basePrice - b.basePrice,
+						sortBy === 'score'
+							? b.supplierScore - a.supplierScore
+							: a.basePrice - b.basePrice,
 				),
-		[search, filterCat, sortBy],
+		[search, filterCat, sortBy, products],
 	);
+
+	useEffect(() => {
+		// For demo workspaces, show local mock products. For real (non-demo) workspaces,
+		// load DB-backed products from the API.
+		if (demoEnabled) {
+			setProducts(buyerProducts as BuyerProduct[]);
+			return;
+		}
+
+		let mounted = true;
+		setLoadingProducts(true);
+		setProductsError(null);
+		api
+			.get('/products/search?limit=25')
+			.then((res) => {
+				const payload: any = res as any;
+				const items = payload?.data?.items ?? payload?.data ?? payload?.items ?? [];
+				console.debug('BuyerSourcing: fetched products count', Array.isArray(items) ? items.length : 0);
+				(async () => {
+					const list = Array.isArray(items) ? items : [];
+					// Find workspaceIds missing a supplier name and fetch names
+					const missingIds = Array.from(new Set(
+						list
+							.map((it: any) => it.workspaceId)
+							.filter((id: string | undefined) => !!id && !list.find((x: any) => x.workspaceId === id && x.supplierWorkspaceName)),
+					));
+					let nameMap: Record<string, string> = {};
+					if (missingIds.length > 0) {
+						try {
+							const namesRes: any = await api.get(`/workspaces/public?ids=${missingIds.join(',')}`);
+							const rows: any[] = namesRes?.data ?? namesRes ?? [];
+							for (const r of rows) {
+								if (r?.id && r?.name) nameMap[r.id] = r.name;
+							}
+						} catch (err) {
+							console.debug('BuyerSourcing: workspace name lookup failed', String(err));
+						}
+					}
+					if (mounted) {
+						setProducts(
+							list.map((item: any) => {
+								const p = item as BuyerSearchProduct;
+								const supplierName = p.supplierWorkspaceName ?? (p.workspaceId ? nameMap[p.workspaceId] : undefined) ?? p.supplierWorkspaceSlug;
+								return toBuyerProduct({ ...p, supplierWorkspaceName: supplierName } as BuyerSearchProduct);
+							}),
+						);
+					}
+				})();
+			})
+			.catch((err: any) => {
+				try {
+					console.error('BuyerSourcing: products load error', JSON.stringify(err));
+				} catch {
+					console.error('BuyerSourcing: products load error', err);
+				}
+				if (mounted) setProductsError(err?.message ?? String(err));
+			})
+			.finally(() => {
+				if (mounted) setLoadingProducts(false);
+			});
+
+		return () => {
+			mounted = false;
+		};
+	}, [demoEnabled]);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 className="text-2xl text-gray-900">Sourcing</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample sourcing data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
+
 
 	const activeComparison = quotationComparisons[0];
 	const activeDraft =
@@ -89,9 +219,9 @@ export default function BuyerSourcing() {
 		setCart((current) => current.filter((item) => item !== productId));
 	}
 
-	function persistDraft(status: 'draft' | 'submitted') {
+	async function persistDraft(status: 'draft' | 'submitted') {
 		const items: BuyerRfqItem[] = cart.map((productId) => {
-			const product = buyerProducts.find((entry) => entry.id === productId);
+			const product = products.find((entry) => entry.id === productId);
 			return {
 				product: product?.name ?? productId,
 				qty: product?.minQty ?? 1,
@@ -104,6 +234,78 @@ export default function BuyerSourcing() {
 			selectedRfqId ?? makeWorkflowId('BRFQ', workflow.buyerRfqs.map((rfq) => rfq.id));
 		const primaryProduct = items[0]?.product ?? 'Mixed Basket';
 		const summary = items.length > 1 ? `${primaryProduct} + ${items.length - 1} more` : primaryProduct;
+
+		if (status === 'submitted') {
+			if (items.length === 0) {
+				setSubmittedMessage('Add at least one product before submitting.');
+				return;
+			}
+
+			setSubmittingRfq(true);
+			try {
+				const created: any = await api.post('/rfqs', { note: notes });
+				const rfqId = created?.data?.id ?? created?.id;
+				if (!rfqId) {
+					throw new Error('RFQ creation did not return an id');
+				}
+
+				for (const item of items) {
+					await api.post(`/rfqs/${rfqId}/items`, {
+						productId: item.productId,
+						quantity: item.qty,
+						deliveryDate,
+						notes,
+					});
+				}
+
+				await api.post(`/rfqs/${rfqId}/submit`, {});
+
+				updateWorkflowState((currentState) => {
+					const existingIndex = currentState.buyerRfqs.findIndex((rfq) => rfq.id === rfqId);
+					const nextRfq = {
+						id: rfqId,
+						buyer: 'Current Workspace',
+						product: summary,
+						qty: items.reduce((total, item) => total + item.qty, 0),
+						unit: 'MT',
+						deliveryDate,
+						status: 'submitted' as const,
+						receivedAt: new Date().toISOString().slice(0, 10),
+						notes,
+						items,
+						note: notes,
+					};
+
+					const buyerRfqs = [...currentState.buyerRfqs];
+					if (existingIndex >= 0) {
+						buyerRfqs[existingIndex] = nextRfq;
+					} else {
+						buyerRfqs.unshift(nextRfq);
+					}
+
+					const nextState = {
+						...currentState,
+						buyerRfqs,
+					};
+
+					setWorkflow(nextState);
+					return nextState;
+				});
+
+				setSelectedRfqId(rfqId);
+				setSubmittedMessage('RFQ submitted to suppliers.');
+				setTab('compare');
+			} catch (error) {
+				console.error('BuyerSourcing: RFQ submit failed', error);
+				setSubmittedMessage(
+					error instanceof Error ? error.message : 'Failed to submit RFQ.',
+				);
+			} finally {
+				setSubmittingRfq(false);
+			}
+
+			return;
+		}
 
 		updateWorkflowState((currentState) => {
 			const existingIndex = currentState.buyerRfqs.findIndex((rfq) => rfq.id === nextRfqId);
@@ -149,7 +351,7 @@ export default function BuyerSourcing() {
 	}
 
 	const cartItems = cart
-		.map((productId) => buyerProducts.find((product) => product.id === productId))
+		.map((productId) => products.find((product) => product.id === productId))
 		.filter((item): item is (typeof buyerProducts)[number] => Boolean(item));
 
 	return (
@@ -159,6 +361,12 @@ export default function BuyerSourcing() {
 				<p className="mt-1 text-sm text-slate-500">
 					Draft RFQs, compare quotations, and move selected items into workflow.
 				</p>
+				{loadingProducts && (
+					<p className="mt-2 text-xs text-slate-400">Loading products...</p>
+				)}
+				{productsError && (
+					<p className="mt-2 text-xs text-red-600">{productsError}</p>
+				)}
 			</div>
 
 			<div className="flex gap-1 p-1 rounded-lg mb-6 flex-wrap" style={{ background: '#E0E4EB' }}>
@@ -273,10 +481,10 @@ export default function BuyerSourcing() {
 								</div>
 							</div>
 							<div className="flex gap-3">
-								<button onClick={() => persistDraft('draft')} className="px-4 py-2.5 rounded-[6px]" style={{ background: '#D5DAE3', color: '#191C1E', fontWeight: 500, fontSize: 13 }}>
+								<button onClick={() => { void persistDraft('draft'); }} className="px-4 py-2.5 rounded-[6px]" style={{ background: '#D5DAE3', color: '#191C1E', fontWeight: 500, fontSize: 13 }}>
 									Save Draft
 								</button>
-								<button onClick={() => persistDraft('submitted')} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-[6px] transition-all hover:brightness-105" style={{ background: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)', fontWeight: 600, fontSize: 12, letterSpacing: '0.05em' }}>
+								<button onClick={() => { void persistDraft('submitted'); }} disabled={submittingRfq} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-[6px] transition-all hover:brightness-105 disabled:opacity-50" style={{ background: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)', fontWeight: 600, fontSize: 12, letterSpacing: '0.05em' }}>
 									<Send className="w-4 h-4" /> SUBMIT RFQ
 								</button>
 							</div>

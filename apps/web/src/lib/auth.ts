@@ -43,7 +43,18 @@ export function clearAuthSession() {
 
 export function getStoredAccessToken() {
 	if (typeof window === 'undefined') return undefined;
-	return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
+	// Prefer canonical key, but accept legacy keys used in older builds or tests.
+	const candidates = [
+		ACCESS_TOKEN_KEY,
+		'logisync.access-token',
+		'logisync.accessToken',
+		'accessToken',
+	];
+	for (const k of candidates) {
+		const v = localStorage.getItem(k);
+		if (v) return v;
+	}
+	return undefined;
 }
 
 export function parseJwtClaims(token: string): AuthClaims | null {

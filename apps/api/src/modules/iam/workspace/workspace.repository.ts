@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import { Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { BaseRepository } from '../../../core/database/base.repository';
 import { schema } from '../../../infrastructure/database';
@@ -51,6 +51,17 @@ export class WorkspaceRepository extends BaseRepository {
 			.from(schema.workspaces)
 			.where(eq(schema.workspaces.id, id));
 		return workspace;
+	}
+
+	// Find names for a list of workspace ids. Returns rows with { id, name }.
+	async findNamesByIds(ids: string[], tx?: any) {
+		if (!Array.isArray(ids) || ids.length === 0) return [];
+		const runner = tx || this.db;
+		const rows = await runner
+			.select({ id: schema.workspaces.id, name: schema.workspaces.name })
+			.from(schema.workspaces)
+			.where(inArray(schema.workspaces.id, ids));
+		return rows;
 	}
 
 	// Find all workspaces with filters.

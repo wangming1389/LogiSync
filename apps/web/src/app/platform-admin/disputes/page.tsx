@@ -6,8 +6,9 @@ import {
 	ChevronLeft,
 	FileText,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { disputes as initialDisputes } from '../../data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
@@ -39,10 +40,26 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function DisputeManagement() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [disputes, setDisputes] = useState(initialDisputes);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [resolution, setResolution] = useState('');
 	const [resolved, setResolved] = useState(false);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Disputes</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample dispute data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	const detail = disputes.find((d) => d.id === selected);
 

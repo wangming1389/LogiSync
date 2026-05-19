@@ -1,8 +1,9 @@
 'use client';
 
 import { Star, TrendingDown, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { carrierReputations, supplierReputations } from '../../data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
@@ -45,7 +46,23 @@ function ScoreBar({ score }: { score: number }) {
 }
 
 export default function ReputationViewer() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'supplier' | 'carrier'>('supplier');
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Reputation Score Viewer</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample reputation data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	const TABS = [
 		{ key: 'supplier' as const, label: 'Supplier Reputation' },
