@@ -3,9 +3,7 @@
 import { ChevronLeft, FileText, Save, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { getStoredAccessToken, parseJwtClaims } from '@/lib/auth';
 import { updateWorkflowState, useWorkflowState } from '@/lib/workflow-store';
-import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type BackendRfqItem = {
 	product?: string;
@@ -81,17 +79,12 @@ export default function SupplierRFQ() {
 	const [rfqError, setRfqError] = useState<string | null>(null);
 
 	useEffect(() => {
-		// Always attempt to load RFQs from backend so suppliers see DB-backed RFQs.
-		// Demo local state will be merged/overwritten by this fetch where applicable.
-
 		let mounted = true;
 		setLoadingRfqs(true);
 		setRfqError(null);
 
 		(async () => {
 			try {
-				const claims = (typeof window !== 'undefined') ? parseJwtClaims(getStoredAccessToken() ?? '') : null;
-				console.debug('SupplierRFQ: jwtClaims=', claims);
 				const response: any = await api.get('/rfqs?status=pending_response&limit=50');
 				const list = unwrapApiResponse<{ items?: BackendRfqDetail[] } | BackendRfqDetail[]>(response);
 				const items = Array.isArray(list) ? list : list.items ?? [];

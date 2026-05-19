@@ -9,6 +9,7 @@ const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 type Workspace = {
 	id: string;
 	name: string;
+	company?: string;
 	slug: string;
 	type: string;
 	status: string;
@@ -77,7 +78,7 @@ export default function WorkspaceManagement() {
 	}, []);
 
 	const filtered = workspaces.filter((w) =>
-		w.company.toLowerCase().includes(search.toLowerCase()),
+		(w.name ?? w.company ?? '').toLowerCase().includes(search.toLowerCase()),
 	);
 
 	function suspend(id: string) {
@@ -184,7 +185,7 @@ export default function WorkspaceManagement() {
 									className="px-5 py-3"
 									style={{ fontSize: 14, color: '#191C1E', fontWeight: 500 }}
 								>
-									{w.company}
+									{w.name ?? w.company}
 								</td>
 								<td className="px-5 py-3">
 									<span
@@ -285,7 +286,7 @@ export default function WorkspaceManagement() {
 							Are you sure you want to{' '}
 							{suspendModal.status === 'suspended' ? 'unsuspend' : 'suspend'}{' '}
 							<strong style={{ color: '#191C1E' }}>
-								{suspendModal.company}
+								{suspendModal.name ?? suspendModal.company}
 							</strong>
 							?
 							{suspendModal.status !== 'suspended' &&
@@ -347,7 +348,7 @@ export default function WorkspaceManagement() {
 							</div>
 							<h3 style={{ color: '#191C1E' }}>Revoke Workspace</h3>
 						</div>
-						{revokeModal.activeShipments > 0 && (
+						{(revokeModal.activeShipments ?? 0) > 0 && (
 							<div
 								className="flex items-start gap-2 p-3 rounded-lg mb-4"
 								style={{ background: '#FFDAD6' }}
@@ -357,7 +358,7 @@ export default function WorkspaceManagement() {
 									style={{ color: '#BA1A1A' }}
 								/>
 								<p style={{ fontSize: 13, color: '#BA1A1A' }}>
-									Warning: <strong>{revokeModal.company}</strong> has{' '}
+									Warning: <strong>{revokeModal.name ?? revokeModal.company}</strong> has{' '}
 									<strong>
 										{revokeModal.activeShipments} active shipment(s)
 									</strong>
@@ -371,7 +372,7 @@ export default function WorkspaceManagement() {
 						>
 							To confirm, type the company name:{' '}
 							<strong style={{ color: '#191C1E' }}>
-								{revokeModal.company}
+								{revokeModal.name ?? revokeModal.company}
 							</strong>
 						</p>
 						<input
@@ -389,7 +390,7 @@ export default function WorkspaceManagement() {
 						<div className="flex gap-2">
 							<button
 								onClick={() => revoke(revokeModal.id)}
-								disabled={confirmName !== revokeModal.company}
+								disabled={confirmName !== (revokeModal.name ?? revokeModal.company)}
 								className="flex-1 py-2.5 text-white rounded-[6px] transition-all disabled:opacity-40"
 								style={{ background: '#BA1A1A', fontWeight: 600, fontSize: 13 }}
 							>

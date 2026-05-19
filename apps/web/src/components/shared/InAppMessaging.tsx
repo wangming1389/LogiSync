@@ -27,6 +27,19 @@ export function InAppMessaging() {
 
 	const selected = threads.find((t) => t.id === selectedId)!;
 
+	if (!selected) {
+		return (
+			<div className="flex items-center justify-center p-6" style={{ height: 'calc(100vh - 64px)', background: '#F7F9FC' }}>
+				<div className="rounded-xl p-6" style={{ background: '#FFFFFF', boxShadow: SHADOW, color: '#191C1E' }}>
+					<h4>Messages</h4>
+					<p className="mt-2 text-sm" style={{ color: 'rgba(25,28,30,0.55)' }}>
+						No conversation threads are available for this workspace.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
 	function sendMessage() {
 		if (!newMsg.trim()) return;
 		setThreads(

@@ -18,7 +18,7 @@ import {
 	XAxis,
 	YAxis,
 } from 'recharts';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { drivers, vehicles } from '@/app/data/mockData';
 import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 

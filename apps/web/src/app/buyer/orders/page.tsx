@@ -264,27 +264,11 @@ export default function BuyerOrdersTracking() {
 									<label className="block text-sm text-gray-700 mb-1">Type</label>
 									<input value={compForm.type} onChange={(e) => setCompForm({ ...compForm, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
 								</div>
+								<div>
+									<label className="block text-sm text-gray-700 mb-1">Description</label>
+									<textarea value={compForm.description} onChange={(e) => setCompForm({ ...compForm, description: e.target.value })} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Describe the issue..." />
+								</div>
 								<div className="flex gap-2 mt-4">
-									<button
-										onClick={() => {
-											setComplaints([
-												...complaints,
-												{
-													id: 'COMP' + crypto.randomUUID().slice(0, 8),
-													orderId: compForm.orderId,
-													type: compForm.type,
-													description: compForm.description,
-													evidence: [],
-													status: 'in_progress',
-													filedAt: '2026-04-13',
-												},
-											]);
-											setShowComplaintForm(false);
-										}}
-										className="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm"
-									>
-										Submit
-									</button>
 									<button
 										onClick={() => setShowComplaintForm(false)}
 										className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-600 text-sm"
