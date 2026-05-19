@@ -1,7 +1,8 @@
 'use client';
 import { AlertTriangle, Edit2, Link2, Plus, Unlink, User } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { drivers, vehicles } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type Driver = (typeof drivers)[0] & { assignedVehicle: string | null };
 
@@ -12,10 +13,26 @@ const statusColor: Record<string, string> = {
 };
 
 export default function DriverManagement() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [driverList, setDriverList] = useState<Driver[]>(drivers);
 	const [tab, setTab] = useState<'drivers' | 'assignment'>('drivers');
 	const [assignModal, setAssignModal] = useState<string | null>(null);
 	const [selectedVehicle, setSelectedVehicle] = useState('');
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Driver Management</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample driver data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	const availableVehicles = vehicles.filter(
 		(v) => v.status === 'active' && !v.driver,

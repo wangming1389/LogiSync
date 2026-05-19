@@ -209,7 +209,10 @@ export default function CatalogManagement() {
 	);
 
 	useEffect(() => {
-		void loadCatalogData();
+		void (async () => {
+			const masterData = await loadMasterData();
+			await loadProducts(masterData);
+		})();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
@@ -221,29 +224,58 @@ export default function CatalogManagement() {
 		};
 	}, [imagePreviewUrl]);
 
-	async function loadCatalogData() {
-		setIsLoading(true);
+	type MasterData = {
+		categoryItems: SupplierCategory[];
+		catalogCategoryItems: CatalogCategory[];
+		uomItems: Uom[];
+	};
+
+	async function loadMasterData(): Promise<MasterData> {
 		setLoadError('');
+		const [categoryResult, catalogCategoryResult, uomResult] = await Promise.allSettled([
+			api.get<ApiList<SupplierCategory>>('/catalog/categories'),
+			api.get<ApiList<CatalogCategory>>('/catalog-categories'),
+			api.get<ApiList<Uom>>('/uom'),
+		]);
+
+		const categoryItems =
+			categoryResult.status === 'fulfilled' ? toArray(categoryResult.value) : [];
+		const catalogCategoryItems =
+			catalogCategoryResult.status === 'fulfilled'
+				? toArray(catalogCategoryResult.value)
+				: [];
+		const uomItems = uomResult.status === 'fulfilled' ? toArray(uomResult.value) : [];
+
+		if (categoryResult.status === 'rejected') {
+			console.error('Error loading supplier categories', categoryResult.reason);
+		}
+		if (catalogCategoryResult.status === 'rejected') {
+			console.error('Error loading master catalog categories', catalogCategoryResult.reason);
+		}
+		if (uomResult.status === 'rejected') {
+			console.error('Error loading units of measure', uomResult.reason);
+		}
+
+		setSupplierCategories(categoryItems);
+		setCatalogCategories(catalogCategoryItems);
+		setUoms(uomItems);
+
+		return {
+			categoryItems,
+			catalogCategoryItems,
+			uomItems,
+		};
+	}
+
+	async function loadProducts(masterData?: MasterData) {
+		setIsLoading(true);
 		try {
-			const [productResponse, categoryResponse, catalogCategoryResponse, uomResponse] =
-				await Promise.all([
-				api.get<ApiList<ProductApiItem>>('/catalog/products'),
-				api.get<ApiList<SupplierCategory>>('/catalog/categories'),
-				api.get<ApiList<CatalogCategory>>('/catalog-categories'),
-				api.get<ApiList<Uom>>('/uom'),
-				]);
-
-			const productItems = toArray(productResponse);
-			const categoryItems = toArray(categoryResponse);
-			const catalogCategoryItems = toArray(catalogCategoryResponse);
-			const uomItems = toArray(uomResponse);
-
-			setSupplierCategories(categoryItems);
-			setCatalogCategories(catalogCategoryItems);
-			setUoms(uomItems);
-
-			const categoryMap = new Map(categoryItems.map((item) => [item.id, item.name]));
-			const uomMap = new Map(uomItems.map((item) => [item.id, item]));
+			const response: ApiList<ProductApiItem> = await api.get('/catalog/products');
+			const productItems = toArray(response);
+			const categoryMap = new Map(
+				(masterData?.categoryItems ?? supplierCategories).map((item) => [item.id, item.name]),
+			);
+			const uomMap = new Map((masterData?.uomItems ?? uoms).map((item) => [item.id, item]));
 
 			setProducts(
 				productItems.map((item) => {
@@ -445,7 +477,8 @@ export default function CatalogManagement() {
 				await uploadProductImage(productId);
 			}
 
-			await loadCatalogData();
+			const masterData = await loadMasterData();
+			await loadProducts(masterData);
 			closeForm();
 		} catch (error) {
 			console.error('Error saving product', error);
@@ -463,7 +496,7 @@ export default function CatalogManagement() {
 			} else {
 				await api.patch(`/catalog/products/${product.id}/publish`, {});
 			}
-			await loadCatalogData();
+			await loadProducts();
 		} catch (error) {
 			console.error('Error updating product status', error);
 			setActionError('Không thể cập nhật trạng thái sản phẩm.');
@@ -499,7 +532,7 @@ export default function CatalogManagement() {
 				name: categoryForm.name.trim(),
 				description: categoryForm.description.trim() || undefined,
 			});
-			await loadCatalogData();
+			await loadMasterData();
 			closeCategoryForm();
 		} catch (error) {
 			console.error('Error saving supplier category', error);

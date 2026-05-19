@@ -56,9 +56,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		);
 
 		if (!session) {
-			throw new UnauthorizedException(
-				'Login session has expired or been revoked',
-			);
+			const sessionRecord =
+				await this.sessionRegistryService.getActiveSessionRecord(
+					payload.sessionId,
+				);
+
+			if (!sessionRecord) {
+				throw new UnauthorizedException(
+					'Login session has expired or been revoked',
+				);
+			}
+
+			return payload;
 		}
 
 		// Check session hasn't expired (double-check with Redis TTL)

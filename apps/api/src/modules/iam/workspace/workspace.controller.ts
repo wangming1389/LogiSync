@@ -231,4 +231,22 @@ export class WorkspaceController {
 		const ipAddress = getClientIp(req);
 		return this.workspaceService.enableRole(id, dto, payload.sub, ipAddress);
 	}
+
+	// Public lookup for workspace names by id list.
+	@Get('public')
+	@ApiOperation({ summary: 'Public workspace name lookup' })
+	@ApiQuery({
+		name: 'ids',
+		required: true,
+		type: String,
+		description: 'Comma-separated workspace ids',
+	})
+	@ApiResponse({ status: 200, description: 'List of workspace id/name pairs' })
+	async publicNames(@Query('ids') ids: string) {
+		const idList = String(ids || '')
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
+		return this.workspaceService.findNames(idList);
+	}
 }
