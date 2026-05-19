@@ -101,7 +101,13 @@ export default function BuyerSourcing() {
 	useEffect(() => {
 		const currentDraft = workflow.buyerRfqs.find((rfq) => rfq.status === 'draft');
 		if (currentDraft?.items?.length) {
-			setCart(currentDraft.items.map((item) => item.productId ?? item.product));
+			setCart(
+				currentDraft.items.map((item): string =>
+					'productId' in item && item.productId
+						? String(item.productId)
+						: String(item.product),
+				),
+			);
 			setNotes(currentDraft.note ?? '');
 			setDeliveryDate(currentDraft.deliveryDate ?? '2026-05-01');
 			setSelectedRfqId(currentDraft.id);
@@ -141,7 +147,6 @@ export default function BuyerSourcing() {
 			.then((res) => {
 				const payload: any = res as any;
 				const items = payload?.data?.items ?? payload?.data ?? payload?.items ?? [];
-				console.debug('BuyerSourcing: fetched products count', Array.isArray(items) ? items.length : 0);
 				(async () => {
 					const list = Array.isArray(items) ? items : [];
 					// Find workspaceIds missing a supplier name and fetch names
@@ -159,7 +164,7 @@ export default function BuyerSourcing() {
 								if (r?.id && r?.name) nameMap[r.id] = r.name;
 							}
 						} catch (err) {
-							console.debug('BuyerSourcing: workspace name lookup failed', String(err));
+							// Name lookup failed; proceed without workspace names
 						}
 					}
 					if (mounted) {
@@ -234,6 +239,13 @@ export default function BuyerSourcing() {
 			selectedRfqId ?? makeWorkflowId('BRFQ', workflow.buyerRfqs.map((rfq) => rfq.id));
 		const primaryProduct = items[0]?.product ?? 'Mixed Basket';
 		const summary = items.length > 1 ? `${primaryProduct} + ${items.length - 1} more` : primaryProduct;
+		const suppliers = Array.from(
+			new Set(
+				items
+					.map((item) => products.find((entry) => entry.id === item.productId)?.supplier)
+					.filter((supplier): supplier is string => Boolean(supplier)),
+				),
+			);
 
 		if (status === 'submitted') {
 			if (items.length === 0) {
@@ -271,6 +283,9 @@ export default function BuyerSourcing() {
 						deliveryDate,
 						status: 'submitted' as const,
 						receivedAt: new Date().toISOString().slice(0, 10),
+						createdAt: new Date().toISOString(),
+						deadline: deliveryDate,
+						suppliers,
 						notes,
 						items,
 						note: notes,
@@ -318,6 +333,9 @@ export default function BuyerSourcing() {
 				deliveryDate,
 				status,
 				receivedAt: new Date().toISOString().slice(0, 10),
+				createdAt: new Date().toISOString(),
+				deadline: deliveryDate,
+				suppliers,
 				notes,
 				items,
 				note: notes,
@@ -340,14 +358,7 @@ export default function BuyerSourcing() {
 		});
 
 		setSelectedRfqId(nextRfqId);
-		setSubmittedMessage(
-			status === 'submitted'
-				? 'RFQ submitted to suppliers.'
-				: 'Draft saved locally.',
-		);
-		if (status === 'submitted') {
-			setTab('compare');
-		}
+		setSubmittedMessage('Draft saved locally.');
 	}
 
 	const cartItems = cart

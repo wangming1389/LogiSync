@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { ClsService } from 'nestjs-cls';
 import { BaseRepository } from '../../../core/database/base.repository';
@@ -13,6 +13,7 @@ export interface ListRfqsParams {
 
 @Injectable()
 export class RfqRepository extends BaseRepository {
+	private readonly logger = new Logger(RfqRepository.name);
 	constructor(cls: ClsService) {
 		super(cls);
 	}
