@@ -112,9 +112,9 @@ export default function SystemHealth() {
 				// apiFetch wraps response.json() into { data: json }
 				// and the server also returns an envelope { success, data, error, meta }
 				// so the actual payload is at healthRes.data.data
-				setHealth(healthRes.data?.data ?? healthRes.data ?? null);
-				setReady(readyRes.data?.data ?? readyRes.data ?? null);
-				setLive(liveRes.data?.data ?? liveRes.data ?? null);
+				setHealth((healthRes as any)?.data?.data ?? (healthRes as any)?.data ?? null);
+				setReady((readyRes as any)?.data?.data ?? (readyRes as any)?.data ?? null);
+				setLive((liveRes as any)?.data?.data ?? (liveRes as any)?.data ?? null);
 				setLastUpdated(new Date());
 			} catch (fetchError) {
 				if (!active) return;
