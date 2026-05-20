@@ -34,6 +34,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { clearAuthSession } from '@/lib/auth';
 
 const NAV_CONFIG: Record<
 	string,
@@ -50,8 +51,8 @@ const NAV_CONFIG: Record<
 				path: '/platform-admin',
 				icon: <Activity className="w-5 h-5" />,
 			},
-			// { label: 'Workspace Approvals',  path: '/platform-admin/workspaces', icon: <ClipboardList className="w-5 h-5" /> },
-			// { label: 'Workspace Mgmt',       path: '/platform-admin/workspace-mgmt', icon: <Building2 className="w-5 h-5" /> },
+				{ label: 'Workspace Approvals',  path: '/platform-admin/workspaces', icon: <ClipboardList className="w-5 h-5" /> },
+				{ label: 'Workspace Mgmt',       path: '/platform-admin/workspace-mgmt', icon: <Building2 className="w-5 h-5" /> },
 			// { label: 'Audit Log',            path: '/platform-admin/audit-log',  icon: <ShieldCheck className="w-5 h-5" /> },
 			// { label: 'Data Catalog',         path: '/platform-admin/data-catalog', icon: <Database className="w-5 h-5" /> },
 			// { label: 'Dispute Management',   path: '/platform-admin/disputes',   icon: <AlertTriangle className="w-5 h-5" /> },
@@ -168,6 +169,7 @@ export default function AppLayout({
 	const navConfig = NAV_CONFIG[currentRole] || NAV_CONFIG['platform_admin'];
 
 	const handleLogout = () => {
+		clearAuthSession();
 		router.push('/login');
 	};
 

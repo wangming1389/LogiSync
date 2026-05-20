@@ -23,6 +23,9 @@ interface Workspace {
 	taxId: string;
 	adminEmail: string;
 	createdAt: string;
+	registeredAt?: string;
+	enabledRoles?: string[];
+	roles?: string[];
 }
 
 function TypeChip({ type }: { type: string }) {
@@ -68,14 +71,28 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function WorkspaceApprovals() {
+
+	function formatDateISO(dateStr?: string, includeTime = false) {
+		if (!dateStr) return '';
+		const d = new Date(dateStr);
+		if (Number.isNaN(d.getTime())) return dateStr;
+		if (includeTime) {
+			return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+		}
+		return d.toISOString().slice(0, 10);
+	}
+
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selected, setSelected] = useState<string | null>(null);
+	const [approveModal, setApproveModal] = useState<string | null>(null);
 	const [rejectModal, setRejectModal] = useState<string | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
+	const [rejectError, setRejectError] = useState('');
 	const [suspendModal, setSuspendModal] = useState<string | null>(null);
 	const [suspendReason, setSuspendReason] = useState('');
+	const [suspendError, setSuspendError] = useState('');
 	const [roleModal, setRoleModal] = useState<string | null>(null);
-	const [roleToEnable, setRoleToEnable] = useState('');
+	const [rolesToEnable, setRolesToEnable] = useState<string[]>([]);
 
 	const [statusFilter, setStatusFilter] = useState('all');
 
@@ -85,9 +102,10 @@ export default function WorkspaceApprovals() {
 				statusFilter !== 'all'
 					? `?status=${statusFilter}&limit=100`
 					: `?limit=100`;
-			const data: any = await api.get('/workspaces' + query);
-			if (data?.items) {
-				setWorkspaces(data.items);
+			const response: any = await api.get('/workspaces' + query);
+			const items = response?.data?.items ?? response?.items ?? [];
+			if (Array.isArray(items)) {
+				setWorkspaces(items);
 			}
 		} catch (e) {
 			console.error('Error fetching workspaces', e);
@@ -101,49 +119,79 @@ export default function WorkspaceApprovals() {
 	const detail = workspaces.find((w) => w.id === selected);
 
 	async function approve(id: string) {
+		const previous = workspaces;
+		setWorkspaces((items) =>
+			items.map((item) =>
+				item.id === id ? { ...item, status: 'active' } : item,
+			),
+		);
 		try {
 			await api.patch(`/workspaces/${id}/approve`, {});
-			fetchWorkspaces();
 			setSelected(null);
+			setApproveModal(null);
 		} catch (e) {
 			console.error(e);
+			setWorkspaces(previous);
 			alert('Approve failed');
 		}
 	}
 
 	async function reject(id: string) {
+		const previous = workspaces;
+		setWorkspaces((items) =>
+			items.map((item) =>
+				item.id === id ? { ...item, status: 'rejected' } : item,
+			),
+		);
 		try {
-			await api.patch(`/workspaces/${id}/reject`, { reason: rejectReason });
-			fetchWorkspaces();
+			await api.patch(`/workspaces/${id}/reject`, {
+				rejectionReason: rejectReason,
+			});
 			setRejectModal(null);
 			setRejectReason('');
+			setRejectError('');
 			setSelected(null);
 		} catch (e) {
 			console.error(e);
+			setWorkspaces(previous);
 			alert('Reject failed');
 		}
 	}
 
 	async function suspend(id: string) {
+		if (!suspendReason.trim()) {
+			setSuspendError('Suspension reason is required.');
+			return;
+		}
+		setSuspendError('');
+		const previous = workspaces;
+		setWorkspaces((items) =>
+			items.map((item) =>
+				item.id === id ? { ...item, status: 'suspended' } : item,
+			),
+		);
 		try {
-			await api.patch(`/workspaces/${id}/suspend`, { reason: suspendReason });
-			fetchWorkspaces();
+			await api.patch(`/workspaces/${id}/suspend`, {
+				suspensionReason: suspendReason,
+			});
 			setSuspendModal(null);
 			setSuspendReason('');
+			setSuspendError('');
 			setSelected(null);
 		} catch (e) {
 			console.error(e);
+			setWorkspaces(previous);
 			alert('Suspend failed');
 		}
 	}
 
 	async function enableRole(id: string) {
-		if (!roleToEnable) return;
+		if (rolesToEnable.length === 0) return;
 		try {
-			await api.post(`/workspaces/${id}/roles/enable`, { role: roleToEnable });
+			await api.post(`/workspaces/${id}/roles/enable`, { roles: rolesToEnable });
 			fetchWorkspaces();
 			setRoleModal(null);
-			setRoleToEnable('');
+			setRolesToEnable([]);
 			alert('Role enabled successfully');
 		} catch (e) {
 			console.error(e);
@@ -218,7 +266,7 @@ export default function WorkspaceApprovals() {
 										<span>Tax ID: {w.taxId}</span>
 										<span>•</span>
 										<span>
-											Submitted: {new Date(w.createdAt).toLocaleDateString()}
+											Registered: {formatDateISO(w.registeredAt ?? w.createdAt)}
 										</span>
 									</div>
 								</div>
@@ -251,6 +299,9 @@ export default function WorkspaceApprovals() {
 									Workspace Details
 								</h2>
 								<StatusChip status={detail.status} />
+									<div className="text-xs text-slate-500">
+										Enabled roles: {(detail.enabledRoles ?? detail.roles ?? []).join(', ') || 'None'}
+									</div>
 							</div>
 
 							<div className="space-y-6">
@@ -291,7 +342,7 @@ export default function WorkspaceApprovals() {
 										Created At
 									</p>
 									<p className="font-medium" style={{ color: '#191C1E' }}>
-										{new Date(detail.createdAt).toLocaleString()}
+										{formatDateISO(detail.createdAt, true)}
 									</p>
 								</div>
 
@@ -310,7 +361,7 @@ export default function WorkspaceApprovals() {
 											Reject
 										</button>
 										<button
-											onClick={() => approve(detail.id)}
+											onClick={() => setApproveModal(detail.id)}
 											className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-white transition-opacity"
 											style={{ background: '#0F4C8A' }}
 										>
@@ -360,6 +411,42 @@ export default function WorkspaceApprovals() {
 				</div>
 			</div>
 
+			{/* Approve Modal */}
+			{approveModal && (
+				<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+					<div
+						className="bg-white rounded-2xl p-6 max-w-sm w-full"
+						style={{ boxShadow: SHADOW }}
+					>
+						<h3
+							className="text-xl font-medium mb-4"
+							style={{ color: '#191C1E' }}
+						>
+							Approve Workspace
+						</h3>
+						<p className="text-sm mb-6" style={{ color: '#40484C' }}>
+							Confirm this workspace should be activated now.
+						</p>
+						<div className="flex gap-3 justify-end">
+							<button
+								onClick={() => setApproveModal(null)}
+								className="px-5 py-2 rounded-xl font-medium"
+								style={{ color: '#40484C' }}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={() => approve(approveModal)}
+								className="px-5 py-2 rounded-xl text-white font-medium"
+								style={{ background: '#0F4C8A' }}
+							>
+								Confirm
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Reject Modal */}
 			{rejectModal && (
 				<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -389,6 +476,7 @@ export default function WorkspaceApprovals() {
 								onClick={() => {
 									setRejectModal(null);
 									setRejectReason('');
+									setSuspendError('');
 								}}
 								className="px-5 py-2 rounded-xl font-medium"
 								style={{ color: '#40484C' }}
@@ -431,6 +519,9 @@ export default function WorkspaceApprovals() {
 							style={{ borderColor: '#E0E4EB' }}
 							placeholder="Suspension reason..."
 						/>
+						{suspendError && (
+							<p className="mb-4 text-sm text-red-600">{suspendError}</p>
+						)}
 						<div className="flex gap-3 justify-end">
 							<button
 								onClick={() => {
@@ -469,25 +560,35 @@ export default function WorkspaceApprovals() {
 							Enable Additional Role
 						</h3>
 						<p className="text-sm mb-4" style={{ color: '#40484C' }}>
-							Select a role to enable for this workspace.
+							Select one or more roles to enable for this workspace.
 						</p>
-						<select
-							className="w-full rounded-xl border p-3 mb-6 outline-none"
-							style={{ borderColor: '#E0E4EB' }}
-							value={roleToEnable}
-							onChange={(e) => setRoleToEnable(e.target.value)}
-						>
-							<option value="">-- Select Role --</option>
-							<option value="supplier">Supplier</option>
-							<option value="carrier">Carrier</option>
-							<option value="buyer">Buyer</option>
-						</select>
+						<div className="space-y-2 mb-4">
+							{['carrier_staff', 'hr_staff'].map((role) => (
+								<label key={role} className="flex items-center gap-2 rounded-xl border p-3 cursor-pointer" style={{ borderColor: '#E0E4EB' }}>
+									<input
+										type="checkbox"
+										checked={rolesToEnable.includes(role)}
+										onChange={(e) =>
+											setRolesToEnable((current) =>
+												e.target.checked
+													? [...current, role]
+													: current.filter((item) => item !== role),
+											)
+										}
+									/>
+									<span className="text-sm text-slate-700">{role}</span>
+								</label>
+							))}
+						</div>
+						<div className="text-sm mb-6" style={{ color: '#40484C' }}>
+							Currently enabled: {(detail?.enabledRoles ?? detail?.roles ?? []).join(', ') || 'None'}
+						</div>
 
 						<div className="flex gap-3 justify-end">
 							<button
 								onClick={() => {
 									setRoleModal(null);
-									setRoleToEnable('');
+									setRolesToEnable([]);
 								}}
 								className="px-5 py-2 rounded-xl font-medium"
 								style={{ color: '#40484C' }}
@@ -496,7 +597,7 @@ export default function WorkspaceApprovals() {
 							</button>
 							<button
 								onClick={() => enableRole(roleModal)}
-								disabled={!roleToEnable}
+								disabled={rolesToEnable.length === 0}
 								className="px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50"
 								style={{ background: '#0F4C8A' }}
 							>

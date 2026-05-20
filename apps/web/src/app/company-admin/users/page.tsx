@@ -10,8 +10,9 @@ import {
 	User,
 	X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { employees, kpiData } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type Employee = (typeof employees)[0] & { status: string };
 
@@ -24,6 +25,7 @@ const deptColor: Record<string, string> = {
 };
 
 export default function HRManagement() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'employees' | 'kpi'>('employees');
 	const [empList, setEmpList] = useState<Employee[]>(employees);
 	const [kpiList, setKpiList] = useState(kpiData);
@@ -33,6 +35,21 @@ export default function HRManagement() {
 	const [deptFilter, setDeptFilter] = useState('All');
 	const [periodFilter, setPeriodFilter] = useState('Q1 2026');
 	const [showKPIForm, setShowKPIForm] = useState(false);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 className="text-2xl text-gray-900">User Management</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample user data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	const depts = ['All', 'Sales', 'Accounting', 'Driver', 'Operations', 'HR'];
 	const filteredEmps =

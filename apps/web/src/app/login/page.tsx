@@ -11,14 +11,22 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import {
+	parseJwtClaims,
+	resolveAuthDestination,
+	setAuthSession,
+} from '@/lib/auth';
 
 const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
 export type UserRole =
 	| 'platform_admin'
+	| 'company_admin'
 	| 'supplier'
+	| 'supplier_staff'
 	| 'carrier'
 	| 'buyer'
+	| 'buyer_staff'
 	| 'hr';
 
 const ROLES: { value: UserRole; label: string; description: string }[] = [
@@ -45,11 +53,14 @@ const ROLES: { value: UserRole; label: string; description: string }[] = [
 	{ value: 'hr', label: 'HR', description: 'Employee and KPI management' },
 ];
 
-const ROLE_INITIAL_PATH: Record<UserRole, string> = {
+const ROLE_INITIAL_PATH: Record<string, string> = {
 	platform_admin: '/platform-admin',
+	company_admin: '/company-admin',
 	supplier: '/supplier/catalog',
+	supplier_staff: '/supplier/catalog',
 	carrier: '/carrier/fleet',
 	buyer: '/buyer/sourcing',
+	buyer_staff: '/buyer/sourcing',
 	hr: '/hr/management',
 };
 
@@ -63,24 +74,6 @@ export default function LoginPage() {
 	const [loading, setLoading] = useState(false);
 
 	const router = useRouter();
-
-	// Giải mã JWT payload (không cần xác thực signature)
-	function decodeJWT(token: string): { role: UserRole; [key: string]: any } {
-		try {
-			const base64Url = token.split('.')[1];
-			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-			const jsonPayload = decodeURIComponent(
-				atob(base64)
-					.split('')
-					.map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-					.join(''),
-			);
-			return JSON.parse(jsonPayload);
-		} catch (error) {
-			console.error('Failed to decode JWT:', error);
-			throw new Error('Invalid token format');
-		}
-	}
 
 	async function handleLogin(e: React.FormEvent) {
 		e.preventDefault();
@@ -97,30 +90,37 @@ export default function LoginPage() {
 		setError('');
 		try {
 			const res: any = await api.post('/auth/login', { email, password });
-			const token = res?.data?.accessToken;
+			const token = res?.accessToken ?? res?.data?.accessToken ?? res?.data?.access_token;
 			if (!token) {
 				throw new Error('No access token received from server');
 			}
 
-			localStorage.setItem('access_token', token);
-
-			// Giải mã JWT để lấy role
-			const payload = decodeJWT(token);
-			const role = payload.role as UserRole;
-
-			// Auto-route dựa trên role
-			if (role && ROLE_INITIAL_PATH[role]) {
-				router.push(ROLE_INITIAL_PATH[role]);
-			} else {
+			const claims = parseJwtClaims(token);
+			const destination = resolveAuthDestination(claims);
+			if (!destination) {
 				throw new Error('Invalid role in token');
 			}
+
+			setAuthSession(token);
+			router.push(destination);
 		} catch (err: any) {
 			const f = failCount + 1;
 			setFailCount(f);
 			if (f >= 5) {
 				setStep('locked');
 			} else {
-				setError(err.message || 'Invalid credentials.');
+				const message = String(err?.message ?? '');
+				if (
+				err?.status === 401 ||
+					err?.status === 403 ||
+					/incorrect|invalid credentials/i.test(message)
+				) {
+					setError('Email or password is incorrect.');
+				} else if (/lock/i.test(message) || err?.status === 429) {
+					setError('Your account is locked after too many failed attempts.');
+				} else {
+					setError(message || 'Email or password is incorrect.');
+				}
 			}
 		} finally {
 			setLoading(false);

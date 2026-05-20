@@ -8,8 +8,9 @@ import {
 	Settings,
 	ShoppingCart,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { notifications as initialNotifications } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
@@ -37,8 +38,14 @@ const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
 };
 
 export function NotificationCenter() {
-	const [notes, setNotes] = useState(initialNotifications);
+	const [notes, setNotes] = useState<typeof initialNotifications>([]);
 	const [filter, setFilter] = useState<string>('all');
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) {
+			setNotes(initialNotifications);
+		}
+	}, []);
 
 	const unread = notes.filter((n) => !n.read).length;
 	const filtered =

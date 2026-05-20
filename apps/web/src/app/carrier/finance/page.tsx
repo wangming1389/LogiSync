@@ -7,7 +7,7 @@ import {
 	FileText,
 	TrendingUp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
 	Area,
 	AreaChart,
@@ -20,6 +20,7 @@ import {
 	YAxis,
 } from 'recharts';
 import { freightInvoices } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 const revenueData = [
 	{ month: 'Jan', revenue: 420, onTime: 93, utilization: 78 },
@@ -29,10 +30,26 @@ const revenueData = [
 ];
 
 export default function CarrierFinanceReports() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'invoices' | 'reports'>('invoices');
 	const [invoices, setInvoices] = useState(freightInvoices);
 	const [confirmModal, setConfirmModal] = useState<string | null>(null);
 	const [finalizedId, setFinalizedId] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Finance & Reports</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample finance data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	function finalizeInvoice(id: string) {
 		setInvoices((invs) =>

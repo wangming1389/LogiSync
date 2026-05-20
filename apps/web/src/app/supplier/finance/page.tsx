@@ -7,19 +7,36 @@ import {
 	Receipt,
 	X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
 	threeWayMatchingSupplier,
 	warehouseReceipts,
 } from '@/app/data/mockData';
+import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 export default function SupplierFinance() {
+	const [demoEnabled, setDemoEnabled] = useState(false);
 	const [tab, setTab] = useState<'3way' | 'receipts' | 'payments'>('3way');
 	const [matching, setMatching] = useState(threeWayMatchingSupplier);
 	const [receipts, setReceipts] = useState(warehouseReceipts);
 	const [discrepancyModal, setDiscrepancyModal] = useState<string | null>(null);
 	const [justification, setJustification] = useState('');
 	const [showReceiptForm, setShowReceiptForm] = useState(false);
+
+	useEffect(() => {
+		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+	}, []);
+
+	if (!demoEnabled) {
+		return (
+			<div className="p-6">
+				<h1 style={{ color: '#191C1E' }}>Finance Management</h1>
+				<p className="mt-2 text-sm text-slate-500">
+					No sample finance data is loaded for newly created workspaces.
+				</p>
+			</div>
+		);
+	}
 
 	function confirmMatching(id: string) {
 		setMatching((ms) =>
