@@ -1,25 +1,40 @@
 'use client';
+
 import {
+	AlertTriangle,
 	CheckCircle,
 	ChevronLeft,
 	ClipboardList,
-	UserPlus,
+	RefreshCw,
 	XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { supplierOrders } from '@/app/data/mockData';
-import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api } from '@/lib/api';
+import { getStoredAccessToken, parseJwtClaims } from '@/lib/auth';
+import {
+	loadRecentPurchaseOrders,
+	PurchaseOrderSnapshot,
+	unwrapApiList,
+	upsertRecentPurchaseOrder,
+	upsertRecentPurchaseOrders,
+} from '@/lib/order-store';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
-const TEAM = ['Nguyen Van B', 'Tran Thi C', 'Le Minh D', 'Pham Thi E'];
 
 function StatusChip({ status }: { status: string }) {
+	const label =
+		status === 'approved'
+			? 'confirmed'
+			: status === 'rejected'
+				? 'denied'
+				: status === 'goods_received'
+					? 'completed'
+					: status;
 	const map: Record<string, { bg: string; color: string }> = {
 		pending_approval: { bg: '#FFEFC6', color: '#7A4F00' },
 		approved: { bg: '#C8F0D8', color: '#1B6B3A' },
-		denied: { bg: '#FFDAD6', color: '#BA1A1A' },
-		in_negotiation: { bg: '#D3E4F5', color: '#0F4C8A' },
-		completed: { bg: '#E0E4EB', color: '#191C1E' },
+		rejected: { bg: '#FFDAD6', color: '#BA1A1A' },
+		goods_received: { bg: '#D3E4F5', color: '#0F4C8A' },
 	};
 	const s = map[status] ?? { bg: '#E0E4EB', color: '#191C1E' };
 	return (
@@ -33,59 +48,127 @@ function StatusChip({ status }: { status: string }) {
 				letterSpacing: '0.05em',
 			}}
 		>
-			{status.replace(/_/g, ' ').toUpperCase()}
+			{label.replace(/_/g, ' ').toUpperCase()}
 		</span>
 	);
 }
 
+function formatDate(value?: string | null) {
+	if (!value) return '-';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+	return date.toISOString().slice(0, 10);
+}
+
+function formatMoney(value?: number | null) {
+	return `₫${Number(value ?? 0).toLocaleString('vi-VN')}`;
+}
+
+function currentWorkspaceId() {
+	const token = getStoredAccessToken();
+	const claims = token ? parseJwtClaims(token) : null;
+	return typeof claims?.workspaceId === 'string' ? claims.workspaceId : null;
+}
+
 export default function SupplierOrderManagement() {
-	const [demoEnabled, setDemoEnabled] = useState(false);
-	const [orders, setOrders] = useState(supplierOrders);
+	const [orders, setOrders] = useState<PurchaseOrderSnapshot[]>([]);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [denyModal, setDenyModal] = useState<string | null>(null);
 	const [denyReason, setDenyReason] = useState('');
-	const [assignModal, setAssignModal] = useState<string | null>(null);
-	const [assignee, setAssignee] = useState('');
+	const [loading, setLoading] = useState(false);
+	const [actionLoading, setActionLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
 
-	useEffect(() => {
-		if (isDemoWorkspaceSession()) {
-			setDemoEnabled(true);
+	const loadOrders = useCallback(async () => {
+		const workspaceId = currentWorkspaceId();
+		setLoading(true);
+		setError(null);
+		try {
+			const response: any = await api.get('/orders?limit=50');
+			const apiOrders = unwrapApiList<PurchaseOrderSnapshot>(response);
+			upsertRecentPurchaseOrders(apiOrders);
+			const cachedOrders = loadRecentPurchaseOrders();
+			const merged = [...apiOrders];
+			for (const order of cachedOrders) {
+				if (merged.some((entry) => entry.id === order.id)) continue;
+				merged.push(order);
+			}
+			setOrders(
+				merged
+					.filter(
+						(order) =>
+							!workspaceId || order.supplierWorkspaceId === workspaceId,
+					)
+					.sort(
+						(a, b) =>
+							new Date(b.createdAt ?? 0).getTime() -
+							new Date(a.createdAt ?? 0).getTime(),
+					),
+			);
+		} catch (err: any) {
+			setError(err?.message ?? 'Failed to load orders.');
+			const cached = loadRecentPurchaseOrders();
+			setOrders(
+				cached.filter((order) => {
+					const workspaceId = currentWorkspaceId();
+					return !workspaceId || order.supplierWorkspaceId === workspaceId;
+				}),
+			);
+		} finally {
+			setLoading(false);
 		}
 	}, []);
 
-	if (!demoEnabled) {
-		return (
-			<div className="p-6">
-				<h1 style={{ color: '#191C1E' }}>Supplier Orders</h1>
-				<p className="mt-2 text-sm text-slate-500">
-					No sample orders are loaded for newly created workspaces.
-				</p>
-			</div>
-		);
+	useEffect(() => {
+		loadOrders();
+	}, [loadOrders]);
+
+	const detail = useMemo(
+		() => orders.find((order) => order.id === selected) ?? null,
+		[orders, selected],
+	);
+
+	async function approve(id: string) {
+		setActionLoading(true);
+		setError(null);
+		try {
+			const response: any = await api.patch(`/orders/${id}/approve`, {});
+			const updated = response?.data?.data ?? response?.data ?? response;
+			upsertRecentPurchaseOrder(updated);
+			setOrders((current) =>
+				current.map((order) => (order.id === id ? updated : order)),
+			);
+			setNotice('Order confirmed. Buyer can now confirm goods receipt.');
+			setSelected(null);
+		} catch (err: any) {
+			setError(err?.message ?? 'Failed to approve order.');
+		} finally {
+			setActionLoading(false);
+		}
 	}
 
-	const detail = orders.find((o) => o.id === selected);
-
-	function approve(id: string) {
-		setOrders((os) =>
-			os.map((o) => (o.id === id ? { ...o, status: 'approved' } : o)),
-		);
-		setSelected(null);
-	}
-	function deny(id: string) {
-		setOrders((os) =>
-			os.map((o) => (o.id === id ? { ...o, status: 'denied' } : o)),
-		);
-		setDenyModal(null);
-		setDenyReason('');
-		setSelected(null);
-	}
-	function assign(id: string) {
-		setOrders((os) =>
-			os.map((o) => (o.id === id ? { ...o, assignedTo: assignee } : o)),
-		);
-		setAssignModal(null);
-		setAssignee('');
+	async function deny(id: string) {
+		setActionLoading(true);
+		setError(null);
+		try {
+			const response: any = await api.patch(`/orders/${id}/reject`, {
+				rejectionReason: denyReason,
+			});
+			const updated = response?.data?.data ?? response?.data ?? response;
+			upsertRecentPurchaseOrder(updated);
+			setOrders((current) =>
+				current.map((order) => (order.id === id ? updated : order)),
+			);
+			setNotice('Order denied with reason.');
+			setDenyModal(null);
+			setDenyReason('');
+			setSelected(null);
+		} catch (err: any) {
+			setError(err?.message ?? 'Failed to reject order.');
+		} finally {
+			setActionLoading(false);
+		}
 	}
 
 	if (selected && detail) {
@@ -102,7 +185,7 @@ export default function SupplierOrderManagement() {
 					className="rounded-xl p-6"
 					style={{ background: '#FFFFFF', boxShadow: SHADOW }}
 				>
-					<div className="flex items-start justify-between mb-5">
+					<div className="flex items-start justify-between mb-5 gap-4">
 						<div>
 							<h2 style={{ color: '#191C1E' }}>Order {detail.id}</h2>
 							<p
@@ -112,233 +195,97 @@ export default function SupplierOrderManagement() {
 									marginTop: 2,
 								}}
 							>
-								Created: {detail.createdAt} · Deadline: {detail.deadline}
+								Created: {formatDate(detail.createdAt)} · Delivery:{' '}
+								{formatDate(detail.finalDeliveryDate)}
 							</p>
 						</div>
-						<StatusChip status={detail.status} />
+						<StatusChip status={detail.status ?? 'pending_approval'} />
 					</div>
+
 					<div className="grid grid-cols-2 gap-3 mb-5">
 						{[
-							['BUYER', detail.buyer],
-							['PRODUCT', detail.product],
-							['QUANTITY', `${detail.qty} ${detail.unit}`],
-							['TOTAL VALUE', `₫${detail.totalValue.toLocaleString('vi-VN')}`],
+							['BUYER WORKSPACE', detail.buyerWorkspaceId ?? '-'],
+							['QUOTATION', detail.quotationId ?? '-'],
+							['UNIT PRICE', formatMoney(detail.finalUnitPrice)],
+							['TOTAL VALUE', formatMoney(detail.totalPrice)],
+							['PAYMENT TERMS', detail.finalPaymentTerms ?? '-'],
 							['ASSIGNED TO', detail.assignedTo ?? '(unassigned)'],
-						].map(([k, v]) => (
+						].map(([label, value]) => (
 							<div
-								key={k}
+								key={label}
 								className="rounded-lg p-3"
 								style={{ background: '#F2F4F7' }}
 							>
-								<p
-									style={{
-										fontSize: 11,
-										fontWeight: 500,
-										letterSpacing: '0.05em',
-										textTransform: 'uppercase',
-										color: 'rgba(25,28,30,0.55)',
-									}}
-								>
-									{k}
+								<p className="text-[11px] font-medium tracking-wide text-slate-500">
+									{label}
 								</p>
-								<p style={{ fontSize: 14, color: '#191C1E', marginTop: 4 }}>
-									{v}
+								<p className="mt-1 text-sm text-slate-900 break-words">
+									{value}
 								</p>
 							</div>
 						))}
 					</div>
+
+					{error && (
+						<div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+							<AlertTriangle className="w-4 h-4" /> {error}
+						</div>
+					)}
+
 					{detail.status === 'pending_approval' && (
 						<div className="flex gap-3">
 							<button
 								onClick={() => approve(detail.id)}
-								className="flex items-center gap-2 px-4 py-2.5 text-white rounded-[6px] transition-all hover:brightness-105"
+								disabled={actionLoading}
+								className="flex items-center gap-2 px-4 py-2.5 text-white rounded-[6px] transition-all hover:brightness-105 disabled:opacity-50"
 								style={{
 									background:
 										'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
 									fontWeight: 600,
 									fontSize: 12,
-									letterSpacing: '0.05em',
 								}}
 							>
 								<CheckCircle className="w-4 h-4" /> APPROVE
 							</button>
 							<button
 								onClick={() => setDenyModal(detail.id)}
-								className="flex items-center gap-2 px-4 py-2.5 rounded-[6px]"
+								disabled={actionLoading}
+								className="flex items-center gap-2 px-4 py-2.5 rounded-[6px] disabled:opacity-50"
 								style={{
 									background: '#FFDAD6',
 									color: '#BA1A1A',
 									fontWeight: 600,
 									fontSize: 12,
-									letterSpacing: '0.05em',
 								}}
 							>
 								<XCircle className="w-4 h-4" /> DENY
 							</button>
-							<button
-								onClick={() => setAssignModal(detail.id)}
-								className="flex items-center gap-2 px-4 py-2.5 rounded-[6px]"
-								style={{
-									background: '#D5DAE3',
-									color: '#191C1E',
-									fontWeight: 500,
-									fontSize: 13,
-								}}
-							>
-								<UserPlus className="w-4 h-4" /> Assign
-							</button>
 						</div>
 					)}
-					{detail.status !== 'pending_approval' &&
-						detail.status !== 'completed' && (
-							<button
-								onClick={() => setAssignModal(detail.id)}
-								className="flex items-center gap-2 px-4 py-2.5 rounded-[6px]"
-								style={{
-									background: '#D5DAE3',
-									color: '#191C1E',
-									fontWeight: 500,
-									fontSize: 13,
-								}}
-							>
-								<UserPlus className="w-4 h-4" /> Reassign
-							</button>
-						)}
 				</div>
 
 				{denyModal && (
-					<div
-						className="fixed inset-0 flex items-center justify-center z-50"
-						style={{
-							background: 'rgba(0,0,0,0.4)',
-							backdropFilter: 'blur(4px)',
-						}}
-					>
-						<div
-							className="rounded-xl p-6 w-full max-w-sm"
-							style={{
-								background: 'rgba(255,255,255,0.92)',
-								backdropFilter: 'blur(20px)',
-								boxShadow: SHADOW,
-							}}
-						>
-							<h3 className="mb-3" style={{ color: '#191C1E' }}>
-								Deny Order
-							</h3>
-							<p
-								className="mb-3"
-								style={{ fontSize: 14, color: 'rgba(25,28,30,0.6)' }}
-							>
-								Please provide a reason for denial.
-							</p>
+					<div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 p-4">
+						<div className="rounded-xl bg-white p-6 w-full max-w-sm shadow-xl">
+							<h3 className="mb-3 text-slate-900">Deny Order</h3>
 							<textarea
 								value={denyReason}
-								onChange={(e) => setDenyReason(e.target.value)}
+								onChange={(event) => setDenyReason(event.target.value)}
 								rows={3}
 								placeholder="Enter reason..."
-								className="w-full px-3 py-2 rounded-t-[6px] focus:outline-none resize-none mb-3"
-								style={{
-									background: '#D5DAE3',
-									borderBottom: '2px solid #BA1A1A',
-									color: '#191C1E',
-									fontSize: 14,
-								}}
+								className="w-full px-3 py-2 rounded-t-[6px] focus:outline-none resize-none mb-3 bg-slate-200 border-b-2 border-red-700 text-sm"
 							/>
 							<div className="flex gap-2">
 								<button
 									onClick={() => deny(denyModal)}
-									disabled={!denyReason}
-									className="flex-1 py-2.5 text-white rounded-[6px] disabled:opacity-40"
-									style={{
-										background: '#BA1A1A',
-										fontWeight: 600,
-										fontSize: 13,
-									}}
+									disabled={!denyReason.trim() || actionLoading}
+									className="flex-1 py-2.5 text-white rounded-[6px] disabled:opacity-40 bg-red-700 text-sm font-semibold"
 								>
 									Confirm Deny
 								</button>
 								<button
 									onClick={() => setDenyModal(null)}
-									className="flex-1 py-2.5 rounded-[6px]"
-									style={{
-										background: '#D5DAE3',
-										color: '#191C1E',
-										fontWeight: 500,
-										fontSize: 13,
-									}}
-								>
-									Cancel
-								</button>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{assignModal && (
-					<div
-						className="fixed inset-0 flex items-center justify-center z-50"
-						style={{
-							background: 'rgba(0,0,0,0.4)',
-							backdropFilter: 'blur(4px)',
-						}}
-					>
-						<div
-							className="rounded-xl p-6 w-full max-w-sm"
-							style={{
-								background: 'rgba(255,255,255,0.92)',
-								backdropFilter: 'blur(20px)',
-								boxShadow: SHADOW,
-							}}
-						>
-							<h3 className="mb-4" style={{ color: '#191C1E' }}>
-								Assign Task
-							</h3>
-							<p
-								className="mb-3"
-								style={{ fontSize: 13, color: 'rgba(25,28,30,0.6)' }}
-							>
-								Select an active team member:
-							</p>
-							<div className="space-y-2">
-								{TEAM.map((name) => (
-									<button
-										key={name}
-										onClick={() => setAssignee(name)}
-										className="w-full text-left px-4 py-2.5 rounded-lg transition-all"
-										style={{
-											border: `2px solid ${assignee === name ? '#1A6EC4' : '#E0E4EB'}`,
-											background: assignee === name ? '#D3E4F5' : 'transparent',
-											color: assignee === name ? '#0F4C8A' : '#191C1E',
-											fontSize: 14,
-										}}
-									>
-										{name}
-									</button>
-								))}
-							</div>
-							<div className="flex gap-2 mt-4">
-								<button
-									onClick={() => assign(assignModal)}
-									disabled={!assignee}
-									className="flex-1 py-2.5 text-white rounded-[6px] disabled:opacity-40 transition-all hover:brightness-105"
-									style={{
-										background:
-											'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
-										fontWeight: 600,
-										fontSize: 13,
-									}}
-								>
-									Assign
-								</button>
-								<button
-									onClick={() => setAssignModal(null)}
-									className="flex-1 py-2.5 rounded-[6px]"
-									style={{
-										background: '#D5DAE3',
-										color: '#191C1E',
-										fontWeight: 500,
-										fontSize: 13,
-									}}
+									className="flex-1 py-2.5 rounded-[6px] bg-slate-200 text-slate-900 text-sm"
 								>
 									Cancel
 								</button>
@@ -352,31 +299,50 @@ export default function SupplierOrderManagement() {
 
 	return (
 		<div className="p-6">
-			<div className="mb-6">
-				<h1 style={{ color: '#191C1E' }}>Order Management</h1>
-				<p style={{ fontSize: 13, color: 'rgba(25,28,30,0.55)', marginTop: 2 }}>
-					My Tasks View —{' '}
-					{orders.filter((o) => o.status === 'pending_approval').length} pending
-					approval
-				</p>
+			<div className="mb-6 flex items-start justify-between gap-4">
+				<div>
+					<h1 style={{ color: '#191C1E' }}>Order Management</h1>
+					<p className="mt-1 text-sm text-slate-500">
+						Real purchase orders created when a buyer selects a quotation.
+					</p>
+				</div>
+				<button
+					onClick={loadOrders}
+					disabled={loading}
+					className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-50"
+				>
+					<RefreshCw className="w-4 h-4" /> Refresh
+				</button>
 			</div>
+
+			{notice && (
+				<div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+					<CheckCircle className="w-4 h-4" /> {notice}
+				</div>
+			)}
+			{error && (
+				<div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+					<AlertTriangle className="w-4 h-4" /> {error}
+				</div>
+			)}
+
+			{loading && <p className="text-sm text-slate-500">Loading orders...</p>}
+			{!loading && orders.length === 0 && (
+				<div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+					No purchase orders are visible for this supplier workspace yet.
+				</div>
+			)}
+
 			<div className="space-y-3">
-				{orders.map((o) => (
-					<div
-						key={o.id}
-						onClick={() => setSelected(o.id)}
-						className="rounded-xl p-5 cursor-pointer transition-all"
+				{orders.map((order) => (
+					<button
+						key={order.id}
+						onClick={() => setSelected(order.id)}
+						className="w-full rounded-xl p-5 text-left transition-all"
 						style={{ background: '#FFFFFF', boxShadow: SHADOW }}
-						onMouseEnter={(e) =>
-							((e.currentTarget as HTMLDivElement).style.boxShadow =
-								'0px 12px 32px rgba(15,76,138,0.14)')
-						}
-						onMouseLeave={(e) =>
-							((e.currentTarget as HTMLDivElement).style.boxShadow = SHADOW)
-						}
 					>
-						<div className="flex items-start justify-between mb-3">
-							<div className="flex items-start gap-3">
+						<div className="flex items-start justify-between mb-3 gap-4">
+							<div className="flex items-start gap-3 min-w-0">
 								<div
 									className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
 									style={{ background: '#D3E4F5' }}
@@ -386,34 +352,24 @@ export default function SupplierOrderManagement() {
 										style={{ color: '#0F4C8A' }}
 									/>
 								</div>
-								<div>
-									<p
-										style={{ fontSize: 15, fontWeight: 600, color: '#191C1E' }}
-									>
-										{o.id} — {o.product}
+								<div className="min-w-0">
+									<p className="text-sm font-semibold text-slate-900 break-all">
+										{order.id}
 									</p>
-									<p
-										style={{
-											fontSize: 12,
-											color: 'rgba(25,28,30,0.5)',
-											marginTop: 2,
-										}}
-									>
-										Buyer: {o.buyer} · {o.qty} {o.unit}
+									<p className="mt-1 text-xs text-slate-500">
+										Quotation {order.quotationId?.slice(0, 8) ?? '-'} ·{' '}
+										{formatMoney(order.totalPrice)}
 									</p>
 								</div>
 							</div>
-							<StatusChip status={o.status} />
+							<StatusChip status={order.status ?? 'pending_approval'} />
 						</div>
-						<div
-							className="flex items-center justify-between"
-							style={{ fontSize: 12, color: 'rgba(25,28,30,0.55)' }}
-						>
-							<span>Value: ₫{o.totalValue.toLocaleString('vi-VN')}</span>
-							<span>Assigned: {o.assignedTo ?? 'Unassigned'}</span>
-							<span>Deadline: {o.deadline}</span>
+						<div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+							<span>Unit: {formatMoney(order.finalUnitPrice)}</span>
+							<span>Delivery: {formatDate(order.finalDeliveryDate)}</span>
+							<span>Assigned: {order.assignedTo ?? 'Unassigned'}</span>
 						</div>
-					</div>
+					</button>
 				))}
 			</div>
 		</div>

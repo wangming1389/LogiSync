@@ -108,20 +108,13 @@ const inputStyle = {
 	fontSize: 14,
 };
 
-function toArray<T>(payload: ApiList<T>): T[] {
-	if (Array.isArray(payload)) return payload;
-	if (payload && typeof payload === 'object' && 'data' in payload) {
-		const data = (payload as { data?: unknown }).data;
-		if (Array.isArray(data)) return data as T[];
-		if (data && typeof data === 'object' && 'items' in data) {
-			const items = (data as { items?: unknown }).items;
-			if (Array.isArray(items)) return items as T[];
-		}
-	}
-	if (payload && 'items' in payload && Array.isArray(payload.items)) {
-		return payload.items;
-	}
-	return [];
+function toArray<T>(payload: ApiList<T>| any): T[] {
+	if (!payload) return [];
+    const unwrapped = payload?.data ?? payload;       // bỏ lớp axios response
+    const inner = unwrapped?.data ?? unwrapped;       // bỏ lớp { success, data, error }
+    if (Array.isArray(inner)) return inner;
+    if (Array.isArray(inner?.items)) return inner.items;
+    return [];
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -237,6 +230,8 @@ export default function CatalogManagement() {
 			api.get<ApiList<CatalogCategory>>('/catalog-categories'),
 			api.get<ApiList<Uom>>('/uom'),
 		]);
+
+		console.log('catalog-categories raw:', JSON.stringify(catalogCategoryResult));
 
 		const categoryItems =
 			categoryResult.status === 'fulfilled' ? toArray(categoryResult.value) : [];
@@ -467,7 +462,8 @@ export default function CatalogManagement() {
 				await api.patch(`/catalog/products/${productId}`, payload);
 			} else {
 				const created: any = await api.post('/catalog/products', payload);
-				productId = created?.data?.id ?? created?.id;
+				console.log('created product response:', JSON.stringify(created));
+				productId = created?.data?.data?.id ?? created?.data?.id ?? created?.id;
 				if (!productId) {
 					throw new Error('Missing created product id');
 				}

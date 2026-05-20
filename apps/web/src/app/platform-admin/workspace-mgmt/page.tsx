@@ -60,7 +60,8 @@ export default function WorkspaceManagement() {
 			setLoading(true);
 			try {
 				const response: any = await api.get('/workspaces?limit=100');
-				const items = response?.data?.items ?? response?.items ?? [];
+				const payload = response?.data?.data ?? response?.data ?? response;
+				const items = Array.isArray(payload) ? payload : payload?.items ?? [];
 				if (active && Array.isArray(items)) {
 					setWorkspaces(items);
 				}
