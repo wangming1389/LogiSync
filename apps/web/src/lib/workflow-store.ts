@@ -19,6 +19,7 @@ import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 
 type BuyerRfq = (typeof buyerRFQList)[number] & {
 	items?: { product: string; qty: number; unit: string; productId?: string }[];
+	childRfqs?: { id: string; supplierWorkspaceId?: string; status?: string }[];
 	product?: string;
 	qty?: number;
 	unit?: string;
@@ -31,7 +32,17 @@ type BuyerRfq = (typeof buyerRFQList)[number] & {
 };
 
 type SupplierRfq = (typeof rfqList)[number] & {
+	items?: {
+		id?: string;
+		product: string;
+		qty: number;
+		unit: string;
+		productId?: string;
+		deliveryDate?: string;
+		notes?: string;
+	}[];
 	quotation?: {
+		id?: string;
 		price: number;
 		terms: string;
 		notes: string;

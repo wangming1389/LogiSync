@@ -106,13 +106,17 @@ export class RfqService {
 	}
 
 	async listQuotationsForRfq(rfqId: string, role: string) {
-		// Only Buyers see all quotations for an RFQ they own
-		if (!this.hasRole(SOURCING_BUYER_ROLES, role)) {
-			throw new ForbiddenException('Only Buyers can list RFQ quotations');
+		if (this.hasRole(SOURCING_BUYER_ROLES, role)) {
+			const rfq = await this.rfqRepo.findByIdForBuyer(rfqId);
+			if (!rfq) throw new NotFoundException('RFQ not found');
+			return this.rfqRepo.listQuotationsForRfq(rfqId);
 		}
-		const rfq = await this.rfqRepo.findByIdForBuyer(rfqId);
-		if (!rfq) throw new NotFoundException('RFQ not found');
-		return this.rfqRepo.listQuotationsForRfq(rfqId);
+		if (this.hasRole(SOURCING_SUPPLIER_ROLES, role)) {
+			const rfq = await this.rfqRepo.findByIdForSupplier(rfqId);
+			if (!rfq) throw new NotFoundException('RFQ not found');
+			return this.rfqRepo.listQuotationsForRfq(rfqId);
+		}
+		throw new ForbiddenException('Role cannot access quotations');
 	}
 
 	async addItem(

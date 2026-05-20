@@ -18,7 +18,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:9
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 
 type Tab = 'products' | 'categories';
-type ApiList<T> = { items?: T[] } | T[] | undefined;
 type ProductStatus = 'draft' | 'active' | 'inactive';
 
 type SupplierCategory = {
@@ -108,20 +107,13 @@ const inputStyle = {
 	fontSize: 14,
 };
 
-function toArray<T>(payload: ApiList<T>): T[] {
-	if (Array.isArray(payload)) return payload;
-	if (payload && typeof payload === 'object' && 'data' in payload) {
-		const data = (payload as { data?: unknown }).data;
-		if (Array.isArray(data)) return data as T[];
-		if (data && typeof data === 'object' && 'items' in data) {
-			const items = (data as { items?: unknown }).items;
-			if (Array.isArray(items)) return items as T[];
-		}
-	}
-	if (payload && 'items' in payload && Array.isArray(payload.items)) {
-		return payload.items;
-	}
-	return [];
+function toArray<T>(payload: any): T[] {
+    if (!payload) return [];
+    const unwrapped = payload?.data ?? payload;
+    const inner = unwrapped?.data ?? unwrapped;
+    if (Array.isArray(inner)) return inner as T[];
+    if (Array.isArray(inner?.items)) return inner.items as T[];
+    return [];
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -232,19 +224,20 @@ export default function CatalogManagement() {
 
 	async function loadMasterData(): Promise<MasterData> {
 		setLoadError('');
-		const [categoryResult, catalogCategoryResult, uomResult] = await Promise.allSettled([
-			api.get<ApiList<SupplierCategory>>('/catalog/categories'),
-			api.get<ApiList<CatalogCategory>>('/catalog-categories'),
-			api.get<ApiList<Uom>>('/uom'),
-		]);
+    	const [categoryResult, catalogCategoryResult, uomResult] = await Promise.allSettled([
+        	api.get('/catalog/categories'),
+        	api.get('/catalog-categories'),
+        	api.get('/uom'),
+    	]);
 
-		const categoryItems =
-			categoryResult.status === 'fulfilled' ? toArray(categoryResult.value) : [];
-		const catalogCategoryItems =
-			catalogCategoryResult.status === 'fulfilled'
-				? toArray(catalogCategoryResult.value)
-				: [];
-		const uomItems = uomResult.status === 'fulfilled' ? toArray(uomResult.value) : [];
+		console.log('catalog-categories raw:', JSON.stringify(catalogCategoryResult));
+
+		const categoryItems = categoryResult.status === 'fulfilled'
+        	? toArray<SupplierCategory>(categoryResult.value) : [];
+    	const catalogCategoryItems = catalogCategoryResult.status === 'fulfilled'
+        	? toArray<CatalogCategory>(catalogCategoryResult.value) : [];
+    	const uomItems = uomResult.status === 'fulfilled'
+        	? toArray<Uom>(uomResult.value) : [];
 
 		if (categoryResult.status === 'rejected') {
 			console.error('Error loading supplier categories', categoryResult.reason);
@@ -257,28 +250,24 @@ export default function CatalogManagement() {
 		}
 
 		setSupplierCategories(categoryItems);
-		setCatalogCategories(catalogCategoryItems);
-		setUoms(uomItems);
+    setCatalogCategories(catalogCategoryItems);
+    setUoms(uomItems);
 
-		return {
-			categoryItems,
-			catalogCategoryItems,
-			uomItems,
-		};
+    return { categoryItems, catalogCategoryItems, uomItems };
 	}
 
 	async function loadProducts(masterData?: MasterData) {
 		setIsLoading(true);
 		try {
-			const response: ApiList<ProductApiItem> = await api.get('/catalog/products');
-			const productItems = toArray(response);
+			const response = await api.get('/catalog/products');
+        	const productItems = toArray<ProductApiItem>(response);
 			const categoryMap = new Map(
 				(masterData?.categoryItems ?? supplierCategories).map((item) => [item.id, item.name]),
 			);
 			const uomMap = new Map((masterData?.uomItems ?? uoms).map((item) => [item.id, item]));
 
 			setProducts(
-				productItems.map((item) => {
+				productItems.map((item: ProductApiItem) => {
 					const stockValue =
 						typeof item.attributes?.stock === 'number'
 							? (item.attributes.stock as number)
@@ -467,7 +456,8 @@ export default function CatalogManagement() {
 				await api.patch(`/catalog/products/${productId}`, payload);
 			} else {
 				const created: any = await api.post('/catalog/products', payload);
-				productId = created?.data?.id ?? created?.id;
+				console.log('created product response:', JSON.stringify(created));
+				productId = created?.data?.data?.id ?? created?.data?.id ?? created?.id;
 				if (!productId) {
 					throw new Error('Missing created product id');
 				}
