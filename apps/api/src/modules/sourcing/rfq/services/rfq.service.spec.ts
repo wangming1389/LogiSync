@@ -69,7 +69,7 @@ describe('RfqService', () => {
 			auditLoggerService as never,
 			messageQueueService as never,
 			databaseService as never,
-			rfqCreatedCounter as never,
+			rfqCreatedCounter,
 		);
 	});
 

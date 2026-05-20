@@ -138,8 +138,8 @@ describe('OrderService', () => {
 			messageQueueService as never,
 			stateTransitions,
 			orderExportService as never,
-			orderApprovedCounter as never,
-			orderRejectedCounter as never,
+			orderApprovedCounter,
+			orderRejectedCounter,
 		);
 	});
 

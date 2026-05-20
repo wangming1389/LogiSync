@@ -128,7 +128,7 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 		return objectName;
 	}
 
-	async uploadFromUrl(url: string, folder = 'media'): Promise<string> {
+	uploadFromUrl(url: string, folder = 'media'): Promise<string> {
 		void url;
 		void folder;
 		throw new BadRequestException('Remote URL upload is disabled for security');
