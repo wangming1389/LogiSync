@@ -73,9 +73,10 @@ export class MediaService {
 	}
 
 	private validateUpload(file: IMulterFile, folder?: string) {
+		const folderValue = typeof folder === 'string' ? folder : undefined;
+		const isLegalFolder = folderValue?.includes('legal') ?? false;
 		const isImage = file.mimetype.startsWith('image/');
-		const isDocument =
-			file.mimetype === 'application/pdf' || folder?.includes('legal');
+		const isDocument = file.mimetype === 'application/pdf' || isLegalFolder;
 		const imageLimit = 5 * 1024 * 1024;
 		const documentLimit = 10 * 1024 * 1024;
 
@@ -87,7 +88,7 @@ export class MediaService {
 			throw new BadRequestException('Documents must not exceed 10MB');
 		}
 
-		if (folder?.includes('legal')) {
+		if (isLegalFolder) {
 			const allowedExtensions = ['.pdf', '.jpg', '.png'];
 			const lowerName = file.originalname.toLowerCase();
 			if (

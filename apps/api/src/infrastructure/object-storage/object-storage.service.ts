@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	Injectable,
 	Logger,
 	OnModuleDestroy,
@@ -128,34 +129,9 @@ export class ObjectStorageService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	async uploadFromUrl(url: string, folder = 'media'): Promise<string> {
-		this.ensureConnected();
-		try {
-			const response = await fetch(url);
-			if (!response.ok) {
-				throw new Error(
-					`Failed to fetch image from URL: ${response.statusText}`,
-				);
-			}
-			const arrayBuffer = await response.arrayBuffer();
-			const buffer = Buffer.from(arrayBuffer);
-
-			// Try to get extension from URL or Content-Type
-			let extension = url.split('.').pop()?.split('?')[0];
-			if (!extension || extension.length > 5 || extension.includes('/')) {
-				const contentType = response.headers.get('content-type');
-				extension = contentType ? contentType.split('/')[1] : 'png';
-			}
-
-			const objectName = `${folder}/${uuidv4()}.${extension}`;
-			await this.minioClient.putObject(this.bucketName, objectName, buffer);
-			return objectName;
-		} catch (error) {
-			this.logger.error(
-				`Error uploading from URL: ${url}`,
-				error instanceof Error ? error.stack : String(error),
-			);
-			throw new Error('Could not upload image from URL');
-		}
+		void url;
+		void folder;
+		throw new BadRequestException('Remote URL upload is disabled for security');
 	}
 
 	async deleteFile(objectName: string): Promise<void> {
