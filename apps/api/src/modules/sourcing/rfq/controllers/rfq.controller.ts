@@ -234,7 +234,7 @@ export class RfqController {
 
 	@Get(':rfqId/quotations')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles(...SOURCING_BUYER_ROLES)
+	@Roles(...SOURCING_ANY_PARTY_ROLES)
 	@ApiOperation({ summary: 'List quotations received for RFQ' })
 	@ApiParam({ name: 'rfqId', type: 'string', format: 'uuid' })
 	@ApiResponse({ status: 200, description: 'List of quotations' })

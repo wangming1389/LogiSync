@@ -1,29 +1,41 @@
 'use client';
 
-import { Activity, Download, Filter, Search } from 'lucide-react';
+import { Activity, Download, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
-const DOMAINS = ['All', 'Platform', 'Supplier', 'Carrier', 'Buyer', 'HR'];
+const STATUS_FILTERS = ['All', 'Success', 'Failure'] as const;
+
+type AuditLogRow = {
+	id: string;
+	timestamp: string;
+	actorId: string;
+	workspaceId: string;
+	action: string;
+	resourceType: string;
+	resourceId?: string | null;
+	ipAddress: string;
+	status: 'success' | 'failure' | string;
+	errorMessage?: string | null;
+	changes?: unknown;
+};
 
 function toDate(value: string) {
 	const next = new Date(value);
 	return Number.isNaN(next.getTime()) ? null : next;
 }
 
-const domainStyle: Record<string, { bg: string; color: string }> = {
-	Platform: { bg: '#D3E4F5', color: '#0F4C8A' },
-	Supplier: { bg: '#C8F0D8', color: '#1B6B3A' },
-	Carrier: { bg: '#FFEFC6', color: '#7A4F00' },
-	Buyer: { bg: '#FFDAD6', color: '#BA1A1A' },
-	HR: { bg: '#E0E4EB', color: '#191C1E' },
-};
+function statusChipStyle(status: string) {
+	if (status === 'success') return { bg: '#C8F0D8', color: '#1B6B3A', label: 'SUCCESS' };
+	if (status === 'failure') return { bg: '#FFDAD6', color: '#BA1A1A', label: 'FAILURE' };
+	return { bg: '#E0E4EB', color: '#191C1E', label: status.toUpperCase() };
+}
 
 export default function AuditLog() {
-	const [logs, setLogs] = useState<Array<{ id: string; timestamp: string; actor: string; action: string; target: string; ip: string; domain: string }>>([]);
+	const [logs, setLogs] = useState<AuditLogRow[]>([]);
 	const [search, setSearch] = useState('');
-	const [domain, setDomain] = useState('All');
+	const [status, setStatus] = useState<(typeof STATUS_FILTERS)[number]>('All');
 	const [dateFrom, setDateFrom] = useState('');
 	const [dateTo, setDateTo] = useState('');
 	const [loading, setLoading] = useState(true);
@@ -33,8 +45,10 @@ export default function AuditLog() {
 		async function loadLogs() {
 			setLoading(true);
 			try {
-				const response: any = await api.get('/admin/audit-logs?limit=200');
-				const items = response?.data?.items ?? response?.items ?? [];
+				// API docs limit is max 25
+				const response: any = await api.get('/admin/audit-logs?limit=25');
+				const payload = response?.data?.data ?? response?.data ?? response;
+				const items = Array.isArray(payload) ? payload : payload?.items ?? [];
 				if (active && Array.isArray(items)) {
 					setLogs(items);
 				}
@@ -53,13 +67,18 @@ export default function AuditLog() {
 
 	const filtered = logs
 		.filter((log) => {
-		const matchSearch =
-			!search ||
-			log.actor.includes(search) ||
-			log.action.includes(search) ||
-			log.target.includes(search);
-		const matchDomain = domain === 'All' || log.domain === domain;
-		if (!matchSearch || !matchDomain) return false;
+		const haystack = [
+			log.actorId,
+			log.workspaceId,
+			log.action,
+			log.resourceType,
+			log.resourceId ?? '',
+			log.ipAddress,
+			log.status,
+		].join(' ');
+		const matchSearch = !search || haystack.toLowerCase().includes(search.toLowerCase());
+		const matchStatus = status === 'All' || log.status === status.toLowerCase();
+		if (!matchSearch || !matchStatus) return false;
 
 		const logDate = toDate(log.timestamp.slice(0, 10));
 		const fromDate = dateFrom ? toDate(dateFrom) : null;
@@ -74,20 +93,24 @@ export default function AuditLog() {
 		const header = [
 			'ID',
 			'Timestamp',
-			'Actor',
+			'Actor ID',
+			'Workspace ID',
 			'Action',
-			'Target',
+			'Resource Type',
+			'Resource ID',
 			'IP',
-			'Domain',
+			'Status',
 		];
 		const rows = filtered.map((l) => [
 			l.id,
 			l.timestamp,
-			l.actor,
+			l.actorId,
+			l.workspaceId,
 			l.action,
-			l.target,
-			l.ip,
-			l.domain,
+			l.resourceType,
+			l.resourceId ?? '',
+			l.ipAddress,
+			l.status,
 		]);
 		const csv = [header, ...rows].map((r) => r.join(',')).join('\n');
 		const blob = new Blob([csv], { type: 'text/csv' });
@@ -155,10 +178,9 @@ export default function AuditLog() {
 					/>
 				</div>
 				<div className="flex items-center gap-2">
-					<Filter className="w-4 h-4" style={{ color: 'rgba(25,28,30,0.4)' }} />
 					<select
-						value={domain}
-						onChange={(e) => setDomain(e.target.value)}
+						value={status}
+						onChange={(e) => setStatus(e.target.value as (typeof STATUS_FILTERS)[number])}
 						className="px-3 h-10 rounded-t-[6px] focus:outline-none"
 						style={{
 							background: '#D5DAE3',
@@ -167,7 +189,7 @@ export default function AuditLog() {
 							fontSize: 14,
 						}}
 					>
-						{DOMAINS.map((d) => (
+						{STATUS_FILTERS.map((d) => (
 							<option key={d}>{d}</option>
 						))}
 					</select>
@@ -210,11 +232,12 @@ export default function AuditLog() {
 						<tr>
 							{[
 								'TIMESTAMP',
-								'ACTOR',
+								'ACTOR ID',
+								'WORKSPACE ID',
 								'ACTION',
-								'TARGET',
+								'RESOURCE',
 								'IP ADDRESS',
-								'DOMAIN',
+								'STATUS',
 							].map((h) => (
 								<th
 									key={h}
@@ -234,7 +257,7 @@ export default function AuditLog() {
 					<tbody>
 						{loading ? (
 							<tr>
-								<td className="px-4 py-6 text-sm text-slate-500" colSpan={6}>
+								<td className="px-4 py-6 text-sm text-slate-500" colSpan={7}>
 									Loading audit logs...
 								</td>
 							</tr>
@@ -260,13 +283,19 @@ export default function AuditLog() {
 										color: 'rgba(25,28,30,0.5)',
 									}}
 								>
-									{log.timestamp}
+									{new Date(log.timestamp).toLocaleString('vi-VN')}
 								</td>
 								<td
 									className="px-4 py-3"
 									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
 								>
-									{log.actor}
+									{log.actorId}
+								</td>
+								<td
+									className="px-4 py-3"
+									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
+								>
+									{log.workspaceId}
 								</td>
 								<td className="px-4 py-3">
 									<div className="flex items-center gap-1.5">
@@ -289,7 +318,8 @@ export default function AuditLog() {
 									className="px-4 py-3"
 									style={{ fontSize: 13, color: 'rgba(25,28,30,0.7)' }}
 								>
-									{log.target}
+									{log.resourceType}
+									{log.resourceId ? ` / ${log.resourceId}` : ''}
 								</td>
 								<td
 									className="px-4 py-3"
@@ -299,14 +329,11 @@ export default function AuditLog() {
 										color: 'rgba(25,28,30,0.5)',
 									}}
 								>
-									{log.ip}
+									{log.ipAddress}
 								</td>
 								<td className="px-4 py-3">
 									{(() => {
-										const s = domainStyle[log.domain] ?? {
-											bg: '#E0E4EB',
-											color: '#191C1E',
-										};
+										const s = statusChipStyle(log.status);
 										return (
 											<span
 												className="px-3 py-1 rounded-full"
@@ -318,7 +345,7 @@ export default function AuditLog() {
 													letterSpacing: '0.05em',
 												}}
 											>
-												{log.domain.toUpperCase()}
+												{s.label}
 											</span>
 										);
 									})()}
@@ -328,7 +355,7 @@ export default function AuditLog() {
 						{filtered.length === 0 && (
 							<tr>
 								<td
-									colSpan={6}
+									colSpan={7}
 									className="text-center py-12"
 									style={{ color: 'rgba(25,28,30,0.4)', fontSize: 14 }}
 								>
