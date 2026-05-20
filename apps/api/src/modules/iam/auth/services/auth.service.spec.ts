@@ -41,7 +41,7 @@ describe('AuthService core security contract', () => {
 			auditLoggerService as never,
 			userRepository as never,
 			workspaceRepository as never,
-			loginFailedCounter as never,
+			loginFailedCounter,
 		);
 		jwtService.sign.mockReturnValue('signed-token');
 		sessionRegistryService.createSession.mockResolvedValue('session-1');
