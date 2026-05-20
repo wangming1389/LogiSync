@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ObjectStorageModule } from '../../infrastructure/object-storage/object-storage.module';
-import { MediaController } from './media.controller';
-import { MediaService } from './media.service';
+import { MediaController } from './controllers/media.controller';
+import { MediaService } from './services/media.service';
 
 @Module({
 	imports: [ObjectStorageModule],

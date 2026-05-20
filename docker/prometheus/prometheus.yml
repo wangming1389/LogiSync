@@ -1,0 +1,16 @@
+# Prometheus Configuration for LogiSync API
+# Docs: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+
+global:
+  scrape_interval: 15s # Scrape metrics every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+
+scrape_configs:
+  - job_name: 'logisync-api'
+    metrics_path: /metrics
+    static_configs:
+      # In dev, the API runs on the host machine (not in Docker).
+      # host.docker.internal resolves to the Docker host's localhost.
+      - targets: ['host.docker.internal:9751']
+        labels:
+          environment: 'development'

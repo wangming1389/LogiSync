@@ -5,16 +5,16 @@ import { PassportModule } from '@nestjs/passport';
 import { AuditModule } from '../../core/audit/audit.module';
 import { SecurityModule } from '../../core/security/security.module';
 import { SessionModule } from '../../core/session/session.module';
-import { AuthController } from './auth/auth.controller';
-import { AuthService } from './auth/auth.service';
 import { JWT_EXPIRATION_SECONDS } from './auth/constants/auth.constants';
-import { JwtStrategy } from './auth/jwt.strategy';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { PermissionService } from './auth/permission.service';
-import { UserRepository } from './auth/user.repository';
-import { WorkspaceController } from './workspace/workspace.controller';
-import { WorkspaceRepository } from './workspace/workspace.repository';
-import { WorkspaceService } from './workspace/workspace.service';
+import { AuthController } from './auth/controllers/auth.controller';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { UserRepository } from './auth/repositories/user.repository';
+import { AuthService } from './auth/services/auth.service';
+import { PermissionService } from './auth/services/permission.service';
+import { JwtStrategy } from './auth/strategies/jwt.strategy';
+import { WorkspaceController } from './workspace/controllers/workspace.controller';
+import { WorkspaceRepository } from './workspace/repositories/workspace.repository';
+import { WorkspaceService } from './workspace/services/workspace.service';
 
 @Module({
 	imports: [
