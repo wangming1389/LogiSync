@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import crypto from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { createClient, RedisClientType } from 'redis';
 import { getDatabase, schema } from '../../infrastructure/database';
 
@@ -124,6 +124,22 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 		}
 		const parsed = JSON.parse(data) as SessionData;
 		return parsed;
+	}
+
+	async getActiveSessionRecord(sessionId: string) {
+		const db = getDatabase();
+		const [record] = await db
+			.select()
+			.from(schema.sessionRegistry)
+			.where(
+				and(
+					eq(schema.sessionRegistry.sessionId, sessionId),
+					eq(schema.sessionRegistry.isActive, true),
+					gt(schema.sessionRegistry.expiresAt, new Date()),
+				),
+			);
+
+		return record ?? null;
 	}
 
 	async revokeSession(sessionId: string): Promise<void> {

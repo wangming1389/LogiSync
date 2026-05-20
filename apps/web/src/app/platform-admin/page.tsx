@@ -1,4 +1,6 @@
+
 'use client';
+import { useEffect, useState } from 'react';
 import {
 	Activity,
 	AlertTriangle,
@@ -116,8 +118,17 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export default function SystemHealth() {
+	const [lastUpdated, setLastUpdated] = useState(() => new Date());
 	const storage = { used: 284, total: 500, unit: 'GB' };
 	const storagePercent = (storage.used / storage.total) * 100;
+
+	useEffect(() => {
+		const intervalId = window.setInterval(() => {
+			setLastUpdated(new Date());
+		}, 30000);
+
+		return () => window.clearInterval(intervalId);
+	}, []);
 
 	const kpis = [
 		{
@@ -160,7 +171,7 @@ export default function SystemHealth() {
 						style={{ fontSize: 13, color: 'rgba(25,28,30,0.6)', marginTop: 2 }}
 					>
 						Real-time platform status · Last updated:{' '}
-						{new Date().toLocaleTimeString('vi-VN')}
+						{lastUpdated.toLocaleTimeString('vi-VN')}
 					</p>
 				</div>
 				<span
