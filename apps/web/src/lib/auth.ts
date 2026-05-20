@@ -20,6 +20,15 @@ function clearCookie(name: string) {
 	document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+function getCookieValue(name: string) {
+	if (typeof document === 'undefined') return undefined;
+	const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const match = document.cookie.match(
+		new RegExp(`(?:^|; )${escapedName}=([^;]*)`),
+	);
+	return match ? decodeURIComponent(match[1]) : undefined;
+}
+
 export function setAuthSession(accessToken: string, refreshToken?: string) {
 	if (typeof window === 'undefined') return;
 
@@ -54,6 +63,12 @@ export function getStoredAccessToken() {
 		const v = localStorage.getItem(k);
 		if (v) return v;
 	}
+
+	for (const k of candidates) {
+		const v = getCookieValue(k);
+		if (v) return v;
+	}
+
 	return undefined;
 }
 

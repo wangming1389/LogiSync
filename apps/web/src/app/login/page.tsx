@@ -90,7 +90,15 @@ export default function LoginPage() {
 		setError('');
 		try {
 			const res: any = await api.post('/auth/login', { email, password });
-			const token = res?.accessToken ?? res?.data?.accessToken ?? res?.data?.access_token;
+			// Server responds with envelope { success, data, error, meta }
+			// apiFetch currently wraps response.json() into { data: json }
+			// so token may live at res.data.data.accessToken — handle all variants
+			const token =
+				res?.accessToken ??
+				res?.data?.accessToken ??
+				res?.data?.access_token ??
+				res?.data?.data?.accessToken ??
+				res?.data?.data?.access_token;
 			if (!token) {
 				throw new Error('No access token received from server');
 			}

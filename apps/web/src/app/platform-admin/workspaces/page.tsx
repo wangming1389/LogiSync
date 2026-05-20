@@ -94,16 +94,16 @@ export default function WorkspaceApprovals() {
 	const [roleModal, setRoleModal] = useState<string | null>(null);
 	const [rolesToEnable, setRolesToEnable] = useState<string[]>([]);
 
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [statusFilter] = useState('pending');
 
 	const fetchWorkspaces = async () => {
 		try {
 			const query =
-				statusFilter !== 'all'
-					? `?status=${statusFilter}&limit=100`
-					: `?limit=100`;
+				`?status=${statusFilter}&limit=100`;
 			const response: any = await api.get('/workspaces' + query);
-			const items = response?.data?.items ?? response?.items ?? [];
+			// API returns { success, data: [...], meta: {...} } for list endpoints.
+			const payload = response?.data?.data ?? response?.data ?? response;
+			const items = Array.isArray(payload) ? payload : payload?.items ?? [];
 			if (Array.isArray(items)) {
 				setWorkspaces(items);
 			}
@@ -215,19 +215,14 @@ export default function WorkspaceApprovals() {
 					className="text-3xl font-light"
 					style={{ color: '#191C1E', letterSpacing: '-0.02em' }}
 				>
-					Workspace Management
+					Workspace Approval
 				</h1>
-				<select
-					className="border rounded p-2 text-sm"
-					value={statusFilter}
-					onChange={(e) => setStatusFilter(e.target.value)}
+				<span
+					className="px-3 py-2 rounded-full text-sm"
+					style={{ background: '#FFEFC6', color: '#7A4F00', fontWeight: 500 }}
 				>
-					<option value="all">All</option>
-					<option value="pending">Pending</option>
-					<option value="active">Active</option>
-					<option value="suspended">Suspended</option>
-					<option value="revoked">Rejected</option>
-				</select>
+					Pending only
+				</span>
 			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -279,7 +274,7 @@ export default function WorkspaceApprovals() {
 					))}
 					{workspaces.length === 0 && (
 						<div className="text-center p-8 text-gray-500 bg-white border border-gray-200 rounded-xl">
-							No workspaces found.
+							No pending requests found.
 						</div>
 					)}
 				</div>

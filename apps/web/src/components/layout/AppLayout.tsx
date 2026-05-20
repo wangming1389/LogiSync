@@ -33,8 +33,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { clearAuthSession } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import {
+	clearAuthSession,
+	getStoredAccessToken,
+	isAllowedPathForClaims,
+	parseJwtClaims,
+	resolveAuthDestination,
+} from '@/lib/auth';
 
 const NAV_CONFIG: Record<
 	string,
@@ -51,9 +58,21 @@ const NAV_CONFIG: Record<
 				path: '/platform-admin',
 				icon: <Activity className="w-5 h-5" />,
 			},
-				{ label: 'Workspace Approvals',  path: '/platform-admin/workspaces', icon: <ClipboardList className="w-5 h-5" /> },
-				{ label: 'Workspace Mgmt',       path: '/platform-admin/workspace-mgmt', icon: <Building2 className="w-5 h-5" /> },
-			// { label: 'Audit Log',            path: '/platform-admin/audit-log',  icon: <ShieldCheck className="w-5 h-5" /> },
+			{
+				label: 'Workspace Approvals',
+				path: '/platform-admin/workspaces',
+				icon: <ClipboardList className="w-5 h-5" />,
+			},
+			{
+				label: 'Workspace Mgmt',
+				path: '/platform-admin/workspace-mgmt',
+				icon: <Building2 className="w-5 h-5" />,
+			},
+			{
+				label: 'Audit Log',
+				path: '/platform-admin/audit-log',
+				icon: <ShieldCheck className="w-5 h-5" />,
+			},
 			// { label: 'Data Catalog',         path: '/platform-admin/data-catalog', icon: <Database className="w-5 h-5" /> },
 			// { label: 'Dispute Management',   path: '/platform-admin/disputes',   icon: <AlertTriangle className="w-5 h-5" /> },
 			// { label: 'Reputation Scores',    path: '/platform-admin/reputation', icon: <Star className="w-5 h-5" /> },
@@ -78,6 +97,11 @@ const NAV_CONFIG: Record<
 				path: '/supplier/rfq',
 				icon: <FileText className="w-5 h-5" />,
 			},
+			{
+            label: 'Orders',                          // ← thêm mới
+            path: '/supplier/orders',
+            icon: <ClipboardList className="w-5 h-5" />,
+        	},
 			{
 				label: 'Pricing & Credit',
 				path: '/supplier/pricing',
@@ -113,20 +137,25 @@ const NAV_CONFIG: Record<
 		],
 	},
 	buyer: {
-		label: 'Buyer/Shipper',
-		items: [
-			{
-				label: 'Sourcing/Procurement',
-				path: '/buyer/sourcing',
-				icon: <ShoppingCart className="w-5 h-5" />,
-			},
-			{
-				label: 'Orders Tracking',
-				path: '/buyer/orders',
-				icon: <MapPin className="w-5 h-5" />,
-			},
-		],
-	},
+    label: 'Buyer/Shipper',
+    items: [
+        {
+            label: 'Sourcing/Procurement',
+            path: '/buyer/sourcing',
+            icon: <ShoppingCart className="w-5 h-5" />,
+        },
+        {
+            label: 'Negotiation',
+            path: '/buyer/negotiation',
+            icon: <MessageSquare className="w-5 h-5" />,
+        },
+        {
+            label: 'Orders Tracking',
+            path: '/buyer/orders',
+            icon: <MapPin className="w-5 h-5" />,
+        },
+    ],
+},
 	hr: {
 		label: 'HR Team',
 		items: [
@@ -165,13 +194,48 @@ export default function AppLayout({
 	const router = useRouter();
 
 	const [userDropdown, setUserDropdown] = useState(false);
+	const [authReady, setAuthReady] = useState(false);
 
 	const navConfig = NAV_CONFIG[currentRole] || NAV_CONFIG['platform_admin'];
 
-	const handleLogout = () => {
+	useEffect(() => {
+		const token = getStoredAccessToken();
+		const claims = token ? parseJwtClaims(token) : null;
+
+		if (!token || !claims) {
+			clearAuthSession();
+			router.replace('/login');
+			return;
+		}
+
+		if (!isAllowedPathForClaims(pathname ?? '', claims)) {
+			router.replace(resolveAuthDestination(claims) ?? '/login');
+			return;
+		}
+
+		setAuthReady(true);
+	}, [pathname, router]);
+
+	const handleLogout = async () => {
+		try {
+			await api.post('/auth/logout', {});
+		} catch {
+			// Local session cleanup is still required if the server session is gone.
+		}
 		clearAuthSession();
-		router.push('/login');
+		router.replace('/login');
 	};
+
+	if (!authReady) {
+		return (
+			<div
+				className="min-h-screen flex items-center justify-center text-sm"
+				style={{ background: '#F7F9FC', color: 'rgba(25,28,30,0.65)' }}
+			>
+				Checking session...
+			</div>
+		);
+	}
 
 	return (
 		<div
@@ -264,10 +328,21 @@ export default function AppLayout({
 						>
 							<Bell className="w-5 h-5 text-gray-600" />
 						</button>
+						<button
+							type="button"
+							onClick={handleLogout}
+							aria-label="Sign out"
+							title="Sign out"
+							className="relative w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-red-50"
+						>
+							<LogOut className="w-5 h-5 text-red-600" />
+						</button>
 						<div className="w-px h-6 bg-gray-200" />
 
 						<div className="relative">
-							<div
+							<button
+								type="button"
+								aria-label="Open user menu"
 								className="flex items-center gap-3 cursor-pointer"
 								onClick={() => setUserDropdown(!userDropdown)}
 							>
@@ -282,7 +357,7 @@ export default function AppLayout({
 								<div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
 									A
 								</div>
-							</div>
+							</button>
 
 							{userDropdown && (
 								<div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-30">
