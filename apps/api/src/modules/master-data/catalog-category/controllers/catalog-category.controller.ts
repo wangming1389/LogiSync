@@ -46,7 +46,7 @@ export class CatalogCategoryController {
 	// POST /admin/catalog-categories (PLATFORM_ADMIN)
 	@Post('admin/catalog-categories')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@HttpCode(HttpStatus.CREATED)
 	@ApiBearerAuth('access-token')
 	@ApiOperation({ summary: 'Create new catalog category' })
@@ -66,7 +66,7 @@ export class CatalogCategoryController {
 	// GET /admin/catalog-categories (PLATFORM_ADMIN)
 	@Get('admin/catalog-categories')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'List catalog categories (including inactive)',
@@ -82,7 +82,7 @@ export class CatalogCategoryController {
 	// GET /admin/catalog-categories/:id (PLATFORM_ADMIN)
 	@Get('admin/catalog-categories/:id')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({ summary: 'Get a single catalog category by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -95,7 +95,7 @@ export class CatalogCategoryController {
 	// PATCH /admin/catalog-categories/:id (PLATFORM_ADMIN)
 	@Patch('admin/catalog-categories/:id')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Update catalog category name / description / code',
@@ -119,7 +119,7 @@ export class CatalogCategoryController {
 	// PATCH /admin/catalog-categories/:id/disable (PLATFORM_ADMIN)
 	@Patch('admin/catalog-categories/:id/disable')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Soft-disable a catalog category',
@@ -137,7 +137,7 @@ export class CatalogCategoryController {
 	// PATCH /admin/catalog-categories/:id/enable (PLATFORM_ADMIN)
 	@Patch('admin/catalog-categories/:id/enable')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Re-enable disabled catalog category',

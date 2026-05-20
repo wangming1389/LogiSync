@@ -103,8 +103,6 @@ export class ProductSearchRepository extends BaseRepository {
 				workspaceId: schema.products.workspaceId,
 				supplierCategoryId: schema.products.supplierCategoryId,
 				uomId: schema.products.uomId,
-				uomCode: schema.unitsOfMeasure.code,
-				uomName: schema.unitsOfMeasure.name,
 				sku: schema.products.sku,
 				name: schema.products.name,
 				description: schema.products.description,
@@ -117,27 +115,15 @@ export class ProductSearchRepository extends BaseRepository {
 				supplierWorkspaceName: schema.workspaces.name,
 				supplierWorkspaceSlug: schema.workspaces.slug,
 				catalogCategoryId: schema.supplierCategories.catalogCategoryId,
-				catalogCategoryName: schema.catalogCategories.name,
 			})
 			.from(schema.products)
 			.innerJoin(
 				schema.supplierCategories,
 				eq(schema.products.supplierCategoryId, schema.supplierCategories.id),
 			)
-			.leftJoin(
-				schema.catalogCategories,
-				eq(
-					schema.supplierCategories.catalogCategoryId,
-					schema.catalogCategories.id,
-				),
-			)
 			.innerJoin(
 				schema.workspaces,
 				eq(schema.products.workspaceId, schema.workspaces.id),
-			)
-			.leftJoin(
-				schema.unitsOfMeasure,
-				eq(schema.products.uomId, schema.unitsOfMeasure.id),
 			)
 			.where(whereClause);
 
@@ -148,20 +134,9 @@ export class ProductSearchRepository extends BaseRepository {
 				schema.supplierCategories,
 				eq(schema.products.supplierCategoryId, schema.supplierCategories.id),
 			)
-			.leftJoin(
-				schema.catalogCategories,
-				eq(
-					schema.supplierCategories.catalogCategoryId,
-					schema.catalogCategories.id,
-				),
-			)
 			.innerJoin(
 				schema.workspaces,
 				eq(schema.products.workspaceId, schema.workspaces.id),
-			)
-			.leftJoin(
-				schema.unitsOfMeasure,
-				eq(schema.products.uomId, schema.unitsOfMeasure.id),
 			)
 			.where(whereClause);
 

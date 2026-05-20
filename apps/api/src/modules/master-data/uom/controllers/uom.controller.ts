@@ -41,7 +41,7 @@ export class UomController {
 	// POST /admin/uom (PLATFORM_ADMIN)
 	@Post('admin/uom')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@HttpCode(HttpStatus.CREATED)
 	@ApiBearerAuth('access-token')
 	@ApiOperation({ summary: 'Create new uom' })
@@ -58,7 +58,7 @@ export class UomController {
 	// GET /admin/uom (PLATFORM_ADMIN)
 	@Get('admin/uom')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'List uom (including inactive)',
@@ -74,7 +74,7 @@ export class UomController {
 	// GET /admin/uom/:id (PLATFORM_ADMIN)
 	@Get('admin/uom/:id')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({ summary: 'Get uom by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -87,7 +87,7 @@ export class UomController {
 	// PATCH /admin/uom/:id (PLATFORM_ADMIN)
 	@Patch('admin/uom/:id')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({ summary: 'Update uom name / code' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -109,7 +109,7 @@ export class UomController {
 	// PATCH /admin/uom/:id/disable (PLATFORM_ADMIN)
 	@Patch('admin/uom/:id/disable')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Soft-disable uom',
@@ -127,7 +127,7 @@ export class UomController {
 	// PATCH /admin/uom/:id/enable (PLATFORM_ADMIN)
 	@Patch('admin/uom/:id/enable')
 	@UseGuards(JwtAuthGuard, RbacGuard)
-	@Roles('platform_admin', 'company_admin')
+	@Roles('platform_admin')
 	@ApiBearerAuth('access-token')
 	@ApiOperation({
 		summary: 'Re-enable disabled uom',
