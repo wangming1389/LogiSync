@@ -28,7 +28,36 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 - **Automatic**: Global interceptors capture request metadata and outcomes.
 - **Traceability**: Every log entry includes actor ID, workspace ID, action, IP address, and value diffs.
 
-## System Components
+## 5. Roles & Permissions Matrix
+
+The system enforces strict Role-Based Access Control (RBAC) across all modules using the `@Roles()` decorator.
+
+| Role | Scope | Applicable Modules & Functions |
+| :--- | :--- | :--- |
+| **`platform_admin`** | System | **Master Data**: Full control over UOMs, Global Categories.<br>**IAM**: Approve/Suspend Workspaces, System Audit Logs. |
+| **`company_admin`** | Tenant | **IAM**: Manage own workspace, users, and roles.<br>**All Modules**: Full read/write access to all domain data within their tenant. |
+| **`buyer_manager`** | Tenant | **Order**: Approve POs, View all orders.<br>**Sourcing**: Manage RFQs, Select winning Quotations.<br>**Catalog**: Search products. |
+| **`buyer_staff`** | Tenant | **Order**: Draft POs, View assigned orders.<br>**Sourcing**: Create RFQs.<br>**Catalog**: Search products. |
+| **`supplier_manager`** | Tenant | **Catalog**: Full control over Supplier Catalog & Products.<br>**Sourcing**: Submit Quotations.<br>**Order**: Process and Confirm all assigned Orders. |
+| **`supplier_staff`** | Tenant | **Catalog**: Add/Edit Products.<br>**Sourcing**: Draft Quotations.<br>**Order**: Process assigned Orders. |
+| **`supplier_accountant`** | Tenant | *(Planned)* Invoicing and payment reconciliation. |
+| **`carrier_dispatcher`** | Tenant | *(Planned)* Shipment dispatching and logistics. |
+| **`driver`** | Logistics | *(Planned)* Delivery execution and proof of delivery. |
+| **`hr_manager`** | Tenant | *(Planned)* Employee management. |
+
+## 6. Design Patterns Applied
+
+The project leverages several established software design patterns to maintain clean, scalable, and testable code:
+
+| Pattern | Where it is used | Purpose & Implementation |
+| :--- | :--- | :--- |
+| **Strict Repository Pattern** | `src/modules/**/repositories/` | Encapsulates all Drizzle ORM database queries. Enforces multi-tenant isolation by automatically injecting `workspaceId` into queries via `BaseRepository`. |
+| **Strategy Pattern** | `src/modules/iam/auth/strategies/` | Used via Passport.js (`JwtStrategy`) to decouple the authentication mechanism from the core business logic. Allows easy swapping or adding of new auth methods (e.g., OAuth). |
+| **Registry Pattern** | `src/core/health/` | `HealthRegistryService` dynamically registers and executes various system health checks (Postgres, Redis, MinIO) without tightly coupling the controller to the individual check implementations. |
+| **Decorator Pattern** | Global (NestJS) | Extensively used for declarative routing (`@Get()`), input validation (Zod DTOs), and RBAC security (`@Roles()`), keeping business logic clean of boilerplate infrastructure code. |
+| **Unit of Work (Implicit)** | `src/core/database/` | Utilizes `nestjs-cls` (Continuation Local Storage) to propagate active database transactions across service boundaries, ensuring atomic operations without deep prop-drilling. |
+
+## 7. System Components
 
 - **[IAM Module](./iam/README.md)**: User auth, workspace management, and security policies.
 - **[Catalog Module](./catalog/README.md)**: Product management with SKU uniqueness and price history.
@@ -60,7 +89,7 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 2. **Infrastructure**: `docker compose up -d`
 3. **Database Setup**:
    ```bash
-   pnpm --filter @logisync/api db:setup
+   pnpm --filter @logisync/api db:setup:local
    # Apply Row-Level Security (RLS)
    psql $DATABASE_URL < apps/api/src/database/rls-setup.sql
    ```
@@ -84,6 +113,14 @@ Data isolation is enforced via a **Strict Repository Pattern** combined with `ne
 - **Unit & E2E Tests**: `pnpm --filter @logisync/api test`
 - **Security Tests**: Specialized suites for audit logs and tenant isolation.
 - **CI/CD**: GitHub Actions pipeline for linting, testing, and Docker builds.
+
+#### Infrastructure Test Cases Mapping
+| ID | Test Scenario | Requirement Mapping | Expected Result |
+| :--- | :--- | :--- | :--- |
+| **TC-INFRA-01** | Active CLS Transaction Priority | AD-03 / QAR-18 / ADD Section 2.2.2 | Repository uses the active CLS transaction before the root database. |
+| **TC-INFRA-02** | Root Database Fallback | AD-01 | Repository falls back to the root database without an active transaction. |
+| **TC-INFRA-03** | Nested Unit-of-Work CLS | AD-01 / AD-03 / QAR-18 / QAR-25 / ADD Section 2.2.2 | Database service reuses the active CLS transaction for nested unit-of-work calls. |
+| **TC-INFRA-04** | Unbound Transaction CLS Creation | AD-01 / AD-03 / QAR-18 / ADD Section 2.2.2 | Database service creates a CLS context when a transaction starts outside one. |
 
 ### Deployment
 - **Containerization**: Multi-stage Docker builds using `Dockerfile.api`.

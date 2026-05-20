@@ -7,3 +7,7 @@ export function getClientIp(request: Request): string {
 		'unknown'
 	);
 }
+
+export function getRequestUser<TUser>(request: Request): TUser {
+	return (request as Request & { user: TUser }).user;
+}

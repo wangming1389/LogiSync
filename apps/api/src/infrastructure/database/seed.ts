@@ -9,16 +9,6 @@ import { getDatabase, initializeDatabase, schema } from './index';
 const PLATFORM_ADMIN_EMAIL = 'platform@logisync.local';
 const PLATFORM_ADMIN_PASSWORD = 'Admin@123456';
 
-const SUPPLIER_ADMIN_EMAIL = 'supplier.admin@logisync.local';
-const SUPPLIER_ADMIN_PASSWORD = 'Supplier@123456';
-const SUPPLIER_STAFF_EMAIL = 'supplier.staff@logisync.local';
-const SUPPLIER_STAFF_PASSWORD = 'Supplier@123456';
-
-const BUYER_ADMIN_EMAIL = 'buyer.admin@logisync.local';
-const BUYER_ADMIN_PASSWORD = 'Buyer@123456';
-const BUYER_STAFF_EMAIL = 'buyer.staff@logisync.local';
-const BUYER_STAFF_PASSWORD = 'Buyer@123456';
-
 const CATALOG_CATEGORIES = [
 	{
 		name: 'Agricultural Products',
@@ -179,15 +169,15 @@ async function seedSupplierUsers(
 ) {
 	const users = [
 		{
-			email: SUPPLIER_ADMIN_EMAIL,
-			password: SUPPLIER_ADMIN_PASSWORD,
+			email: 'supplier.admin@logisync.local',
+			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Manager',
-			role: 'company_admin',
+			role: 'supplier',
 		},
 		{
-			email: SUPPLIER_STAFF_EMAIL,
-			password: SUPPLIER_STAFF_PASSWORD,
+			email: 'supplier.staff@logisync.local',
+			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Staff',
 			role: 'supplier_staff',
@@ -227,15 +217,15 @@ async function seedBuyerUsers(
 ) {
 	const users = [
 		{
-			email: BUYER_ADMIN_EMAIL,
-			password: BUYER_ADMIN_PASSWORD,
+			email: 'buyer.admin@logisync.local',
+			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Admin',
-			role: 'buyer_manager',
+			role: 'buyer',
 		},
 		{
-			email: BUYER_STAFF_EMAIL,
-			password: BUYER_STAFF_PASSWORD,
+			email: 'buyer.staff@logisync.local',
+			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Staff',
 			role: 'buyer_staff',
@@ -303,7 +293,7 @@ async function seedCarrierUsers(
 ) {
 	const users = [
 		{
-			email: 'carrier@logisync.local',
+			email: 'carrier.admin@logisync.local',
 			password: 'Carrier@123456',
 			firstName: 'Carrier',
 			lastName: 'Manager',
@@ -372,8 +362,8 @@ async function seedHRUsers(
 ) {
 	const users = [
 		{
-			email: 'hr@logisync.local',
-			password: 'Hr@123456',
+			email: 'hr.admin@logisync.local',
+			password: 'HR@123456',
 			firstName: 'HR',
 			lastName: 'Manager',
 			role: 'hr',
@@ -610,7 +600,7 @@ async function seed() {
 	const [supplierStaffUser] = await db
 		.select()
 		.from(schema.users)
-		.where(eq(schema.users.email, SUPPLIER_STAFF_EMAIL));
+		.where(eq(schema.users.email, 'supplier.staff@logisync.local'));
 
 	if (supplierStaffUser) {
 		await seedDemoSupplierData(db, supplierWorkspaceId, supplierStaffUser.id);

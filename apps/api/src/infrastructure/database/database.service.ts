@@ -7,6 +7,10 @@ import {
 } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import {
+	getActiveTransaction,
+	runInTransactionContext,
+} from '../../core/database/transaction-context';
+import {
 	getDatabase,
 	getPool,
 	getReadReplicaPool,
@@ -113,9 +117,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	async withTransaction<T>(callback: (tx: any) => Promise<T>): Promise<T> {
+		const activeTx = getActiveTransaction(this.cls);
+		if (activeTx) {
+			return callback(activeTx);
+		}
+
 		const db = getDatabase();
 		return db.transaction(async (tx) => {
-			return callback(tx);
+			return runInTransactionContext(this.cls, tx, callback);
 		});
 	}
 }

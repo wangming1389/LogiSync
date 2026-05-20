@@ -109,7 +109,74 @@ jobs:
             echo "| Backend (API) | $(du -sh apps/api/dist | cut -f1) | ✅ |" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # 5. DOCKER & PERFORMANCE
+  # 5. BACKEND TESTS
+  test-api:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: [changes, build-api]
+    if: ${{ needs.changes.outputs.api == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Create test environment
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=logisync
+          POSTGRES_PASSWORD=logisync
+          POSTGRES_DB=logisync
+          DATABASE_URL=postgresql://logisync:logisync@localhost:5432/logisync
+          DATABASE_REPLICA_URL=postgresql://logisync:logisync@localhost:5432/logisync
+          REDIS_URL=redis://localhost:6379
+          RABBITMQ_URL=amqp://logisync:logisync@localhost:5672
+          RABBITMQ_USER=logisync
+          RABBITMQ_PASSWORD=logisync
+          MINIO_ENDPOINT=localhost
+          MINIO_PORT=9000
+          MINIO_USE_SSL=false
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin
+          MINIO_BUCKET_NAME=logisync-bucket
+          JWT_SECRET=ci_test_secret
+          ALERT_EMAIL_TO=ops@example.test
+          SMTP_HOST=smtp.example.test
+          SMTP_PORT=587
+          SMTP_USER=alerts@example.test
+          SMTP_PASS=secret
+          EOF
+
+      - name: Start API infrastructure
+        run: pnpm db:up
+
+      - name: Wait for Database readiness
+        run: sleep 5
+
+      - name: Setup API database
+        run: pnpm db:setup
+
+      - name: Run API unit and integration tests
+        run: pnpm test:api
+
+      - name: Run API E2E tests
+        run: pnpm test:api:e2e
+
+      - name: Stop API infrastructure
+        if: always()
+        run: pnpm db:down
+
+  # 6. DOCKER & PERFORMANCE
   docker-and-perf:
     name: Docker & Performance
     runs-on: ubuntu-latest
@@ -152,7 +219,7 @@ jobs:
             echo "| **Status** | ⚠️ **Heavy** ($SIZE_MB MiB) |" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # 6. WEB BUILD
+  # 7. WEB BUILD
   build-web:
     name: Build Frontend
     runs-on: ubuntu-latest
@@ -194,16 +261,16 @@ jobs:
           echo "✅ Business Operations: 3-5 seconds" >> $GITHUB_STEP_SUMMARY
           echo "✅ Search Operations: 2-3 seconds" >> $GITHUB_STEP_SUMMARY
 
-  # 6. FINAL NOTIFICATION
+  # 8. FINAL NOTIFICATION
   notify:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [labeler, quality, docker-and-perf]
+    needs: [labeler, quality, test-api, docker-and-perf]
     if: always()
     steps:
       - name: Check Final Status
         run: |
-          if [[ "${{ needs.quality.result }}" == "success" && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
+          if [[ "${{ needs.quality.result }}" == "success" && ("${{ needs.test-api.result }}" == "success" || "${{ needs.test-api.result }}" == "skipped") && ("${{ needs.docker-and-perf.result }}" == "success" || "${{ needs.docker-and-perf.result }}" == "skipped") ]]; then
             echo "🎉 Build and Quality checks passed!"
           else
             echo "🚨 CI failed - please check the logs."
