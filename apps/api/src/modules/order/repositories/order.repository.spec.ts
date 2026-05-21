@@ -113,7 +113,7 @@ describe('OrderRepository', () => {
 		);
 	});
 
-	it('scopes company admins to either buyer or supplier workspace orders', async () => {
+	it('TC-ORD-13 scopes company admins to either buyer or supplier workspace orders', async () => {
 		await repository.listOrders({
 			role: UserRole.COMPANY_ADMIN,
 			userId: 'company-admin-1',
