@@ -25,7 +25,7 @@ describe('Cross-tenant isolation', () => {
 	});
 
 	describe('Authentication', () => {
-		it('rejects requests without a token', async () => {
+		it('TC-IAM-13 rejects requests without a token', async () => {
 			const response = await request(app.getHttpServer())
 				.get('/catalog/products')
 				.expect(401);
@@ -40,14 +40,14 @@ describe('Cross-tenant isolation', () => {
 			);
 		});
 
-		it('rejects requests with a malformed token', async () => {
+		it('TC-IAM-14 rejects requests with a malformed token', async () => {
 			await request(app.getHttpServer())
 				.get('/catalog/products')
 				.set('Authorization', 'Bearer invalid.token.here')
 				.expect(401);
 		});
 
-		it('rejects requests with an expired or invalid token', async () => {
+		it('TC-IAM-15 rejects requests with an expired or invalid token', async () => {
 			const expiredToken =
 				'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiaWF0IjoxLCJleHAiOjJ9.invalid';
 
@@ -59,7 +59,7 @@ describe('Cross-tenant isolation', () => {
 	});
 
 	describe('Catalog product isolation', () => {
-		it('keeps product reads and writes scoped to the caller workspace', async () => {
+		it('TC-SEC-09 keeps product reads and writes scoped to the caller workspace', async () => {
 			const workspaceA = await createIdentity(UserRole.SUPPLIER_STAFF, {
 				type: 'supplier',
 			});
@@ -119,7 +119,7 @@ describe('Cross-tenant isolation', () => {
 	});
 
 	describe('RFQ isolation', () => {
-		it('keeps buyer RFQs hidden from another buyer workspace', async () => {
+		it('TC-SEC-10 keeps buyer RFQs hidden from another buyer workspace', async () => {
 			const buyerA = await createIdentity(UserRole.BUYER_STAFF, {
 				type: 'buyer',
 			});
@@ -154,7 +154,7 @@ describe('Cross-tenant isolation', () => {
 	});
 
 	describe('Session isolation', () => {
-		it('rejects a token after the workspace is suspended in the database', async () => {
+		it('TC-IAM-16 rejects a token after the workspace is suspended in the database', async () => {
 			const identity = await createIdentity(UserRole.SUPPLIER_STAFF, {
 				type: 'supplier',
 			});
@@ -178,7 +178,7 @@ describe('Cross-tenant isolation', () => {
 	});
 
 	describe('RBAC isolation', () => {
-		it('blocks buyer users from supplier product writes and supplier users from buyer RFQ writes', async () => {
+		it('TC-SEC-11 blocks buyer users from supplier product writes and supplier users from buyer RFQ writes', async () => {
 			const buyer = await createIdentity(UserRole.BUYER_STAFF, {
 				type: 'buyer',
 			});
