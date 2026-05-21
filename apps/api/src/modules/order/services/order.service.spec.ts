@@ -157,7 +157,7 @@ describe('OrderService', () => {
 		).rejects.toThrow(BadRequestException);
 	});
 
-	it('allows company admins to export order history', async () => {
+	it('TC-ORD-14 allows company admins to export order history', async () => {
 		await service.exportOrders(
 			{
 				start_date: new Date('2026-01-01T00:00:00.000Z'),
