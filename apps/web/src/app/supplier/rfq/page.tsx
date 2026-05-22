@@ -10,12 +10,27 @@ type BackendRfqItem = {
 	id?: string;
 	product?: string;
 	productName?: string;
+	sku?: string;
+	productSku?: string;
 	productId?: string;
 	quantity?: number;
 	qty?: number;
 	unit?: string;
 	deliveryDate?: string;
 	notes?: string | null;
+};
+
+type ProductLookup = {
+	id?: string;
+	name?: string;
+	sku?: string | null;
+	uomId?: string | null;
+};
+
+type UomOption = {
+	id: string;
+	name: string;
+	code: string;
 };
 
 type BackendRfqDetail = {
@@ -74,6 +89,22 @@ function formatBuyerLabel(rfq: BackendRfqDetail) {
 	return `Buyer ${rfq.buyerWorkspaceId.slice(0, 8)}`;
 }
 
+function displayProductName(
+	item: BackendRfqItem,
+	products: Map<string, string>,
+) {
+	if (item.product) return item.product;
+	if (item.productName) {
+		return item.productSku || item.sku
+			? `${item.productName} (${item.productSku ?? item.sku})`
+			: item.productName;
+	}
+	if (item.productId && products.has(item.productId)) {
+		return products.get(item.productId) as string;
+	}
+	return item.productId ? `Product ${item.productId.slice(0, 8)}` : 'Product';
+}
+
 function mapStatus(status?: string) {
 	if (status === 'pending_response') return 'pending';
 	if (status === 'responded') return 'submitted';
@@ -87,7 +118,14 @@ function formatDateForInput(value?: string | null) {
 	return parsed.toISOString().slice(0, 10);
 }
 
-function mapRfqToWorkflow(rfq: BackendRfqDetail) {
+function mapRfqToWorkflow(
+	rfq: BackendRfqDetail,
+	names: {
+		buyers: Map<string, string>;
+		products: Map<string, string>;
+		units: Map<string, string>;
+	},
+) {
 	const items = Array.isArray(rfq.items) ? rfq.items : [];
 	const firstItem = items[0];
 	const totalQty = items.reduce(
@@ -98,12 +136,12 @@ function mapRfqToWorkflow(rfq: BackendRfqDetail) {
 		const productId = item.productId;
 		return {
 			id: item.id,
-			product:
-				item.product ??
-				item.productName ??
-				(productId ? `Product ${productId.slice(0, 8)}` : 'Product'),
+			product: displayProductName(item, names.products),
 			qty: item.quantity ?? item.qty ?? 0,
-			unit: item.unit ?? 'MT',
+			unit:
+				(item.productId ? names.units.get(item.productId) : undefined) ??
+				item.unit ??
+				'unit',
 			productId,
 			deliveryDate: formatDateForInput(item.deliveryDate),
 			notes: item.notes ?? undefined,
@@ -116,7 +154,9 @@ function mapRfqToWorkflow(rfq: BackendRfqDetail) {
 
 	return {
 		id: rfq.id,
-		buyer: formatBuyerLabel(rfq),
+		buyer: rfq.buyerWorkspaceId
+			? (names.buyers.get(rfq.buyerWorkspaceId) ?? formatBuyerLabel(rfq))
+			: 'Buyer',
 		product: summary,
 		qty: totalQty || (firstItem?.quantity ?? firstItem?.qty ?? 0),
 		unit: mappedItems[0]?.unit ?? firstItem?.unit ?? 'MT',
@@ -180,6 +220,57 @@ export default function SupplierRFQ() {
 						rfq.status ?? 'pending_response',
 					),
 				);
+				const buyerIds = Array.from(
+					new Set(
+						items
+							.map((rfq) => rfq.buyerWorkspaceId)
+							.filter((id): id is string => Boolean(id)),
+					),
+				);
+				const buyerNames = new Map<string, string>();
+				if (buyerIds.length > 0) {
+					try {
+						const namesRes: any = await api.get(
+							`/workspaces/public?ids=${buyerIds.join(',')}`,
+						);
+						for (const row of unwrapList<{ id?: string; name?: string }>(
+							namesRes,
+						)) {
+							if (row.id && row.name) buyerNames.set(row.id, row.name);
+						}
+					} catch {
+						// Fall back to short workspace labels.
+					}
+				}
+				const productNames = new Map<string, string>();
+				const productUnits = new Map<string, string>();
+				const uomNames = new Map<string, string>();
+				try {
+					const uomRes: any = await api.get('/uom');
+					for (const uom of unwrapList<UomOption>(uomRes)) {
+						uomNames.set(uom.id, uom.code ? uom.code.toUpperCase() : uom.name);
+					}
+				} catch {
+					// Unit labels are optional display data.
+				}
+				try {
+					const productsRes: any = await api.get('/catalog/products?limit=25');
+					for (const product of unwrapList<ProductLookup>(productsRes)) {
+						if (!product.id || !product.name) continue;
+						productNames.set(
+							product.id,
+							product.sku ? `${product.name} (${product.sku})` : product.name,
+						);
+						if (product.uomId && uomNames.has(product.uomId)) {
+							productUnits.set(
+								product.id,
+								uomNames.get(product.uomId) as string,
+							);
+						}
+					}
+				} catch {
+					// Fall back to names embedded in the RFQ detail.
+				}
 				logRfqDebug('list:unwrapped', {
 					count: items.length,
 					items: items.map((rfq) => ({
@@ -197,7 +288,48 @@ export default function SupplierRFQ() {
 							response: detailResponse,
 						});
 						const detail = unwrapApiResponse<BackendRfqDetail>(detailResponse);
-						return mapRfqToWorkflow(detail);
+						const missingProductIds = Array.from(
+							new Set(
+								(detail.items ?? [])
+									.map((item) => item.productId)
+									.filter(
+										(id): id is string =>
+											typeof id === 'string' && !productNames.has(id),
+									),
+							),
+						);
+						await Promise.all(
+							missingProductIds.map(async (productId) => {
+								try {
+									const productResponse: any = await api.get(
+										`/catalog/products/${productId}`,
+									);
+									const product =
+										unwrapApiResponse<ProductLookup>(productResponse);
+									if (product.id && product.name) {
+										productNames.set(
+											product.id,
+											product.sku
+												? `${product.name} (${product.sku})`
+												: product.name,
+										);
+										if (product.uomId && uomNames.has(product.uomId)) {
+											productUnits.set(
+												product.id,
+												uomNames.get(product.uomId) as string,
+											);
+										}
+									}
+								} catch {
+									// Keep product id fallback for inaccessible/missing products.
+								}
+							}),
+						);
+						return mapRfqToWorkflow(detail, {
+							buyers: buyerNames,
+							products: productNames,
+							units: productUnits,
+						});
 					}),
 				);
 				logRfqDebug('mapped', {
@@ -390,7 +522,7 @@ export default function SupplierRFQ() {
 				>
 					<div className="flex items-start justify-between mb-5">
 						<div>
-							<h2 style={{ color: '#191C1E' }}>Respond to {detail.id}</h2>
+							<h2 style={{ color: '#191C1E' }}>Respond to {detail.product}</h2>
 							<p
 								style={{
 									fontSize: 13,
@@ -630,7 +762,7 @@ export default function SupplierRFQ() {
 												color: '#191C1E',
 											}}
 										>
-											{rfq.id} — {rfq.product}
+											{rfq.product}
 										</p>
 										<p
 											style={{

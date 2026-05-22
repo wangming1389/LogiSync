@@ -5,6 +5,8 @@ export type PurchaseOrderSnapshot = {
 	quotationId?: string | null;
 	buyerWorkspaceId?: string | null;
 	supplierWorkspaceId?: string | null;
+	supplierName?: string | null;
+	productName?: string | null;
 	status?: string | null;
 	assignedTo?: string | null;
 	totalPrice?: number | null;

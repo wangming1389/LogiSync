@@ -14,6 +14,7 @@ import { getStoredAccessToken, parseJwtClaims } from '@/lib/auth';
 import {
 	loadRecentPurchaseOrders,
 	PurchaseOrderSnapshot,
+	unwrapApiEnvelope,
 	unwrapApiList,
 	upsertRecentPurchaseOrder,
 	upsertRecentPurchaseOrders,
@@ -70,8 +71,108 @@ function currentWorkspaceId() {
 	return typeof claims?.workspaceId === 'string' ? claims.workspaceId : null;
 }
 
+type EnrichedOrder = PurchaseOrderSnapshot & {
+	buyerName?: string | null;
+	productName?: string | null;
+	quantity?: number | null;
+	unitLabel?: string | null;
+};
+
+type UomOption = { id: string; name: string; code: string };
+type ProductLookup = {
+	id?: string;
+	name?: string;
+	sku?: string | null;
+	uomId?: string | null;
+};
+
+function formatProductLabel(product?: ProductLookup | null) {
+	if (!product?.name) return undefined;
+	return product.sku ? `${product.name} (${product.sku})` : product.name;
+}
+
+async function enrichSupplierOrders(
+	orders: PurchaseOrderSnapshot[],
+): Promise<EnrichedOrder[]> {
+	const buyerIds = Array.from(
+		new Set(
+			orders
+				.map((order) => order.buyerWorkspaceId)
+				.filter((id): id is string => Boolean(id)),
+		),
+	);
+	const buyerNames = new Map<string, string>();
+	if (buyerIds.length > 0) {
+		try {
+			const response: any = await api.get(
+				`/workspaces/public?ids=${buyerIds.join(',')}`,
+			);
+			for (const row of unwrapApiList<{ id?: string; name?: string }>(
+				response,
+			)) {
+				if (row.id && row.name) buyerNames.set(row.id, row.name);
+			}
+		} catch {
+			// Fall back to generic labels.
+		}
+	}
+
+	const uoms = new Map<string, string>();
+	try {
+		const response: any = await api.get('/uom');
+		for (const uom of unwrapApiList<UomOption>(response)) {
+			uoms.set(uom.id, uom.code ? uom.code.toUpperCase() : uom.name);
+		}
+	} catch {
+		// Unit labels are optional display data.
+	}
+
+	return Promise.all(
+		orders.map(async (order) => {
+			const enriched: EnrichedOrder = {
+				...order,
+				buyerName: order.buyerWorkspaceId
+					? (buyerNames.get(order.buyerWorkspaceId) ?? 'Buyer')
+					: 'Buyer',
+			};
+
+			if (!order.quotationId) return enriched;
+
+			try {
+				const quotationResponse: any = await api.get(
+					`/quotations/${order.quotationId}`,
+				);
+				const quotation = unwrapApiEnvelope<any>(quotationResponse);
+				if (!quotation?.rfqId) return enriched;
+
+				const rfqResponse: any = await api.get(`/rfqs/${quotation.rfqId}`);
+				const rfq = unwrapApiEnvelope<any>(rfqResponse);
+				const item = Array.isArray(rfq?.items) ? rfq.items[0] : null;
+				enriched.quantity = item?.quantity ?? quotation.items?.[0]?.quantity;
+
+				if (!item?.productId) return enriched;
+				const productResponse: any = await api.get(
+					`/catalog/products/${item.productId}`,
+				);
+				const product = unwrapApiEnvelope<ProductLookup>(productResponse);
+				enriched.productName =
+					formatProductLabel(product) ??
+					`Product ${item.productId.slice(0, 8)}`;
+				enriched.unitLabel =
+					product.uomId && uoms.has(product.uomId)
+						? (uoms.get(product.uomId) as string)
+						: null;
+			} catch {
+				// Keep the order visible even if label enrichment fails.
+			}
+
+			return enriched;
+		}),
+	);
+}
+
 export default function SupplierOrderManagement() {
-	const [orders, setOrders] = useState<PurchaseOrderSnapshot[]>([]);
+	const [orders, setOrders] = useState<EnrichedOrder[]>([]);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [denyModal, setDenyModal] = useState<string | null>(null);
 	const [denyReason, setDenyReason] = useState('');
@@ -94,27 +195,24 @@ export default function SupplierOrderManagement() {
 				if (merged.some((entry) => entry.id === order.id)) continue;
 				merged.push(order);
 			}
-			setOrders(
-				merged
-					.filter(
-						(order) =>
-							!workspaceId || order.supplierWorkspaceId === workspaceId,
-					)
-					.sort(
-						(a, b) =>
-							new Date(b.createdAt ?? 0).getTime() -
-							new Date(a.createdAt ?? 0).getTime(),
-					),
-			);
+			const visible = merged
+				.filter(
+					(order) => !workspaceId || order.supplierWorkspaceId === workspaceId,
+				)
+				.sort(
+					(a, b) =>
+						new Date(b.createdAt ?? 0).getTime() -
+						new Date(a.createdAt ?? 0).getTime(),
+				);
+			setOrders(await enrichSupplierOrders(visible));
 		} catch (err: any) {
 			setError(err?.message ?? 'Failed to load orders.');
 			const cached = loadRecentPurchaseOrders();
-			setOrders(
-				cached.filter((order) => {
-					const workspaceId = currentWorkspaceId();
-					return !workspaceId || order.supplierWorkspaceId === workspaceId;
-				}),
-			);
+			const visible = cached.filter((order) => {
+				const workspaceId = currentWorkspaceId();
+				return !workspaceId || order.supplierWorkspaceId === workspaceId;
+			});
+			setOrders(await enrichSupplierOrders(visible));
 		} finally {
 			setLoading(false);
 		}
@@ -135,9 +233,10 @@ export default function SupplierOrderManagement() {
 		try {
 			const response: any = await api.patch(`/orders/${id}/approve`, {});
 			const updated = response?.data?.data ?? response?.data ?? response;
-			upsertRecentPurchaseOrder(updated);
+			const [enriched] = await enrichSupplierOrders([updated]);
+			upsertRecentPurchaseOrder(enriched);
 			setOrders((current) =>
-				current.map((order) => (order.id === id ? updated : order)),
+				current.map((order) => (order.id === id ? enriched : order)),
 			);
 			setNotice('Order confirmed. Buyer can now confirm goods receipt.');
 			setSelected(null);
@@ -156,9 +255,10 @@ export default function SupplierOrderManagement() {
 				rejectionReason: denyReason,
 			});
 			const updated = response?.data?.data ?? response?.data ?? response;
-			upsertRecentPurchaseOrder(updated);
+			const [enriched] = await enrichSupplierOrders([updated]);
+			upsertRecentPurchaseOrder(enriched);
 			setOrders((current) =>
-				current.map((order) => (order.id === id ? updated : order)),
+				current.map((order) => (order.id === id ? enriched : order)),
 			);
 			setNotice('Order denied with reason.');
 			setDenyModal(null);
@@ -187,7 +287,9 @@ export default function SupplierOrderManagement() {
 				>
 					<div className="flex items-start justify-between mb-5 gap-4">
 						<div>
-							<h2 style={{ color: '#191C1E' }}>Order {detail.id}</h2>
+							<h2 style={{ color: '#191C1E' }}>
+								{detail.productName ?? 'Purchase order'}
+							</h2>
 							<p
 								style={{
 									fontSize: 13,
@@ -204,12 +306,18 @@ export default function SupplierOrderManagement() {
 
 					<div className="grid grid-cols-2 gap-3 mb-5">
 						{[
-							['BUYER WORKSPACE', detail.buyerWorkspaceId ?? '-'],
-							['QUOTATION', detail.quotationId ?? '-'],
+							['BUYER', detail.buyerName ?? 'Buyer'],
+							['PRODUCT', detail.productName ?? 'Purchase order'],
+							[
+								'QUANTITY',
+								detail.quantity
+									? `${detail.quantity.toLocaleString('vi-VN')} ${detail.unitLabel ?? 'unit'}`
+									: '-',
+							],
 							['UNIT PRICE', formatMoney(detail.finalUnitPrice)],
 							['TOTAL VALUE', formatMoney(detail.totalPrice)],
 							['PAYMENT TERMS', detail.finalPaymentTerms ?? '-'],
-							['ASSIGNED TO', detail.assignedTo ?? '(unassigned)'],
+							['ASSIGNED TO', detail.assignedTo ? 'Assigned' : 'Unassigned'],
 						].map(([label, value]) => (
 							<div
 								key={label}
@@ -354,10 +462,10 @@ export default function SupplierOrderManagement() {
 								</div>
 								<div className="min-w-0">
 									<p className="text-sm font-semibold text-slate-900 break-all">
-										{order.id}
+										{order.productName ?? 'Purchase order'}
 									</p>
 									<p className="mt-1 text-xs text-slate-500">
-										Quotation {order.quotationId?.slice(0, 8) ?? '-'} ·{' '}
+										{order.buyerName ?? 'Buyer'} ·{' '}
 										{formatMoney(order.totalPrice)}
 									</p>
 								</div>
@@ -366,8 +474,16 @@ export default function SupplierOrderManagement() {
 						</div>
 						<div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
 							<span>Unit: {formatMoney(order.finalUnitPrice)}</span>
+							<span>
+								Qty:{' '}
+								{order.quantity
+									? `${order.quantity.toLocaleString('vi-VN')} ${order.unitLabel ?? 'unit'}`
+									: '-'}
+							</span>
 							<span>Delivery: {formatDate(order.finalDeliveryDate)}</span>
-							<span>Assigned: {order.assignedTo ?? 'Unassigned'}</span>
+							<span>
+								Assigned: {order.assignedTo ? 'Assigned' : 'Unassigned'}
+							</span>
 						</div>
 					</button>
 				))}
