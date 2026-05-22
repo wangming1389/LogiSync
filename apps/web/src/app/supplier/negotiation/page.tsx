@@ -49,6 +49,7 @@ type QuotationSummary = {
 	id: string;
 	rfqId: string;
 	supplierWorkspaceId: string | null;
+	rfqLabel?: string;
 	status: string;
 	totalPrice: number | null;
 	unitPrice: number | null;
@@ -81,6 +82,17 @@ function formatDate(value?: string | null) {
 	const d = new Date(value);
 	if (isNaN(d.getTime())) return value.slice(0, 10);
 	return d.toLocaleString('vi-VN');
+}
+
+function rfqLabelFromDetail(detail?: { items?: any[]; note?: string | null }) {
+	const first = detail?.items?.[0];
+	if (first?.product) return first.product;
+	if (first?.productName) {
+		return first.productSku || first.sku
+			? `${first.productName} (${first.productSku ?? first.sku})`
+			: first.productName;
+	}
+	return detail?.note || 'RFQ';
 }
 
 // ─── Round bubble ─────────────────────────────────────────────────────────────
@@ -133,22 +145,38 @@ function RoundBubble({
 					{round.isAccepted && (
 						<span
 							className="px-2 py-0.5 rounded-full"
-							style={{ background: '#C8F0D8', color: '#1B6B3A', fontSize: 10, fontWeight: 600 }}
+							style={{
+								background: '#C8F0D8',
+								color: '#1B6B3A',
+								fontSize: 10,
+								fontWeight: 600,
+							}}
 						>
 							ACCEPTED
 						</span>
 					)}
 				</div>
-				<p style={{ fontSize: 22, fontWeight: 700, color: '#191C1E', letterSpacing: '-0.01em' }}>
+				<p
+					style={{
+						fontSize: 22,
+						fontWeight: 700,
+						color: '#191C1E',
+						letterSpacing: '-0.01em',
+					}}
+				>
 					{formatMoney(round.proposedPrice)}
 				</p>
 				{round.proposedDeliveryDays > 0 && (
-					<p style={{ fontSize: 12, color: 'rgba(25,28,30,0.6)', marginTop: 2 }}>
+					<p
+						style={{ fontSize: 12, color: 'rgba(25,28,30,0.6)', marginTop: 2 }}
+					>
 						Delivery: {round.proposedDeliveryDays} days
 					</p>
 				)}
 				{round.note && (
-					<p style={{ fontSize: 12, color: 'rgba(25,28,30,0.65)', marginTop: 4 }}>
+					<p
+						style={{ fontSize: 12, color: 'rgba(25,28,30,0.65)', marginTop: 4 }}
+					>
 						{round.note}
 					</p>
 				)}
@@ -281,12 +309,21 @@ function NegotiationDetail({
 				<ChevronLeft className="w-4 h-4" /> Back
 			</button>
 
-			<div className="rounded-xl p-6 mb-4" style={{ background: '#FFFFFF', boxShadow: SHADOW }}>
+			<div
+				className="rounded-xl p-6 mb-4"
+				style={{ background: '#FFFFFF', boxShadow: SHADOW }}
+			>
 				<div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
 					<div>
 						<h2 style={{ color: '#191C1E' }}>Price Negotiation</h2>
-						<p style={{ fontSize: 13, color: 'rgba(25,28,30,0.55)', marginTop: 2 }}>
-							Quotation {detail.id.slice(0, 8)} · RFQ {detail.rfqId.slice(0, 8)}
+						<p
+							style={{
+								fontSize: 13,
+								color: 'rgba(25,28,30,0.55)',
+								marginTop: 2,
+							}}
+						>
+							Quotation for RFQ
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
@@ -299,9 +336,15 @@ function NegotiationDetail({
 								fontWeight: 500,
 							}}
 						>
-							{detail.isLocked ? 'LOCKED' : detail.status.replace(/_/g, ' ').toUpperCase()}
+							{detail.isLocked
+								? 'LOCKED'
+								: detail.status.replace(/_/g, ' ').toUpperCase()}
 						</span>
-						<button onClick={load} className="p-1.5 rounded-lg hover:bg-slate-100" title="Refresh">
+						<button
+							onClick={load}
+							className="p-1.5 rounded-lg hover:bg-slate-100"
+							title="Refresh"
+						>
 							<RefreshCw className="w-4 h-4 text-slate-500" />
 						</button>
 					</div>
@@ -310,27 +353,40 @@ function NegotiationDetail({
 				{/* Snapshot */}
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
 					{[
-						['Original Price', formatMoney(detail.unitPrice ?? detail.totalPrice)],
+						[
+							'Original Price',
+							formatMoney(detail.unitPrice ?? detail.totalPrice),
+						],
 						['Total', formatMoney(detail.totalPrice)],
 						['Delivery Terms', detail.deliveryTerms ?? '-'],
 						['Rounds', String(rounds.length)],
 					].map(([label, value]) => (
-						<div key={label} className="rounded-lg p-3" style={{ background: '#F2F4F7' }}>
-							<p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase">{label}</p>
+						<div
+							key={label}
+							className="rounded-lg p-3"
+							style={{ background: '#F2F4F7' }}
+						>
+							<p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+								{label}
+							</p>
 							<p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
 						</div>
 					))}
 				</div>
 
 				{notice && (
-					<div className="flex items-center gap-2 p-3 rounded-lg mb-4"
-						style={{ background: '#C8F0D8', fontSize: 13, color: '#1B6B3A' }}>
+					<div
+						className="flex items-center gap-2 p-3 rounded-lg mb-4"
+						style={{ background: '#C8F0D8', fontSize: 13, color: '#1B6B3A' }}
+					>
 						<CheckCircle className="w-4 h-4" /> {notice}
 					</div>
 				)}
 				{error && (
-					<div className="flex items-center gap-2 p-3 rounded-lg mb-4"
-						style={{ background: '#FFDAD6', fontSize: 13, color: '#BA1A1A' }}>
+					<div
+						className="flex items-center gap-2 p-3 rounded-lg mb-4"
+						style={{ background: '#FFDAD6', fontSize: 13, color: '#BA1A1A' }}
+					>
 						<AlertTriangle className="w-4 h-4" /> {error}
 					</div>
 				)}
@@ -338,7 +394,8 @@ function NegotiationDetail({
 				{/* Round history */}
 				{rounds.length === 0 ? (
 					<div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 mb-4">
-						No negotiation rounds yet. You can submit the first counter-offer below.
+						No negotiation rounds yet. You can submit the first counter-offer
+						below.
 					</div>
 				) : (
 					<div className="space-y-3 mb-5">
@@ -357,14 +414,21 @@ function NegotiationDetail({
 				{canAccept && (
 					<div className="rounded-xl border border-green-200 bg-green-50 p-4 mb-4">
 						<p className="text-sm font-medium text-green-800 mb-1">
-							Buyer offered {formatMoney(latest.proposedPrice)} · {latest.proposedDeliveryDays} days
+							Buyer offered {formatMoney(latest.proposedPrice)} ·{' '}
+							{latest.proposedDeliveryDays} days
 						</p>
-						<p className="text-xs text-green-700 mb-3">{latest.note ?? 'No note.'}</p>
+						<p className="text-xs text-green-700 mb-3">
+							{latest.note ?? 'No note.'}
+						</p>
 						<button
 							onClick={acceptRound}
 							disabled={submitting}
 							className="flex items-center gap-2 px-4 py-2 text-white rounded-[6px] disabled:opacity-50 transition-all hover:brightness-105"
-							style={{ background: 'linear-gradient(135deg, #1B6B3A 0%, #0d4a28 100%)', fontWeight: 600, fontSize: 12 }}
+							style={{
+								background: 'linear-gradient(135deg, #1B6B3A 0%, #0d4a28 100%)',
+								fontWeight: 600,
+								fontSize: 12,
+							}}
 						>
 							<CheckCircle className="w-4 h-4" /> ACCEPT BUYER'S OFFER
 						</button>
@@ -375,7 +439,9 @@ function NegotiationDetail({
 				{canCounter && (
 					<div className="pt-4" style={{ borderTop: '1px solid #E0E4EB' }}>
 						<p className="mb-3 text-[11px] font-medium uppercase tracking-[0.05em] text-slate-500">
-							{rounds.length === 0 ? 'Submit Counter-Offer' : `Submit Round ${rounds.length + 1}`}
+							{rounds.length === 0
+								? 'Submit Counter-Offer'
+								: `Submit Round ${rounds.length + 1}`}
 						</p>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
 							<div>
@@ -388,7 +454,12 @@ function NegotiationDetail({
 									onChange={(e) => setOfferPrice(e.target.value)}
 									placeholder="e.g. 12500000"
 									className="w-full px-3 h-10 rounded-t-[6px] focus:outline-none"
-									style={{ background: '#D5DAE3', borderBottom: '2px solid #00559F', color: '#191C1E', fontSize: 14 }}
+									style={{
+										background: '#D5DAE3',
+										borderBottom: '2px solid #00559F',
+										color: '#191C1E',
+										fontSize: 14,
+									}}
 								/>
 							</div>
 							<div>
@@ -401,7 +472,12 @@ function NegotiationDetail({
 									onChange={(e) => setOfferDays(e.target.value)}
 									placeholder="e.g. 10"
 									className="w-full px-3 h-10 rounded-t-[6px] focus:outline-none"
-									style={{ background: '#D5DAE3', borderBottom: '2px solid #00559F', color: '#191C1E', fontSize: 14 }}
+									style={{
+										background: '#D5DAE3',
+										borderBottom: '2px solid #00559F',
+										color: '#191C1E',
+										fontSize: 14,
+									}}
 								/>
 							</div>
 						</div>
@@ -411,14 +487,25 @@ function NegotiationDetail({
 							rows={2}
 							placeholder="Notes for this round (optional)..."
 							className="w-full px-3 py-2 rounded-t-[6px] focus:outline-none resize-none mb-3"
-							style={{ background: '#D5DAE3', borderBottom: '2px solid #00559F', color: '#191C1E', fontSize: 14 }}
+							style={{
+								background: '#D5DAE3',
+								borderBottom: '2px solid #00559F',
+								color: '#191C1E',
+								fontSize: 14,
+							}}
 						/>
 						<div className="flex gap-3 flex-wrap">
 							<button
 								onClick={submitOffer}
 								disabled={!offerPrice || !offerDays || submitting}
 								className="flex items-center gap-2 px-5 py-2.5 text-white rounded-[6px] disabled:opacity-40 transition-all hover:brightness-105"
-								style={{ background: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)', fontWeight: 600, fontSize: 12, letterSpacing: '0.05em' }}
+								style={{
+									background:
+										'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
+									fontWeight: 600,
+									fontSize: 12,
+									letterSpacing: '0.05em',
+								}}
 							>
 								<Send className="w-4 h-4" /> SUBMIT OFFER
 							</button>
@@ -427,10 +514,14 @@ function NegotiationDetail({
 				)}
 
 				{detail.isLocked && (
-					<div className="rounded-lg p-3 mt-4" style={{ background: '#C8F0D8' }}>
+					<div
+						className="rounded-lg p-3 mt-4"
+						style={{ background: '#C8F0D8' }}
+					>
 						<p className="text-sm font-medium text-green-800 flex items-center gap-2">
 							<Lock className="w-4 h-4" />
-							Terms agreed and locked. Buyer will now confirm the Purchase Order.
+							Terms agreed and locked. Buyer will now confirm the Purchase
+							Order.
 						</p>
 					</div>
 				)}
@@ -441,27 +532,38 @@ function NegotiationDetail({
 				<div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 p-4">
 					<div className="rounded-xl bg-white p-6 w-full max-w-sm shadow-xl">
 						<div className="flex items-center gap-3 mb-4">
-							<div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#E0E4EB' }}>
+							<div
+								className="w-10 h-10 rounded-full flex items-center justify-center"
+								style={{ background: '#E0E4EB' }}
+							>
 								<Lock className="w-5 h-5" style={{ color: '#191C1E' }} />
 							</div>
 							<h3 style={{ color: '#191C1E' }}>Accept Buyer's Offer</h3>
 						</div>
 						<p className="mb-4 text-sm text-slate-600">
-							Accept {formatMoney(latest?.proposedPrice)} · {latest?.proposedDeliveryDays} days? This will lock the round.
+							Accept {formatMoney(latest?.proposedPrice)} ·{' '}
+							{latest?.proposedDeliveryDays} days? This will lock the round.
 						</p>
 						<div className="flex gap-2">
 							<button
 								onClick={acceptRound}
 								disabled={submitting}
 								className="flex-1 py-2.5 text-white rounded-[6px] disabled:opacity-40 font-semibold text-sm"
-								style={{ background: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)' }}
+								style={{
+									background:
+										'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
+								}}
 							>
 								Confirm Accept
 							</button>
 							<button
 								onClick={() => setShowFinalize(false)}
 								className="flex-1 py-2.5 rounded-[6px] text-sm"
-								style={{ background: '#D5DAE3', color: '#191C1E', fontWeight: 500 }}
+								style={{
+									background: '#D5DAE3',
+									color: '#191C1E',
+									fontWeight: 500,
+								}}
 							>
 								Cancel
 							</button>
@@ -489,16 +591,25 @@ export default function SupplierNegotiation() {
 			const rfqRes: any = await api.get('/rfqs?limit=50');
 			const rfqs = unwrapList<any>(rfqRes);
 			const respondedRfqs = rfqs.filter((r: any) =>
-    			['responded', 'pending_response', 'closed', 'cancelled'].includes(r.status ?? ''),
+				['responded', 'pending_response', 'closed', 'cancelled'].includes(
+					r.status ?? '',
+				),
 			);
 
 			const groups = await Promise.all(
 				respondedRfqs.map(async (rfq: any) => {
 					try {
+						let rfqLabel = 'RFQ';
+						try {
+							const detailRes: any = await api.get(`/rfqs/${rfq.id}`);
+							rfqLabel = rfqLabelFromDetail(unwrap<any>(detailRes));
+						} catch {
+							rfqLabel = rfq.note || 'RFQ';
+						}
 						const qRes: any = await api.get(`/rfqs/${rfq.id}/quotations`);
-						return unwrapList<QuotationSummary>(qRes).filter(
-    						(q) => ['submitted', 'selected'].includes(q.status ?? ''),
-						);	
+						return unwrapList<QuotationSummary>(qRes)
+							.filter((q) => ['submitted', 'selected'].includes(q.status ?? ''))
+							.map((q) => ({ ...q, rfqLabel }));
 					} catch {
 						return [];
 					}
@@ -526,7 +637,12 @@ export default function SupplierNegotiation() {
 	}, [load]);
 
 	if (selected) {
-		return <NegotiationDetail quotationId={selected} onBack={() => setSelected(null)} />;
+		return (
+			<NegotiationDetail
+				quotationId={selected}
+				onBack={() => setSelected(null)}
+			/>
+		);
 	}
 
 	return (
@@ -547,16 +663,21 @@ export default function SupplierNegotiation() {
 				</button>
 			</div>
 
-			{loading && <p className="text-sm text-slate-500">Loading quotations...</p>}
+			{loading && (
+				<p className="text-sm text-slate-500">Loading quotations...</p>
+			)}
 			{error && (
-				<div className="flex items-center gap-2 p-3 rounded-lg mb-4"
-					style={{ background: '#FFDAD6', fontSize: 13, color: '#BA1A1A' }}>
+				<div
+					className="flex items-center gap-2 p-3 rounded-lg mb-4"
+					style={{ background: '#FFDAD6', fontSize: 13, color: '#BA1A1A' }}
+				>
 					<AlertTriangle className="w-4 h-4" /> {error}
 				</div>
 			)}
 			{!loading && quotations.length === 0 && (
 				<div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-					No active quotations for negotiation. Submit a quotation from the RFQ page first.
+					No active quotations for negotiation. Submit a quotation from the RFQ
+					page first.
 				</div>
 			)}
 
@@ -570,27 +691,40 @@ export default function SupplierNegotiation() {
 					>
 						<div className="flex items-start justify-between gap-4 mb-3">
 							<div>
-								<p className="text-sm font-semibold" style={{ color: '#191C1E' }}>
-									Quotation {q.id.slice(0, 8)}
+								<p
+									className="text-sm font-semibold"
+									style={{ color: '#191C1E' }}
+								>
+									{q.rfqLabel ?? 'RFQ'}
 								</p>
 								<p className="text-xs text-slate-500 mt-0.5">
-									RFQ {q.rfqId.slice(0, 8)}
+									Quotation ready for negotiation
 								</p>
 							</div>
 							<span
 								className="px-3 py-1 rounded-full shrink-0"
-								style={{ background: '#FFEFC6', color: '#7A4F00', fontSize: 11, fontWeight: 500 }}
+								style={{
+									background: '#FFEFC6',
+									color: '#7A4F00',
+									fontSize: 11,
+									fontWeight: 500,
+								}}
 							>
 								{q.status.replace(/_/g, ' ').toUpperCase()}
 							</span>
 						</div>
 						<div className="flex flex-wrap gap-4 text-xs text-slate-500">
 							<span>
-								<span className="font-medium text-slate-900">{formatMoney(q.unitPrice ?? q.totalPrice)}</span> unit price
+								<span className="font-medium text-slate-900">
+									{formatMoney(q.unitPrice ?? q.totalPrice)}
+								</span>{' '}
+								unit price
 							</span>
 							<span className="flex items-center gap-1">
 								<Clock className="w-3 h-3" />
-								{q.submittedAt ? new Date(q.submittedAt).toLocaleDateString('vi-VN') : '-'}
+								{q.submittedAt
+									? new Date(q.submittedAt).toLocaleDateString('vi-VN')
+									: '-'}
 							</span>
 						</div>
 					</button>

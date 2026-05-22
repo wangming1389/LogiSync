@@ -28,12 +28,18 @@ import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
 type SortBy = 'score' | 'price';
 type Tab = 'search' | 'rfq' | 'compare';
 
-type BuyerProduct = (typeof buyerProducts)[number] & { workspaceId?: string };
+type BuyerProduct = (typeof buyerProducts)[number] & {
+	workspaceId?: string;
+	uomId?: string | null;
+	sku?: string | null;
+};
 
 type BuyerSearchProduct = {
 	id: string;
+	sku?: string | null;
 	name: string;
 	workspaceId?: string;
+	uomId?: string | null;
 	supplierWorkspaceName?: string | null;
 	supplierWorkspaceSlug?: string | null;
 	unitPrice: number;
@@ -42,6 +48,13 @@ type BuyerSearchProduct = {
 	uomName?: string | null;
 	catalogCategoryName?: string | null;
 	reputationScore?: number | null;
+};
+
+type UomOption = {
+	id: string;
+	name: string;
+	code: string;
+	isActive?: boolean;
 };
 
 type BackendRfqSummary = {
@@ -77,6 +90,7 @@ type BackendQuotation = {
 	note?: string | null;
 	submittedAt?: string | null;
 	createdAt?: string | null;
+	items?: { quantity?: number | null; unitPrice?: number | null }[];
 };
 
 type ComparisonQuotation = {
@@ -142,7 +156,16 @@ function inferCategory(product: BuyerSearchProduct) {
 	return 'Other';
 }
 
-function toBuyerProduct(product: BuyerSearchProduct): BuyerProduct {
+function formatUomLabel(uom?: UomOption | null) {
+	if (!uom) return undefined;
+	return uom.code ? uom.code.toUpperCase() : uom.name;
+}
+
+function toBuyerProduct(
+	product: BuyerSearchProduct,
+	uomMap: Map<string, UomOption> = new Map(),
+): BuyerProduct {
+	const uom = product.uomId ? uomMap.get(product.uomId) : undefined;
 	return {
 		id: product.id,
 		name: product.name,
@@ -153,9 +176,11 @@ function toBuyerProduct(product: BuyerSearchProduct): BuyerProduct {
 		supplierScore: product.reputationScore ?? 0,
 		category: inferCategory(product),
 		basePrice: product.unitPrice,
-		unit: product.uomCode ?? product.uomName ?? 'unit',
+		unit: product.uomCode ?? formatUomLabel(uom) ?? product.uomName ?? 'unit',
 		minQty: product.minOrderQty ?? 1,
 		workspaceId: product.workspaceId,
+		uomId: product.uomId ?? undefined,
+		sku: product.sku ?? undefined,
 	};
 }
 
@@ -178,6 +203,11 @@ function formatSupplierLabel(workspaceId?: string | null) {
 	return `Supplier ${workspaceId.slice(0, 8)}`;
 }
 
+function productDisplayName(product?: { name?: string; sku?: string | null }) {
+	if (!product) return undefined;
+	return product.sku ? `${product.name} (${product.sku})` : product.name;
+}
+
 function mapBackendStatus(status?: string): 'draft' | 'submitted' {
 	if (status === 'draft') return 'draft';
 	if (['pending_response', 'responded', 'closed'].includes(status ?? '')) {
@@ -191,6 +221,15 @@ function formatDate(value?: string | null) {
 	const parsed = new Date(value);
 	if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
 	return parsed.toISOString().slice(0, 10);
+}
+
+function calculateQuotationTotal(quotation: BackendQuotation) {
+	const quantity = Array.isArray(quotation.items)
+		? quotation.items.reduce((total, item) => total + (item.quantity ?? 0), 0)
+		: 0;
+	const unitPrice = quotation.unitPrice ?? quotation.items?.[0]?.unitPrice ?? 0;
+	if (quantity > 0 && unitPrice > 0) return quantity * unitPrice;
+	return quotation.totalPrice ?? 0;
 }
 
 export default function BuyerSourcing() {
@@ -216,6 +255,9 @@ export default function BuyerSourcing() {
 	const [selectionPreview, setSelectionPreview] =
 		useState<ComparisonQuotation | null>(null);
 	const [cart, setCart] = useState<string[]>([]);
+	const [rfqQuantities, setRfqQuantities] = useState<Record<string, number>>(
+		{},
+	);
 	const [deliveryDate, setDeliveryDate] = useState('2026-05-01');
 	const [notes, setNotes] = useState('');
 	const [submittedMessage, setSubmittedMessage] = useState('');
@@ -234,13 +276,20 @@ export default function BuyerSourcing() {
 			(rfq) => rfq.status === 'draft',
 		);
 		if (currentDraft?.items?.length) {
-			setCart(
-				currentDraft.items.map((item): string =>
-					'productId' in item && item.productId
-						? String(item.productId)
-						: String(item.product),
-				),
+			const draftProductIds = currentDraft.items.map((item): string =>
+				'productId' in item && item.productId
+					? String(item.productId)
+					: String(item.product),
 			);
+			setCart(draftProductIds);
+			setRfqQuantities((current) => {
+				const next = { ...current };
+				currentDraft.items?.forEach((item, index) => {
+					const productId = draftProductIds[index];
+					if (productId) next[productId] = item.qty ?? 1;
+				});
+				return next;
+			});
 			setNotes(currentDraft.note ?? '');
 			setDeliveryDate(currentDraft.deliveryDate ?? '2026-05-01');
 			setSelectedRfqId(currentDraft.id);
@@ -275,10 +324,12 @@ export default function BuyerSourcing() {
 		let mounted = true;
 		setLoadingProducts(true);
 		setProductsError(null);
-		api
-			.get('/products/search?limit=25')
-			.then((res) => {
+		Promise.all([api.get('/products/search?limit=25'), api.get('/uom')])
+			.then(([res, uomRes]) => {
 				console.log('products/search raw:', JSON.stringify(res));
+				const uomMap = new Map(
+					unwrapList<UomOption>(uomRes).map((uom) => [uom.id, uom]),
+				);
 				const payload: any = res as any;
 				const inner = payload?.data?.data ?? payload?.data ?? payload;
 				const items = Array.isArray(inner) ? inner : (inner?.items ?? []);
@@ -321,10 +372,13 @@ export default function BuyerSourcing() {
 									p.supplierWorkspaceName ??
 									(p.workspaceId ? nameMap[p.workspaceId] : undefined) ??
 									p.supplierWorkspaceSlug;
-								return toBuyerProduct({
-									...p,
-									supplierWorkspaceName: supplierName,
-								} as BuyerSearchProduct);
+								return toBuyerProduct(
+									{
+										...p,
+										supplierWorkspaceName: supplierName,
+									} as BuyerSearchProduct,
+									uomMap,
+								);
 							}),
 						);
 					}
@@ -382,12 +436,23 @@ export default function BuyerSourcing() {
 					const childRfqs = childrenByParent.get(rfq.id) ?? [];
 					const items = Array.isArray(rfq.items) ? rfq.items : [];
 					const firstProductId = items[0]?.productId;
+					const firstProduct = firstProductId
+						? products.find((product) => product.id === firstProductId)
+						: undefined;
+					const firstProductName = firstProductId
+						? (productDisplayName(firstProduct) ??
+							`Product ${firstProductId.slice(0, 8)}`)
+						: undefined;
 					const summary =
 						items.length > 1
 							? `RFQ ${rfq.id.slice(0, 8)} · ${items.length} items`
 							: firstProductId
 								? `Product ${firstProductId.slice(0, 8)}`
 								: (rfq.note ?? `RFQ ${rfq.id.slice(0, 8)}`);
+					const displaySummary =
+						items.length > 1
+							? `${firstProductName ?? 'Mixed products'} · ${items.length} items`
+							: (firstProductName ?? summary);
 					const deliveryDate =
 						formatDate(items[0]?.deliveryDate) ??
 						formatDate(rfq.submittedAt ?? rfq.createdAt) ??
@@ -396,19 +461,24 @@ export default function BuyerSourcing() {
 					return {
 						id: rfq.id,
 						buyer: 'Current Workspace',
-						product: summary,
+						product: displaySummary,
 						qty: items.reduce(
 							(total, item) => total + (item.quantity ?? item.qty ?? 0),
 							0,
 						),
-						unit: items[0]?.unit ?? 'unit',
+						unit: firstProduct?.unit ?? items[0]?.unit ?? 'unit',
 						deliveryDate,
 						status: mapBackendStatus(rfq.status),
 						receivedAt: formatDate(rfq.submittedAt ?? rfq.createdAt),
 						createdAt: rfq.createdAt ?? rfq.submittedAt ?? '',
 						deadline: deliveryDate,
 						suppliers: childRfqs.map((child) =>
-							formatSupplierLabel(child.supplierWorkspaceId),
+							child.supplierWorkspaceId
+								? (products.find(
+										(product) =>
+											product.workspaceId === child.supplierWorkspaceId,
+									)?.supplier ?? formatSupplierLabel(child.supplierWorkspaceId))
+								: 'Unknown Supplier',
 						),
 						childRfqs: childRfqs.map((child) => ({
 							id: child.id,
@@ -419,10 +489,18 @@ export default function BuyerSourcing() {
 						note: rfq.note ?? '',
 						items: items.map((item) => ({
 							product: item.productId
-								? `Product ${item.productId.slice(0, 8)}`
+								? (productDisplayName(
+										products.find((product) => product.id === item.productId),
+									) ?? `Product ${item.productId.slice(0, 8)}`)
 								: 'Product',
 							qty: item.quantity ?? item.qty ?? 0,
-							unit: item.unit ?? 'unit',
+							unit:
+								(item.productId
+									? products.find((product) => product.id === item.productId)
+											?.unit
+									: undefined) ??
+								item.unit ??
+								'unit',
 							productId: item.productId,
 						})),
 					};
@@ -454,7 +532,7 @@ export default function BuyerSourcing() {
 		return () => {
 			mounted = false;
 		};
-	}, [demoEnabled, selectedRfqId]);
+	}, [demoEnabled, selectedRfqId, products]);
 
 	const activeDraft =
 		workflow.buyerRfqs.find((rfq) => rfq.id === selectedRfqId) ??
@@ -472,6 +550,24 @@ export default function BuyerSourcing() {
 			);
 		}
 		return scores;
+	}, [products]);
+
+	const supplierNameByWorkspaceId = useMemo(() => {
+		const names = new Map<string, string>();
+		for (const product of products) {
+			if (product.workspaceId && product.supplier) {
+				names.set(product.workspaceId, product.supplier);
+			}
+		}
+		return names;
+	}, [products]);
+
+	const productNameById = useMemo(() => {
+		const names = new Map<string, string>();
+		for (const product of products) {
+			names.set(product.id, productDisplayName(product) ?? product.name);
+		}
+		return names;
 	}, [products]);
 
 	useEffect(() => {
@@ -511,9 +607,25 @@ export default function BuyerSourcing() {
 						const quoteResponse: any = await api.get(
 							`/rfqs/${rfq.id}/quotations`,
 						);
+						const quotations = unwrapList<BackendQuotation>(quoteResponse);
+						const enrichedQuotations = await Promise.all(
+							quotations.map(async (quotation) => {
+								try {
+									const detailResponse: any = await api.get(
+										`/quotations/${quotation.id}`,
+									);
+									return {
+										...quotation,
+										...unwrapApiResponse<BackendQuotation>(detailResponse),
+									};
+								} catch {
+									return quotation;
+								}
+							}),
+						);
 						return {
 							rfq,
-							quotations: unwrapList<BackendQuotation>(quoteResponse),
+							quotations: enrichedQuotations,
 						};
 					}),
 				);
@@ -529,12 +641,15 @@ export default function BuyerSourcing() {
 									id: quotation.id,
 									rfqId: quotation.rfqId,
 									supplierWorkspaceId,
-									supplier: formatSupplierLabel(supplierWorkspaceId),
+									supplier: supplierWorkspaceId
+										? (supplierNameByWorkspaceId.get(supplierWorkspaceId) ??
+											formatSupplierLabel(supplierWorkspaceId))
+										: 'Unknown Supplier',
 									score: supplierWorkspaceId
 										? (supplierScoreByWorkspaceId.get(supplierWorkspaceId) ?? 0)
 										: 0,
 									unitPrice: quotation.unitPrice ?? 0,
-									total: quotation.totalPrice ?? 0,
+									total: calculateQuotationTotal(quotation),
 									deliveryDays: quotation.estimatedDeliveryDate ?? null,
 									terms: quotation.deliveryTerms ?? 'To be negotiated',
 									validity: quotation.submittedAt
@@ -556,7 +671,10 @@ export default function BuyerSourcing() {
 						rfqId: rfq.id,
 						supplierWorkspaceId: rfq.supplierWorkspaceId,
 						status: rfq.status,
-						label: formatSupplierLabel(rfq.supplierWorkspaceId),
+						label: rfq.supplierWorkspaceId
+							? (supplierNameByWorkspaceId.get(rfq.supplierWorkspaceId) ??
+								formatSupplierLabel(rfq.supplierWorkspaceId))
+							: 'Unknown Supplier',
 						score: rfq.supplierWorkspaceId
 							? (supplierScoreByWorkspaceId.get(rfq.supplierWorkspaceId) ?? 0)
 							: 0,
@@ -571,6 +689,10 @@ export default function BuyerSourcing() {
 				if (mounted) {
 					setComparisonQuotations(nextQuotations);
 					setAwaitingSuppliers(nextAwaiting);
+					const selectedQuote = nextQuotations.find(
+						(quotation) => quotation.status === 'selected',
+					);
+					if (selectedQuote) setSelectedQuotation(selectedQuote.id);
 				}
 			} catch (error) {
 				console.error('BuyerSourcing: failed to load quotations', error);
@@ -591,16 +713,40 @@ export default function BuyerSourcing() {
 		return () => {
 			mounted = false;
 		};
-	}, [tab, selectedRfqId, activeDraft?.id, supplierScoreByWorkspaceId]);
+	}, [
+		tab,
+		selectedRfqId,
+		activeDraft?.id,
+		supplierScoreByWorkspaceId,
+		supplierNameByWorkspaceId,
+	]);
 
 	function addToCart(productId: string) {
-		setCart((current) =>
-			current.includes(productId) ? current : [...current, productId],
-		);
+		setCart((current) => {
+			if (current.includes(productId)) return current;
+			const product = products.find((entry) => entry.id === productId);
+			setRfqQuantities((quantities) => ({
+				...quantities,
+				[productId]: quantities[productId] ?? product?.minQty ?? 1,
+			}));
+			return [...current, productId];
+		});
 	}
 
 	function removeFromCart(productId: string) {
 		setCart((current) => current.filter((item) => item !== productId));
+		setRfqQuantities((current) => {
+			const next = { ...current };
+			delete next[productId];
+			return next;
+		});
+	}
+
+	function setRfqQuantity(productId: string, value: number) {
+		const product = products.find((entry) => entry.id === productId);
+		const minQty = product?.minQty ?? 1;
+		const quantity = Math.max(minQty, Math.trunc(value || minQty));
+		setRfqQuantities((current) => ({ ...current, [productId]: quantity }));
 	}
 
 	async function selectWinningQuotation(quotationId: string) {
@@ -617,8 +763,22 @@ export default function BuyerSourcing() {
 				response?.data?.purchaseOrder ??
 				response?.purchaseOrder;
 			if (purchaseOrder?.id) {
-				upsertRecentPurchaseOrder(purchaseOrder);
+				const selectedQuote =
+					selectionPreview ??
+					comparisonQuotations.find((quote) => quote.id === quotationId);
+				upsertRecentPurchaseOrder({
+					...purchaseOrder,
+					supplierName: selectedQuote?.supplier,
+					productName: activeDraft?.product,
+				});
 			}
+			setComparisonQuotations((current) =>
+				current.map((quotation) =>
+					quotation.id === quotationId
+						? { ...quotation, status: 'selected' }
+						: quotation,
+				),
+			);
 			setSelectionMessage('Supplier selected and purchase order created.');
 			setSelectionPreview(null);
 		} catch (error) {
@@ -636,7 +796,7 @@ export default function BuyerSourcing() {
 			const product = products.find((entry) => entry.id === productId);
 			return {
 				product: product?.name ?? productId,
-				qty: product?.minQty ?? 1,
+				qty: rfqQuantities[productId] ?? product?.minQty ?? 1,
 				unit: product?.unit ?? 'MT',
 				productId,
 			};
@@ -741,7 +901,7 @@ export default function BuyerSourcing() {
 						buyer: 'Current Workspace',
 						product: summary,
 						qty: items.reduce((total, item) => total + item.qty, 0),
-						unit: 'MT',
+						unit: items[0]?.unit ?? 'unit',
 						deliveryDate,
 						status: 'submitted' as const,
 						receivedAt: new Date().toISOString().slice(0, 10),
@@ -794,7 +954,7 @@ export default function BuyerSourcing() {
 				buyer: 'Current Workspace',
 				product: summary,
 				qty: items.reduce((total, item) => total + item.qty, 0),
-				unit: 'MT',
+				unit: items[0]?.unit ?? 'unit',
 				deliveryDate,
 				status,
 				receivedAt: new Date().toISOString().slice(0, 10),
@@ -829,6 +989,16 @@ export default function BuyerSourcing() {
 	const cartItems = cart
 		.map((productId) => products.find((product) => product.id === productId))
 		.filter((item): item is (typeof buyerProducts)[number] => Boolean(item));
+	const selectedSupplierQuotation =
+		comparisonQuotations.find(
+			(quotation) =>
+				quotation.id === selectedQuotation || quotation.status === 'selected',
+		) ?? null;
+	const openQuotations = comparisonQuotations.filter(
+		(quotation) =>
+			quotation.id !== selectedSupplierQuotation?.id &&
+			quotation.status !== 'selected',
+	);
 
 	return (
 		<div className="p-6">
@@ -1071,6 +1241,23 @@ export default function BuyerSourcing() {
 								<div className="text-xs text-slate-500 whitespace-nowrap">
 									Min {product.minQty} {product.unit}
 								</div>
+								<label className="flex items-center gap-2 text-xs text-slate-500 whitespace-nowrap">
+									Qty
+									<input
+										type="number"
+										min={product.minQty}
+										value={rfqQuantities[product.id] ?? product.minQty}
+										onChange={(event) =>
+											setRfqQuantity(product.id, Number(event.target.value))
+										}
+										className="h-9 w-24 rounded-t-[6px] px-2 text-sm text-slate-900 focus:outline-none"
+										style={{
+											background: '#D5DAE3',
+											borderBottom: '2px solid #00559F',
+										}}
+									/>
+									{product.unit}
+								</label>
 								<button
 									onClick={() => removeFromCart(product.id)}
 									className="text-slate-500"
@@ -1236,20 +1423,21 @@ export default function BuyerSourcing() {
 						</div>
 					</div>
 					<div className="space-y-3">
-						{comparisonQuotations.length === 0 && !loadingQuotations && (
+						{openQuotations.length === 0 && !loadingQuotations && (
 							<div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-								No submitted quotations yet.
+								{selectedSupplierQuotation
+									? 'All supplier selection is complete for this RFQ.'
+									: 'No submitted quotations yet.'}
 							</div>
 						)}
-						{comparisonQuotations.map((quotation) => {
-							const isSelected = selectedQuotation === quotation.id;
+						{openQuotations.map((quotation) => {
 							return (
 								<div
 									key={quotation.id}
 									className="rounded-xl border p-5 transition-all"
 									style={{
-										borderColor: isSelected ? '#0F4C8A' : '#E0E4EB',
-										background: isSelected ? '#F8FAFC' : '#FFFFFF',
+										borderColor: '#E0E4EB',
+										background: '#FFFFFF',
 									}}
 								>
 									<div className="flex items-start justify-between gap-4 mb-3">
@@ -1283,31 +1471,30 @@ export default function BuyerSourcing() {
 									<div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
 										<div className="rounded-lg bg-slate-50 p-3">
 											<p className="text-xs text-slate-500">Unit price</p>
-											<p className="font-medium">
+											<p className="font-medium text-black">
 												{formatCurrency(quotation.unitPrice)}
 											</p>
 										</div>
 										<div className="rounded-lg bg-slate-50 p-3">
 											<p className="text-xs text-slate-500">Total</p>
-											<p className="font-medium">
+											<p className="font-medium text-black">
 												{formatCurrency(quotation.total)}
 											</p>
 										</div>
 										<div className="rounded-lg bg-slate-50 p-3">
 											<p className="text-xs text-slate-500">Validity</p>
-											<p className="font-medium">{quotation.validity}</p>
+											<p className="font-medium text-black">
+												{quotation.validity}
+											</p>
 										</div>
 										<div className="rounded-lg bg-slate-50 p-3">
 											<p className="text-xs text-slate-500">Notes</p>
-											<p className="font-medium">{quotation.notes}</p>
+											<p className="font-medium text-black">
+												{quotation.notes}
+											</p>
 										</div>
 									</div>
 									<div className="mt-4 flex items-center justify-end gap-3">
-										{isSelected && (
-											<span className="text-sm text-green-700">
-												Confirmed for award
-											</span>
-										)}
 										<button
 											onClick={() => setSelectionPreview(quotation)}
 											className="px-4 py-2 rounded-[6px]"
@@ -1322,11 +1509,16 @@ export default function BuyerSourcing() {
 										</button>
 										<button
 											onClick={() => setSelectionPreview(quotation)}
+											disabled={Boolean(selectedSupplierQuotation)}
 											className="px-4 py-2 rounded-[6px] text-white font-semibold"
 											style={{
-												background:
-													'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
+												background: selectedSupplierQuotation
+													? '#94A3B8'
+													: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
 												fontSize: 13,
+												cursor: selectedSupplierQuotation
+													? 'not-allowed'
+													: 'pointer',
 											}}
 										>
 											Select Supplier
@@ -1358,7 +1550,50 @@ export default function BuyerSourcing() {
 						</div>
 					)}
 					<div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-						Selected supplier: {selectedQuotation ?? 'none'}
+						<p className="text-xs uppercase tracking-[0.06em] text-slate-500">
+							Selected supplier
+						</p>
+						{selectedSupplierQuotation ? (
+							<div className="mt-3 rounded-lg border border-green-200 bg-white p-4">
+								<div className="flex items-start justify-between gap-3">
+									<div>
+										<p className="font-semibold text-slate-900">
+											{selectedSupplierQuotation.supplier}
+										</p>
+										<p className="mt-1 text-xs text-slate-500">
+											Confirmed for award · Quotation{' '}
+											{selectedSupplierQuotation.id.slice(0, 8)}
+										</p>
+									</div>
+									<span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+										SELECTED
+									</span>
+								</div>
+								<div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+									{[
+										[
+											'Unit price',
+											formatCurrency(selectedSupplierQuotation.unitPrice),
+										],
+										['Total', formatCurrency(selectedSupplierQuotation.total)],
+										[
+											'Delivery',
+											selectedSupplierQuotation.deliveryDays
+												? `${selectedSupplierQuotation.deliveryDays} days`
+												: '-',
+										],
+										['Payment terms', selectedSupplierQuotation.terms],
+									].map(([label, value]) => (
+										<div key={label} className="rounded-lg bg-slate-50 p-3">
+											<p className="text-xs text-slate-500">{label}</p>
+											<p className="mt-1 font-medium text-slate-900">{value}</p>
+										</div>
+									))}
+								</div>
+							</div>
+						) : (
+							<p className="mt-2 text-sm text-slate-500">None</p>
+						)}
 						{selectionMessage && (
 							<p className="mt-2 text-sm text-slate-700">{selectionMessage}</p>
 						)}
