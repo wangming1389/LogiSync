@@ -102,16 +102,16 @@ const NAV_CONFIG: Record<
             path: '/supplier/orders',
             icon: <ClipboardList className="w-5 h-5" />,
         	},
-			{
-				label: 'Pricing & Credit',
-				path: '/supplier/pricing',
-				icon: <DollarSign className="w-5 h-5" />,
-			},
-			{
-				label: 'Finance',
-				path: '/supplier/finance',
-				icon: <Receipt className="w-5 h-5" />,
-			},
+			// {
+			// 	label: 'Pricing & Credit',
+			// 	path: '/supplier/pricing',
+			// 	icon: <DollarSign className="w-5 h-5" />,
+			// },
+			// {
+			// 	label: 'Finance',
+			// 	path: '/supplier/finance',
+			// 	icon: <Receipt className="w-5 h-5" />,
+			// },
 		],
 	},
 	carrier: {
