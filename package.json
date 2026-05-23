@@ -12,6 +12,7 @@
     "db:down": "docker compose down",
     "db:studio": "turbo db:studio --filter=@logisync/api",
     "db:setup": "turbo db:setup --filter=@logisync/api",
+    "db:setup:local": "turbo db:setup:local --filter=@logisync/api",
     "dev:all": "turbo dev",
     "build": "turbo build",
     "lint": "pnpm lint:fast && pnpm lint:deep",

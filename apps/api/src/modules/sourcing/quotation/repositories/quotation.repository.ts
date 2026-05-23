@@ -196,6 +196,15 @@ export class QuotationRepository extends BaseRepository {
 			.where(eq(schema.quotationItems.quotationId, quotationId));
 	}
 
+	async updateItemsUnitPrice(quotationId: string, unitPrice: number, tx?: any) {
+		const runner = tx || this.db;
+		return runner
+			.update(schema.quotationItems)
+			.set({ unitPrice })
+			.where(eq(schema.quotationItems.quotationId, quotationId))
+			.returning();
+	}
+
 	async findRfqById(rfqId: string, tx: any) {
 		const [rfq] = await tx
 			.select()
