@@ -219,7 +219,11 @@ export class QuotationService {
 			);
 		}
 
-		const callerRole = this.resolveNegotiationRole(role);
+		const callerRole = this.resolveNegotiationRole(
+			role,
+			workspaceId,
+			quotation.supplierWorkspaceId,
+		);
 
 		const round = await this.databaseService.withTransaction(async (tx) => {
 			const latest = await this.quotationRepo.findLatestNegotiationRound(
@@ -286,7 +290,11 @@ export class QuotationService {
 			);
 		}
 
-		const callerRole = this.resolveNegotiationRole(role);
+		const callerRole = this.resolveNegotiationRole(
+			role,
+			workspaceId,
+			quotation.supplierWorkspaceId,
+		);
 
 		const result = await this.databaseService.withTransaction(async (tx) => {
 			const target = dto.roundId
@@ -311,14 +319,24 @@ export class QuotationService {
 				throw new ConflictException('Failed to accept round');
 			}
 
+			const totalQuantity = await this.totalQuotationQuantity(quotationId, tx);
+			const newTotalPrice = target.proposedPrice * totalQuantity;
+
 			// Finalize quotation with accepted terms - keep status as 'submitted'
 			// so the Buyer can still execute selectQuotation()
 			const updatedQuotation = await this.quotationRepo.updateQuotation(
 				quotationId,
 				{
 					unitPrice: target.proposedPrice,
+					totalPrice: newTotalPrice,
 					// estimated_delivery_days is a negotiation-only field
 				},
+				tx,
+			);
+
+			await this.quotationRepo.updateItemsUnitPrice(
+				quotationId,
+				target.proposedPrice,
 				tx,
 			);
 
@@ -331,6 +349,7 @@ export class QuotationService {
 				changes: {
 					quotationId,
 					acceptedPrice: target.proposedPrice,
+					acceptedTotalPrice: newTotalPrice,
 					acceptedDeliveryDays: target.proposedDeliveryDays,
 				},
 				ipAddress,
@@ -517,11 +536,9 @@ export class QuotationService {
 		role: string,
 		workspaceId: string,
 	) {
-		if (this.hasRole(SOURCING_SUPPLIER_ROLES, role)) {
-			if (quotation.supplierWorkspaceId !== workspaceId) {
-				throw new ForbiddenException(
-					'Supplier can only access their own quotations',
-				);
+		if (quotation.supplierWorkspaceId === workspaceId) {
+			if (!this.hasRole(SOURCING_SUPPLIER_ROLES, role)) {
+				throw new ForbiddenException('Role cannot access quotations');
 			}
 			return;
 		}
@@ -531,9 +548,16 @@ export class QuotationService {
 		}
 	}
 
-	private resolveNegotiationRole(role: string): NegotiationRole {
+	private resolveNegotiationRole(
+		role: string,
+		workspaceId: string,
+		supplierWorkspaceId: string,
+	): NegotiationRole {
+		if (workspaceId === supplierWorkspaceId) {
+			if (this.hasRole(SOURCING_SUPPLIER_ROLES, role)) return 'SUPPLIER';
+			throw new ForbiddenException('Role cannot negotiate');
+		}
 		if (this.hasRole(SOURCING_BUYER_ROLES, role)) return 'BUYER';
-		if (this.hasRole(SOURCING_SUPPLIER_ROLES, role)) return 'SUPPLIER';
 		throw new ForbiddenException('Role cannot negotiate');
 	}
 
