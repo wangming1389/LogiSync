@@ -52,17 +52,111 @@ function currentWorkspaceId() {
 	return typeof claims?.workspaceId === 'string' ? claims.workspaceId : null;
 }
 
-function mapPurchaseOrder(order: PurchaseOrderSnapshot) {
+type OrderLabelMaps = {
+	suppliers?: Map<string, string>;
+	suppliersByOrder?: Map<string, string>;
+	productsByQuotation?: Map<string, string>;
+	productsByOrder?: Map<string, string>;
+	quantitiesByQuotation?: Map<string, number>;
+	quantitiesByOrder?: Map<string, number>;
+	unitsByQuotation?: Map<string, string>;
+	unitsByOrder?: Map<string, string>;
+};
+
+type SearchProductLabel = {
+	id?: string;
+	name?: string;
+	sku?: string | null;
+	uomId?: string | null;
+	workspaceId?: string | null;
+	supplierWorkspaceName?: string | null;
+	supplierWorkspaceSlug?: string | null;
+};
+
+type RfqSummaryForLabel = {
+	id?: string;
+	parentRfqId?: string | null;
+	supplierWorkspaceId?: string | null;
+};
+
+type QuotationForLabel = {
+	id?: string;
+	rfqId?: string;
+	supplierWorkspaceId?: string | null;
+	status?: string | null;
+	totalPrice?: number | null;
+	unitPrice?: number | null;
+};
+
+type ResolvedOrderLabels = {
+	product?: string;
+	supplier?: string;
+	quantity?: number;
+	unit?: string;
+};
+
+function isPlaceholderProductLabel(value?: string | null) {
+	return !value || value.trim().toLowerCase() === 'purchase order';
+}
+
+function isPlaceholderSupplierLabel(value?: string | null) {
+	return !value || /^Supplier [0-9a-f-]+$/i.test(value);
+}
+
+function supplierPrefixFromLabel(value?: string | null) {
+	const match = value?.match(/^Supplier ([0-9a-f-]+)/i);
+	return match?.[1]?.toLowerCase();
+}
+
+function mapPurchaseOrder(
+	order: PurchaseOrderSnapshot,
+	labelMaps: OrderLabelMaps = {},
+) {
+	const supplierLabel = order.supplierWorkspaceId
+		? ((!isPlaceholderSupplierLabel(order.supplierName)
+				? order.supplierName
+				: undefined) ??
+			labelMaps.suppliers?.get(order.supplierWorkspaceId) ??
+			Array.from(labelMaps.suppliers?.entries() ?? []).find(([id]) =>
+				id
+					.toLowerCase()
+					.startsWith(order.supplierWorkspaceId?.toLowerCase() ?? ''),
+			)?.[1] ??
+			`Supplier ${order.supplierWorkspaceId.slice(0, 8)}`)
+		: (labelMaps.suppliersByOrder?.get(order.id) ??
+			(!isPlaceholderSupplierLabel(order.supplierName)
+				? order.supplierName
+				: undefined) ??
+			'Supplier');
+	const productLabel =
+		(!isPlaceholderProductLabel(order.productName)
+			? order.productName
+			: undefined) ??
+		(order.quotationId
+			? (labelMaps.productsByQuotation?.get(order.quotationId) ??
+				Array.from(labelMaps.productsByQuotation?.entries() ?? []).find(
+					([id]) => id.startsWith(order.quotationId ?? ''),
+				)?.[1])
+			: undefined) ??
+		labelMaps.productsByOrder?.get(order.id) ??
+		'Purchase order';
+
 	return {
 		id: order.id,
-		supplier: order.supplierWorkspaceId
-			? `Supplier ${order.supplierWorkspaceId.slice(0, 8)}`
-			: 'Supplier',
-		product: order.quotationId
-			? `Quotation ${order.quotationId.slice(0, 8)}`
-			: 'Purchase order',
-		qty: 1,
-		unit: 'lot',
+		supplier: supplierLabel,
+		product: productLabel,
+		qty:
+			(order.quotationId
+				? labelMaps.quantitiesByQuotation?.get(order.quotationId)
+				: undefined) ??
+			labelMaps.quantitiesByOrder?.get(order.id) ??
+			1,
+		unit:
+			(order.quotationId
+				? labelMaps.unitsByQuotation?.get(order.quotationId)
+				: undefined) ??
+			labelMaps.unitsByOrder?.get(order.id) ??
+			'unit',
 		totalValue: order.totalPrice ?? 0,
 		status: order.status ?? 'pending_approval',
 		createdAt: formatDate(order.createdAt),
@@ -71,6 +165,299 @@ function mapPurchaseOrder(order: PurchaseOrderSnapshot) {
 			? `Auto-confirm ${formatDate(order.autoConfirmAt)}`
 			: '-',
 		raw: order,
+	};
+}
+
+function formatProductLabel(item: any) {
+	const product = item?.product;
+	const name =
+		(typeof product === 'string' ? product : product?.name) ??
+		item?.productName ??
+		item?.name;
+	const sku = product?.sku ?? item?.productSku ?? item?.sku;
+	if (name) return sku ? `${name} (${sku})` : name;
+	return undefined;
+}
+
+function productIdFromItem(item: any) {
+	return item?.productId ?? item?.product_id ?? item?.product?.id;
+}
+
+async function loadProductSearchMaps() {
+	const productsById = new Map<string, string>();
+	const productUnitsById = new Map<string, string>();
+	const suppliersByWorkspaceId = new Map<string, string>();
+	const uoms = new Map<string, string>();
+
+	try {
+		const uomResponse: any = await api.get('/uom');
+		for (const uom of unwrapApiList<{
+			id?: string;
+			name?: string;
+			code?: string;
+		}>(uomResponse)) {
+			if (uom.id)
+				uoms.set(uom.id, uom.code?.toUpperCase() ?? uom.name ?? 'unit');
+		}
+	} catch {
+		// Unit labels are optional display data.
+	}
+
+	try {
+		const response: any = await api.get('/products/search?limit=25');
+		for (const product of unwrapApiList<SearchProductLabel>(response)) {
+			if (product.id && product.name) {
+				productsById.set(
+					product.id,
+					product.sku ? `${product.name} (${product.sku})` : product.name,
+				);
+				if (product.uomId && uoms.has(product.uomId)) {
+					productUnitsById.set(product.id, uoms.get(product.uomId) as string);
+				}
+			}
+			if (product.workspaceId) {
+				const supplierName =
+					product.supplierWorkspaceName ?? product.supplierWorkspaceSlug;
+				if (supplierName)
+					suppliersByWorkspaceId.set(product.workspaceId, supplierName);
+			}
+		}
+	} catch {
+		// These maps are best-effort fallbacks for labels only.
+	}
+
+	return { productsById, productUnitsById, suppliersByWorkspaceId };
+}
+
+async function resolveQuotationOrderInfo(
+	quotationId: string,
+	productsById: Map<string, string>,
+	productUnitsById: Map<string, string>,
+) {
+	const quoteResponse: any = await api.get(`/quotations/${quotationId}`);
+	const quote =
+		quoteResponse?.data?.data ?? quoteResponse?.data ?? quoteResponse;
+	const quoteItems = Array.isArray(quote?.items) ? quote.items : [];
+	const quoteItem = quoteItems[0];
+	const quantity = quoteItem?.quantity;
+	const quoteLabel = formatProductLabel(quoteItem);
+	if (quoteLabel) return { product: quoteLabel, quantity };
+
+	const quoteProductId = productIdFromItem(quoteItem);
+	if (quoteProductId && productsById.has(quoteProductId)) {
+		return {
+			product: productsById.get(quoteProductId),
+			quantity,
+			unit: productUnitsById.get(quoteProductId),
+		};
+	}
+
+	if (!quote?.rfqId) return { quantity };
+
+	const rfqResponse: any = await api.get(`/rfqs/${quote.rfqId}`);
+	const rfq = rfqResponse?.data?.data ?? rfqResponse?.data ?? rfqResponse;
+	const rfqItems = Array.isArray(rfq?.items) ? rfq.items : [];
+	const rfqItem = rfqItems[0];
+	const rfqLabel = formatProductLabel(rfqItem);
+	if (rfqLabel)
+		return { product: rfqLabel, quantity: quantity ?? rfqItem?.quantity };
+
+	const rfqProductId = productIdFromItem(rfqItem);
+	if (rfqProductId && productsById.has(rfqProductId)) {
+		return {
+			product: productsById.get(rfqProductId),
+			quantity: quantity ?? rfqItem?.quantity,
+			unit: productUnitsById.get(rfqProductId),
+		};
+	}
+
+	return { quantity: quantity ?? rfqItem?.quantity };
+}
+
+async function resolveQuotationProductLabel(
+	quotationId: string,
+	productsById: Map<string, string>,
+	productUnitsById: Map<string, string>,
+) {
+	return (
+		await resolveQuotationOrderInfo(quotationId, productsById, productUnitsById)
+	).product;
+}
+
+function sameIdOrPrefix(left?: string | null, right?: string | null) {
+	if (!left || !right) return false;
+	const normalizedLeft = left.toLowerCase();
+	const normalizedRight = right.toLowerCase();
+	return (
+		normalizedLeft === normalizedRight ||
+		normalizedLeft.startsWith(normalizedRight) ||
+		normalizedRight.startsWith(normalizedLeft)
+	);
+}
+
+function sameMoney(left?: number | null, right?: number | null) {
+	if (left == null || right == null) return false;
+	return Math.abs(Number(left) - Number(right)) < 0.01;
+}
+
+async function resolveOrderLabelsWithoutQuotationId(
+	order: PurchaseOrderSnapshot,
+	productsById: Map<string, string>,
+	productUnitsById: Map<string, string>,
+	suppliersByWorkspaceId: Map<string, string>,
+): Promise<ResolvedOrderLabels> {
+	if (
+		!order.supplierWorkspaceId &&
+		!supplierPrefixFromLabel(order.supplierName) &&
+		order.totalPrice == null
+	) {
+		return {};
+	}
+	const supplierHint =
+		order.supplierWorkspaceId ?? supplierPrefixFromLabel(order.supplierName);
+
+	const rfqResponse: any = await api.get('/rfqs?limit=100');
+	const rfqs = unwrapApiList<RfqSummaryForLabel>(rfqResponse);
+	const candidateRfqs = rfqs.filter(
+		(rfq) =>
+			rfq.id &&
+			rfq.supplierWorkspaceId &&
+			(!supplierHint || sameIdOrPrefix(rfq.supplierWorkspaceId, supplierHint)),
+	);
+
+	for (const rfq of candidateRfqs) {
+		try {
+			const quoteResponse: any = await api.get(`/rfqs/${rfq.id}/quotations`);
+			const quotations = unwrapApiList<QuotationForLabel>(quoteResponse);
+			const matchingQuote = quotations.find(
+				(quotation) =>
+					sameMoney(quotation.totalPrice, order.totalPrice) ||
+					sameMoney(quotation.unitPrice, order.finalUnitPrice),
+			);
+			if (!matchingQuote?.id) continue;
+
+			const info = await resolveQuotationOrderInfo(
+				matchingQuote.id,
+				productsById,
+				productUnitsById,
+			);
+			const supplier = rfq.supplierWorkspaceId
+				? suppliersByWorkspaceId.get(rfq.supplierWorkspaceId)
+				: undefined;
+			if (info.product || supplier) return { ...info, supplier };
+		} catch {
+			// Try the next RFQ candidate.
+		}
+	}
+
+	return {};
+}
+
+async function loadOrderLabelMaps(orders: PurchaseOrderSnapshot[]) {
+	const suppliers = new Map<string, string>();
+	const suppliersByOrder = new Map<string, string>();
+	const productsByQuotation = new Map<string, string>();
+	const productsByOrder = new Map<string, string>();
+	const quantitiesByQuotation = new Map<string, number>();
+	const quantitiesByOrder = new Map<string, number>();
+	const unitsByQuotation = new Map<string, string>();
+	const unitsByOrder = new Map<string, string>();
+	const { productsById, productUnitsById, suppliersByWorkspaceId } =
+		await loadProductSearchMaps();
+
+	const supplierIds = Array.from(
+		new Set(
+			orders
+				.map((order) => order.supplierWorkspaceId)
+				.filter((id): id is string => Boolean(id)),
+		),
+	);
+	if (supplierIds.length > 0) {
+		try {
+			const response: any = await api.get(
+				`/workspaces/public?ids=${supplierIds.join(',')}`,
+			);
+			for (const row of unwrapApiList<{ id?: string; name?: string }>(
+				response,
+			)) {
+				if (row.id && row.name) suppliers.set(row.id, row.name);
+			}
+		} catch {
+			// Fallback remains the short workspace label.
+		}
+	}
+	for (const [workspaceId, supplierName] of suppliersByWorkspaceId) {
+		if (!suppliers.has(workspaceId)) suppliers.set(workspaceId, supplierName);
+	}
+
+	await Promise.all(
+		orders.map(async (order) => {
+			try {
+				if (order.quotationId) {
+					const info = await resolveQuotationOrderInfo(
+						order.quotationId,
+						productsById,
+						productUnitsById,
+					);
+					if (info.product) {
+						productsByQuotation.set(order.quotationId, info.product);
+					}
+					if (info.quantity) {
+						quantitiesByQuotation.set(order.quotationId, info.quantity);
+					}
+					if (info.unit) {
+						unitsByQuotation.set(order.quotationId, info.unit);
+					}
+					return;
+				}
+
+				const labels = await resolveOrderLabelsWithoutQuotationId(
+					order,
+					productsById,
+					productUnitsById,
+					suppliersByWorkspaceId,
+				);
+				if (labels.product) {
+					productsByOrder.set(order.id, labels.product);
+				}
+				if (labels.quantity) {
+					quantitiesByOrder.set(order.id, labels.quantity);
+				}
+				if (labels.unit) {
+					unitsByOrder.set(order.id, labels.unit);
+				}
+				if (labels.supplier) {
+					suppliersByOrder.set(order.id, labels.supplier);
+				}
+			} catch {
+				// Fallback remains "Purchase order".
+			}
+		}),
+	);
+
+	return {
+		suppliers,
+		suppliersByOrder,
+		productsByQuotation,
+		productsByOrder,
+		quantitiesByQuotation,
+		quantitiesByOrder,
+		unitsByQuotation,
+		unitsByOrder,
+	};
+}
+
+function enrichOrderWithLabels(
+	order: PurchaseOrderSnapshot,
+	labelMaps: OrderLabelMaps,
+): PurchaseOrderSnapshot {
+	const mapped = mapPurchaseOrder(order, labelMaps);
+	return {
+		...order,
+		supplierName:
+			mapped.supplier !== 'Supplier' ? mapped.supplier : order.supplierName,
+		productName:
+			mapped.product !== 'Purchase order' ? mapped.product : order.productName,
 	};
 }
 
@@ -129,27 +516,34 @@ export default function BuyerOrdersTracking() {
 					if (!merged.some((entry) => entry.id === order.id))
 						merged.push(order);
 				}
+				const visibleOrders = merged.filter(
+					(order) => !workspaceId || order.buyerWorkspaceId === workspaceId,
+				);
+				const labelMaps = await loadOrderLabelMaps(visibleOrders);
+				const enrichedOrders = visibleOrders.map((order) =>
+					enrichOrderWithLabels(order, labelMaps),
+				);
+				upsertRecentPurchaseOrders(enrichedOrders);
 				if (mounted) {
 					setRealOrders(
-						merged
-							.filter(
-								(order) =>
-									!workspaceId || order.buyerWorkspaceId === workspaceId,
-							)
-							.map(mapPurchaseOrder),
+						enrichedOrders.map((order) => mapPurchaseOrder(order, labelMaps)),
 					);
 				}
 			} catch (err: any) {
 				const cached = loadRecentPurchaseOrders();
 				if (mounted) {
 					setOrdersError(err?.message ?? 'Failed to load orders.');
+					const visibleOrders = cached.filter((order) => {
+						const workspaceId = currentWorkspaceId();
+						return !workspaceId || order.buyerWorkspaceId === workspaceId;
+					});
+					const labelMaps = await loadOrderLabelMaps(visibleOrders);
+					const enrichedOrders = visibleOrders.map((order) =>
+						enrichOrderWithLabels(order, labelMaps),
+					);
+					upsertRecentPurchaseOrders(enrichedOrders);
 					setRealOrders(
-						cached
-							.filter((order) => {
-								const workspaceId = currentWorkspaceId();
-								return !workspaceId || order.buyerWorkspaceId === workspaceId;
-							})
-							.map(mapPurchaseOrder),
+						enrichedOrders.map((order) => mapPurchaseOrder(order, labelMaps)),
 					);
 				}
 			} finally {
@@ -190,10 +584,12 @@ export default function BuyerOrdersTracking() {
 				{},
 			);
 			const updated = response?.data?.data ?? response?.data ?? response;
-			upsertRecentPurchaseOrder(updated);
+			const labelMaps = await loadOrderLabelMaps([updated]);
+			const enriched = enrichOrderWithLabels(updated, labelMaps);
+			upsertRecentPurchaseOrder(enriched);
 			setRealOrders((current) =>
 				current.map((order) =>
-					order.id === orderId ? mapPurchaseOrder(updated) : order,
+					order.id === orderId ? mapPurchaseOrder(enriched, labelMaps) : order,
 				),
 			);
 			setOrdersNotice('Goods receipt confirmed. Order moved to completed.');
