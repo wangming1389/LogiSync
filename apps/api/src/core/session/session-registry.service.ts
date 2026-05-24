@@ -20,6 +20,11 @@ export interface SessionData {
 	userAgent?: string;
 }
 
+export interface WorkspaceSessionCount {
+	workspaceId: string;
+	activeSessions: number;
+}
+
 @Injectable()
 export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(SessionRegistryService.name);
@@ -195,6 +200,34 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 
 	async getActiveSessionCount(workspaceId: string): Promise<number> {
 		return this.redisClient.sCard(`workspace:${workspaceId}:sessions`);
+	}
+
+	async getActiveSessionCountsByWorkspace(): Promise<WorkspaceSessionCount[]> {
+		if (!this.isReady()) {
+			return [];
+		}
+
+		const counts: WorkspaceSessionCount[] = [];
+		for await (const keyOrKeys of this.redisClient.scanIterator({
+			MATCH: 'workspace:*:sessions',
+			COUNT: 100,
+		})) {
+			const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+			for (const key of keys) {
+				const match = /^workspace:(.+):sessions$/.exec(key);
+				if (!match) {
+					continue;
+				}
+
+				const workspaceId = match[1];
+				counts.push({
+					workspaceId,
+					activeSessions: await this.getActiveSessionCount(workspaceId),
+				});
+			}
+		}
+
+		return counts;
 	}
 
 	async ping() {
