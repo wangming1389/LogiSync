@@ -52,7 +52,6 @@ export async function createWorkspace(overrides: Record<string, unknown> = {}) {
 		.values({
 			name: `E2E Workspace ${suffix}`,
 			slug: suffix,
-			type: 'supplier',
 			taxId: numericTaxId,
 			status: 'active',
 			registeredIpAddress: '127.0.0.1',
@@ -61,6 +60,14 @@ export async function createWorkspace(overrides: Record<string, unknown> = {}) {
 			...overrides,
 		})
 		.returning();
+
+	await db()
+		.insert(schema.workspaceTypes)
+		.values({
+			workspaceId: workspace.id,
+			type: (overrides.type as string) || 'supplier',
+		});
+
 	return workspace;
 }
 
@@ -78,11 +85,16 @@ export async function createUser(
 			passwordHash: await bcrypt.hash(PASSWORD, 12),
 			firstName: 'E2E',
 			lastName: 'User',
-			role,
 			isActive: true,
 			...overrides,
 		})
 		.returning();
+
+	await db().insert(schema.userRoles).values({
+		userId: user.id,
+		role,
+	});
+
 	return user;
 }
 
@@ -102,23 +114,28 @@ export async function createPlatformAdmin() {
 		.from(schema.workspaces)
 		.where(eq(schema.workspaces.slug, 'platform-admin'))
 		.limit(1);
-	const workspace =
-		existing[0] ??
-		(
-			await db()
-				.insert(schema.workspaces)
-				.values({
-					name: 'LogiSync Platform Admin',
-					slug: 'platform-admin',
-					type: 'platform',
-					taxId: `${Date.now()}`.slice(0, 13),
-					status: 'active',
-					registeredIpAddress: '127.0.0.1',
-					acceptedTermsVersion: 'e2e',
-					isActive: true,
-				})
-				.returning()
-		)[0];
+	let workspace = existing[0];
+	if (!workspace) {
+		const [newWorkspace] = await db()
+			.insert(schema.workspaces)
+			.values({
+				name: 'LogiSync Platform Admin',
+				slug: 'platform-admin',
+				taxId: `${Date.now()}`.slice(0, 13),
+				status: 'active',
+				registeredIpAddress: '127.0.0.1',
+				acceptedTermsVersion: 'e2e',
+				isActive: true,
+			})
+			.returning();
+
+		await db().insert(schema.workspaceTypes).values({
+			workspaceId: newWorkspace.id,
+			type: 'platform',
+		});
+
+		workspace = newWorkspace;
+	}
 	const user = await createUser(workspace.id, UserRole.PLATFORM_ADMIN);
 	return { workspace, user, password: PASSWORD };
 }
@@ -130,8 +147,13 @@ export async function login(
 ) {
 	const response = await request(app.getHttpServer())
 		.post('/auth/login')
-		.send({ email, password })
-		.expect(200);
+		.send({ email, password });
+
+	if (response.status !== 200) {
+		console.error('Login failed:', response.body);
+	}
+
+	expect(response.status).toBe(200);
 
 	return (response.body.data?.accessToken ??
 		response.body.accessToken) as string;
