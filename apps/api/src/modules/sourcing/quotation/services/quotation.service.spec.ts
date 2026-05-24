@@ -17,9 +17,12 @@ describe('QuotationService', () => {
 		findById: jest.fn(),
 		findLatestNegotiationRound: jest.fn(),
 		insertNegotiationRound: jest.fn(),
+		findNegotiationRoundById: jest.fn(),
+		markRoundAccepted: jest.fn(),
 		findByIdForUpdate: jest.fn(),
 		findRfqById: jest.fn(),
 		updateQuotation: jest.fn(),
+		updateItemsUnitPrice: jest.fn(),
 		rejectOtherQuotationsForRfq: jest.fn(),
 		cancelSiblingChildRfqs: jest.fn(),
 		closeRfq: jest.fn(),
@@ -66,6 +69,12 @@ describe('QuotationService', () => {
 			id: 'round-1',
 			role: 'BUYER',
 		});
+		quotationRepo.findNegotiationRoundById.mockResolvedValue(null);
+		quotationRepo.markRoundAccepted.mockResolvedValue({
+			id: 'round-1',
+			role: 'SUPPLIER',
+			isAccepted: true,
+		});
 		quotationRepo.findByIdForUpdate.mockResolvedValue(quotation);
 		quotationRepo.findRfqById.mockResolvedValue({
 			id: 'child-rfq-1',
@@ -77,6 +86,7 @@ describe('QuotationService', () => {
 			status: 'selected',
 			isLocked: true,
 		});
+		quotationRepo.updateItemsUnitPrice.mockResolvedValue([]);
 		quotationRepo.rejectOtherQuotationsForRfq.mockResolvedValue(undefined);
 		quotationRepo.cancelSiblingChildRfqs.mockResolvedValue(undefined);
 		quotationRepo.closeRfq.mockResolvedValue(undefined);
@@ -132,6 +142,58 @@ describe('QuotationService', () => {
 				'127.0.0.1',
 			),
 		).rejects.toThrow(ConflictException);
+	});
+
+	it('resolves company admin as supplier when acting from supplier workspace', async () => {
+		await service.negotiate(
+			'quotation-1',
+			{ proposedPrice: 900, proposedDeliveryDays: 7 },
+			'supplier-admin-1',
+			UserRole.COMPANY_ADMIN,
+			'supplier-workspace-1',
+			'127.0.0.1',
+		);
+
+		expect(quotationRepo.insertNegotiationRound).toHaveBeenCalledWith(
+			expect.objectContaining({
+				role: 'SUPPLIER',
+			}),
+			tx,
+		);
+	});
+
+	it('updates quotation totals and item unit prices when accepting a round', async () => {
+		quotationRepo.findLatestNegotiationRound.mockResolvedValueOnce({
+			id: 'round-1',
+			quotationId: 'quotation-1',
+			role: 'SUPPLIER',
+			proposedPrice: 900,
+			proposedDeliveryDays: 7,
+			isAccepted: false,
+		});
+
+		await service.acceptLatestRound(
+			'quotation-1',
+			{},
+			'buyer-1',
+			UserRole.BUYER_STAFF,
+			'buyer-workspace-1',
+			'127.0.0.1',
+		);
+
+		expect(quotationRepo.updateQuotation).toHaveBeenCalledWith(
+			'quotation-1',
+			expect.objectContaining({
+				unitPrice: 900,
+				totalPrice: 9_000,
+			}),
+			tx,
+		);
+		expect(quotationRepo.updateItemsUnitPrice).toHaveBeenCalledWith(
+			'quotation-1',
+			900,
+			tx,
+		);
 	});
 
 	it('TC-SRC-05 PO Snapshot Integrity', async () => {

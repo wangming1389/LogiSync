@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { SessionModule } from '../session/session.module';
 import {
 	loginFailedProvider,
 	orderApprovedProvider,
@@ -10,6 +11,7 @@ import {
 import { MetricsController } from './controllers/metrics.controller';
 import { HttpMetricsInterceptor } from './interceptors/http-metrics.interceptor';
 import {
+	activeSessionsProvider,
 	httpRequestDurationProvider,
 	httpRequestsTotalProvider,
 } from './metrics.providers';
@@ -27,11 +29,13 @@ import {
 			defaultMetrics: { enabled: true },
 			controller: MetricsController,
 		}),
+		SessionModule,
 	],
 	providers: [
 		// Technical HTTP metrics
 		httpRequestsTotalProvider,
 		httpRequestDurationProvider,
+		activeSessionsProvider,
 
 		// Business KPI metrics
 		loginFailedProvider,
@@ -50,6 +54,7 @@ import {
 		rfqCreatedProvider,
 		orderApprovedProvider,
 		orderRejectedProvider,
+		activeSessionsProvider,
 	],
 })
 export class MetricsModule {}

@@ -18,13 +18,15 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "infra:up": "docker compose -f ../../docker-compose.yml up -d",
+    "wait:db": "powershell -ExecutionPolicy Bypass -Command \"while ((docker inspect -f '{{.State.Health.Status}}' logisync-db) -ne 'healthy') { Write-Host 'Waiting for postgres...'; Start-Sleep -Seconds 2 }\"",
     "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
     "db:migrate": "dotenv -e ../../.env -- tsx src/infrastructure/database/migrate.ts",
     "db:seed": "dotenv -e ../../.env -- tsx src/infrastructure/database/seed.ts",
-    "db:replica:local": "powershell -ExecutionPolicy Bypass -File docker/postgres/setup-audit-log-replica.ps1",
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
-    "db:setup:local": "docker compose up -d --force-recreate postgres && docker compose up -d postgres_replica && pnpm db:replica:local && pnpm db:setup",
-    "db:studio": "dotenv -e ../../.env -- drizzle-kit studio"
+    "db:studio": "dotenv -e ../../.env -- drizzle-kit studio",
+    "db:replica:local": "powershell -ExecutionPolicy Bypass -File ../../docker/postgres/setup-audit-log-replica.ps1",
+    "db:setup:local": "pnpm infra:up && pnpm wait:db && pnpm db:setup && pnpm db:replica:local"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
