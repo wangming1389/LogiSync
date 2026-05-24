@@ -262,6 +262,12 @@ export class WorkspaceController {
 	) {
 		const payload = getRequestUser<JwtPayload>(req);
 		const ipAddress = getClientIp(req);
-		return this.workspaceService.enableRole(id, dto, payload.sub, ipAddress);
+		return this.workspaceService.enableRole(
+			id,
+			dto,
+			payload.sub,
+			payload.workspaceId,
+			ipAddress,
+		);
 	}
 }

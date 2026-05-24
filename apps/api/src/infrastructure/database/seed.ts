@@ -42,6 +42,24 @@ const UNITS_OF_MEASURE = [
 	{ name: 'Carton', code: 'ctn' },
 ] as const;
 
+async function assignSeedUserRoles(
+	db: ReturnType<typeof getDatabase>,
+	userId: string,
+	roles: readonly UserRole[],
+	assignedBy?: string | null,
+) {
+	await db.delete(schema.userRoles).where(eq(schema.userRoles.userId, userId));
+
+	await db.insert(schema.userRoles).values(
+		[...new Set(roles)].map((role) => ({
+			id: uuid(),
+			userId,
+			role,
+			assignedBy: assignedBy ?? null,
+		})),
+	);
+}
+
 // ─── Seed workspaces ────
 
 async function seedPlatformWorkspace(db: ReturnType<typeof getDatabase>) {
@@ -60,7 +78,6 @@ async function seedPlatformWorkspace(db: ReturnType<typeof getDatabase>) {
 		id: workspaceId,
 		name: 'LogiSync Platform',
 		slug: 'platform-admin',
-		type: 'platform',
 		taxId: '0000000000',
 		status: 'active',
 		registeredIpAddress: '127.0.0.1',
@@ -88,7 +105,6 @@ async function seedSupplierWorkspace(db: ReturnType<typeof getDatabase>) {
 		id: workspaceId,
 		name: 'Demo Supplier Co.',
 		slug: 'demo-supplier',
-		type: 'supplier',
 		taxId: '0123456789',
 		status: 'active',
 		registeredIpAddress: '127.0.0.1',
@@ -116,7 +132,6 @@ async function seedBuyerWorkspace(db: ReturnType<typeof getDatabase>) {
 		id: workspaceId,
 		name: 'Demo Buyer Corp.',
 		slug: 'demo-buyer',
-		type: 'buyer',
 		taxId: '9876543210',
 		status: 'active',
 		registeredIpAddress: '127.0.0.1',
@@ -154,9 +169,9 @@ async function seedPlatformAdmin(
 		passwordHash: hashedPassword,
 		firstName: 'Platform',
 		lastName: 'Admin',
-		role: UserRole.PLATFORM_ADMIN,
 		isActive: true,
 	});
+	await assignSeedUserRoles(db, userId, [UserRole.PLATFORM_ADMIN]);
 
 	console.log(`✅ Platform admin created`);
 	console.log(`   Email   : ${PLATFORM_ADMIN_EMAIL}`);
@@ -204,16 +219,17 @@ async function seedSupplierUsers(
 		}
 
 		const hashedPassword = await bcrypt.hash(user.password, 12);
+		const userId = uuid();
 		await db.insert(schema.users).values({
-			id: uuid(),
+			id: userId,
 			workspaceId,
 			email: user.email,
 			passwordHash: hashedPassword,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			role: user.role,
 			isActive: true,
 		});
+		await assignSeedUserRoles(db, userId, [user.role]);
 
 		console.log(`✅ Supplier user created: ${user.email} (${user.role})`);
 	}
@@ -259,16 +275,17 @@ async function seedBuyerUsers(
 		}
 
 		const hashedPassword = await bcrypt.hash(user.password, 12);
+		const userId = uuid();
 		await db.insert(schema.users).values({
-			id: uuid(),
+			id: userId,
 			workspaceId,
 			email: user.email,
 			passwordHash: hashedPassword,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			role: user.role,
 			isActive: true,
 		});
+		await assignSeedUserRoles(db, userId, [user.role]);
 
 		console.log(`✅ Buyer user created: ${user.email} (${user.role})`);
 	}
@@ -290,7 +307,6 @@ async function seedCarrierWorkspace(db: ReturnType<typeof getDatabase>) {
 		id: workspaceId,
 		name: 'Demo Carrier Ltd.',
 		slug: 'demo-carrier',
-		type: 'carrier',
 		taxId: '5555555555',
 		status: 'active',
 		registeredIpAddress: '127.0.0.1',
@@ -328,16 +344,17 @@ async function seedCarrierUsers(
 		}
 
 		const hashedPassword = await bcrypt.hash(user.password, 12);
+		const userId = uuid();
 		await db.insert(schema.users).values({
-			id: uuid(),
+			id: userId,
 			workspaceId,
 			email: user.email,
 			passwordHash: hashedPassword,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			role: user.role,
 			isActive: true,
 		});
+		await assignSeedUserRoles(db, userId, [user.role]);
 
 		console.log(`✅ Carrier user created: ${user.email} (${user.role})`);
 	}
@@ -359,7 +376,6 @@ async function seedHRWorkspace(db: ReturnType<typeof getDatabase>) {
 		id: workspaceId,
 		name: 'Demo HR Inc.',
 		slug: 'demo-hr',
-		type: 'supplier',
 		taxId: '3333333333',
 		status: 'active',
 		registeredIpAddress: '127.0.0.1',
@@ -397,16 +413,17 @@ async function seedHRUsers(
 		}
 
 		const hashedPassword = await bcrypt.hash(user.password, 12);
+		const userId = uuid();
 		await db.insert(schema.users).values({
-			id: uuid(),
+			id: userId,
 			workspaceId,
 			email: user.email,
 			passwordHash: hashedPassword,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			role: user.role,
 			isActive: true,
 		});
+		await assignSeedUserRoles(db, userId, [user.role]);
 
 		console.log(`✅ HR user created: ${user.email} (${user.role})`);
 	}
@@ -436,12 +453,75 @@ async function normalizeDemoWorkspaceAdmins(
 			.set({
 				firstName: user.firstName,
 				lastName: user.lastName,
-				role: UserRole.COMPANY_ADMIN,
 				updatedAt: new Date(),
 			})
 			.where(eq(schema.users.email, user.email));
 
 		console.log(`Demo workspace admin normalized: ${user.email}`);
+	}
+}
+
+async function normalizeDemoUserRoles(db: ReturnType<typeof getDatabase>) {
+	const rolesByEmail: Record<string, UserRole[]> = {
+		[PLATFORM_ADMIN_EMAIL]: [UserRole.PLATFORM_ADMIN],
+		'supplier.admin@logisync.local': [UserRole.COMPANY_ADMIN],
+		'supplier.manager@logisync.local': [UserRole.SUPPLIER_MANAGER],
+		'supplier.staff@logisync.local': [UserRole.SUPPLIER_STAFF],
+		'buyer.admin@logisync.local': [UserRole.COMPANY_ADMIN],
+		'buyer.manager@logisync.local': [UserRole.BUYER_MANAGER],
+		'buyer.staff@logisync.local': [UserRole.BUYER_STAFF],
+		'carrier.admin@logisync.local': [UserRole.CARRIER_DISPATCHER],
+		'hr.admin@logisync.local': [UserRole.HR_MANAGER],
+	};
+
+	for (const [email, roles] of Object.entries(rolesByEmail)) {
+		const [user] = await db
+			.select()
+			.from(schema.users)
+			.where(eq(schema.users.email, email));
+
+		if (!user) {
+			continue;
+		}
+
+		await assignSeedUserRoles(db, user.id, roles);
+		console.log(`User roles normalized: ${email} (${roles.join(', ')})`);
+	}
+}
+
+async function normalizeWorkspaceTypes(db: ReturnType<typeof getDatabase>) {
+	const workspaceTypesBySlug: Record<string, string[]> = {
+		'platform-admin': ['platform'],
+		'demo-supplier': ['supplier'],
+		'demo-buyer': ['buyer'],
+		'demo-carrier': ['carrier'],
+		'demo-hr': ['supplier'],
+	};
+
+	for (const [slug, types] of Object.entries(workspaceTypesBySlug)) {
+		const [workspace] = await db
+			.select()
+			.from(schema.workspaces)
+			.where(eq(schema.workspaces.slug, slug));
+
+		if (!workspace) {
+			continue;
+		}
+
+		await db
+			.delete(schema.workspaceTypes)
+			.where(eq(schema.workspaceTypes.workspaceId, workspace.id));
+
+		await db.insert(schema.workspaceTypes).values(
+			types.map((type) => ({
+				id: uuid(),
+				workspaceId: workspace.id,
+				type,
+				enabledBy: null,
+			})),
+		);
+
+		console.log(`Workspace types normalized: ${slug} (${types.join(', ')})`);
 	}
 }
 
@@ -636,6 +716,8 @@ async function seed() {
 	await seedCarrierUsers(db, carrierWorkspaceId);
 	await seedHRUsers(db, hrWorkspaceId);
 	await normalizeDemoWorkspaceAdmins(db);
+	await normalizeDemoUserRoles(db);
+	await normalizeWorkspaceTypes(db);
 
 	// 3. Master data
 	console.log('\n── Master Data ──');

@@ -7,6 +7,7 @@ import { schema } from '../../../../infrastructure/database';
 import { WorkspaceRepository } from '../../workspace/repositories/workspace.repository';
 import { CLOCK_SKEW_TOLERANCE_SECONDS } from '../constants/auth.constants';
 import { type JwtPayload } from '../dtos/auth.dto';
+import { UserRepository } from '../repositories/user.repository';
 
 type Workspace = typeof schema.workspaces.$inferSelect;
 
@@ -32,6 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		private readonly configService: ConfigService,
 		private readonly sessionRegistryService: SessionRegistryService,
 		private readonly workspaceRepository: WorkspaceRepository,
+		private readonly userRepository: UserRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		super({
@@ -79,6 +81,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		if (!workspace || workspace.status !== 'active' || !workspace.isActive) {
 			await this.sessionRegistryService.revokeSession(payload.sessionId);
 			throw new UnauthorizedException('Workspace is not active');
+		}
+
+		const assignedRoles = await this.userRepository.findRolesByUserId(
+			payload.sub,
+		);
+		if (!assignedRoles.includes(payload.role)) {
+			await this.sessionRegistryService.revokeSession(payload.sessionId);
+			throw new UnauthorizedException('Role is no longer assigned');
 		}
 
 		return payload;

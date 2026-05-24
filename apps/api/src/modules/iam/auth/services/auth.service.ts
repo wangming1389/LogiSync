@@ -24,10 +24,15 @@ import {
 	CHANGE_TOKEN_TTL_SECONDS,
 	CHANGE_TOKEN_TYPE,
 	JWT_EXPIRATION_SECONDS,
+	ROLE_SELECTION_TOKEN_TTL_SECONDS,
+	ROLE_SELECTION_TOKEN_TYPE,
 	SESSION_TTL_SECONDS,
 	SESSION_WARNING_SECONDS,
 } from '../constants/auth.constants';
-import { type JwtPayload } from '../dtos/auth.dto';
+import {
+	type JwtPayload,
+	type RoleSelectionTokenPayload,
+} from '../dtos/auth.dto';
 import { type ChangeTokenPayload } from '../dtos/complete-registration.dto';
 import { UserRepository } from '../repositories/user.repository';
 
@@ -76,6 +81,11 @@ export class AuthService {
 			throw new ForbiddenException(
 				'Workspace is not activated or has been suspended',
 			);
+		}
+		const workspaceTypes = await this.getWorkspaceTypes(workspace.id);
+		const roles = await this.userRepository.findRolesByUserId(user.id);
+		if (roles.length === 0) {
+			throw new ForbiddenException('Account has no assigned roles');
 		}
 
 		// 3. Check lockout (5 failed attempts → lock 15 min)
@@ -140,29 +150,29 @@ export class AuthService {
 			};
 		}
 
-		// 6. Create session in Redis (TTL = 30 min = 1800 seconds)
-		const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
+		if (roles.length > 1) {
+			return {
+				requiresRoleSelection: true as const,
+				roleSelectionToken: this.signRoleSelectionToken(
+					user.id,
+					user.workspaceId,
+					workspaceTypes,
+					roles,
+				),
+				roles,
+				expiresIn: ROLE_SELECTION_TOKEN_TTL_SECONDS,
+			};
+		}
 
-		const sessionId = await this.sessionRegistryService.createSession({
+		const session = await this.issueAccessToken({
 			userId: user.id,
 			workspaceId: user.workspaceId,
-			expiresAt,
+			workspaceTypes,
+			role: roles[0],
 			ipAddress,
 			userAgent,
 		});
 
-		// 7. Issue JWT
-		const jti = uuid();
-		const token = this.signToken({
-			sub: user.id,
-			workspaceId: user.workspaceId,
-			workspaceType: workspace.type,
-			role: user.role,
-			sessionId,
-			jti,
-		});
-
-		// 8. Audit log
 		await this.auditLoggerService.log({
 			actorId: user.id,
 			workspaceId: user.workspaceId,
@@ -173,15 +183,58 @@ export class AuthService {
 			status: AuditStatus.SUCCESS,
 		});
 
-		this.logger.log(
-			`User ${user.email} logged in (session: ${sessionId.slice(0, 8)}...)`,
-		);
+		this.logger.log(`User ${user.email} logged in`);
 
-		return {
-			accessToken: token,
-			expiresIn: JWT_EXPIRATION_SECONDS,
-			sessionWarningAt: JWT_EXPIRATION_SECONDS - SESSION_WARNING_SECONDS,
-		};
+		return session;
+	}
+
+	async selectRole(
+		roleSelectionToken: string,
+		role: string,
+		ipAddress: string,
+		userAgent?: string,
+	) {
+		let payload: RoleSelectionTokenPayload;
+		try {
+			payload =
+				this.jwtService.verify<RoleSelectionTokenPayload>(roleSelectionToken);
+		} catch {
+			throw new UnauthorizedException(
+				'Invalid or expired role selection token',
+			);
+		}
+
+		if (payload.type !== ROLE_SELECTION_TOKEN_TYPE) {
+			throw new UnauthorizedException('Token is not a role selection token');
+		}
+		if (!payload.roles.includes(role)) {
+			throw new ForbiddenException(
+				'Selected role is not assigned to this user',
+			);
+		}
+
+		const user = await this.userRepository.findByIdScoped(
+			payload.sub,
+			payload.workspaceId,
+		);
+		if (!user || !user.isActive) {
+			throw new UnauthorizedException('User not found or inactive');
+		}
+		const assignedRoles = await this.userRepository.findRolesByUserId(user.id);
+		if (!assignedRoles.includes(role)) {
+			throw new ForbiddenException(
+				'Selected role is not assigned to this user',
+			);
+		}
+
+		return this.issueAccessToken({
+			userId: payload.sub,
+			workspaceId: payload.workspaceId,
+			workspaceTypes: payload.workspaceTypes,
+			role,
+			ipAddress,
+			userAgent,
+		});
 	}
 
 	async logout(
@@ -239,7 +292,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: currentPayload.sub,
 			workspaceId: currentPayload.workspaceId,
-			workspaceType: currentPayload.workspaceType,
+			workspaceTypes: currentPayload.workspaceTypes,
 			role: currentPayload.role,
 			sessionId: newSessionId,
 			jti,
@@ -320,7 +373,7 @@ export class AuthService {
 		const token = this.signToken({
 			sub: payload.sub,
 			workspaceId: payload.workspaceId,
-			workspaceType: payload.workspaceType,
+			workspaceTypes: payload.workspaceTypes,
 			role: payload.role,
 			sessionId: newSessionId,
 			jti,
@@ -346,15 +399,18 @@ export class AuthService {
 		};
 	}
 
-	async getMe(userId: string) {
+	async getMe(userId: string, activeRole: string) {
 		const user = await this.userRepository.findById(userId);
 
 		if (!user) {
 			throw new UnauthorizedException('User does not exist');
 		}
+		const roles = await this.userRepository.findRolesByUserId(userId);
 
 		return {
 			...user,
+			role: activeRole,
+			roles,
 			lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
 		};
 	}
@@ -427,6 +483,11 @@ export class AuthService {
 				'Workspace is not activated or has been suspended',
 			);
 		}
+		const workspaceTypes = await this.getWorkspaceTypes(workspace.id);
+		const roles = await this.userRepository.findRolesByUserId(user.id);
+		if (roles.length === 0) {
+			throw new ForbiddenException('Account has no assigned roles');
+		}
 
 		const newHash = await bcrypt.hash(newPassword, 12);
 
@@ -445,25 +506,6 @@ export class AuthService {
 			CHANGE_TOKEN_TTL_SECONDS,
 		);
 
-		const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
-		const sessionId = await this.sessionRegistryService.createSession({
-			userId: user.id,
-			workspaceId: user.workspaceId,
-			expiresAt,
-			ipAddress,
-			userAgent,
-		});
-
-		const jti = uuid();
-		const token = this.signToken({
-			sub: user.id,
-			workspaceId: user.workspaceId,
-			workspaceType: workspace.type,
-			role: user.role,
-			sessionId,
-			jti,
-		});
-
 		await this.auditLoggerService.log({
 			actorId: payload.sub,
 			workspaceId: payload.workspaceId,
@@ -474,15 +516,37 @@ export class AuthService {
 			status: AuditStatus.SUCCESS,
 		});
 
+		if (roles.length > 1) {
+			this.logger.log(
+				`First-login password change completed for user ${user.id}; role selection required`,
+			);
+			return {
+				requiresRoleSelection: true as const,
+				roleSelectionToken: this.signRoleSelectionToken(
+					user.id,
+					user.workspaceId,
+					workspaceTypes,
+					roles,
+				),
+				roles,
+				expiresIn: ROLE_SELECTION_TOKEN_TTL_SECONDS,
+			};
+		}
+
+		const session = await this.issueAccessToken({
+			userId: user.id,
+			workspaceId: user.workspaceId,
+			workspaceTypes,
+			role: roles[0],
+			ipAddress,
+			userAgent,
+		});
+
 		this.logger.log(
-			`First-login password change completed for user ${user.id} (session ${sessionId.slice(0, 8)}...)`,
+			`First-login password change completed for user ${user.id}`,
 		);
 
-		return {
-			accessToken: token,
-			expiresIn: JWT_EXPIRATION_SECONDS,
-			sessionWarningAt: JWT_EXPIRATION_SECONDS - SESSION_WARNING_SECONDS,
-		};
+		return session;
 	}
 
 	private signChangeToken(userId: string, workspaceId: string): string {
@@ -498,6 +562,58 @@ export class AuthService {
 		);
 	}
 
+	private signRoleSelectionToken(
+		userId: string,
+		workspaceId: string,
+		workspaceTypes: string[],
+		roles: string[],
+	): string {
+		const jti = uuid();
+		return this.jwtService.sign(
+			{
+				sub: userId,
+				workspaceId,
+				workspaceTypes,
+				roles,
+				type: ROLE_SELECTION_TOKEN_TYPE,
+				jti,
+			},
+			{ expiresIn: ROLE_SELECTION_TOKEN_TTL_SECONDS },
+		);
+	}
+
+	private async issueAccessToken(input: {
+		userId: string;
+		workspaceId: string;
+		workspaceTypes: string[];
+		role: string;
+		ipAddress: string;
+		userAgent?: string;
+	}) {
+		const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
+		const sessionId = await this.sessionRegistryService.createSession({
+			userId: input.userId,
+			workspaceId: input.workspaceId,
+			expiresAt,
+			ipAddress: input.ipAddress,
+			userAgent: input.userAgent,
+		});
+		const token = this.signToken({
+			sub: input.userId,
+			workspaceId: input.workspaceId,
+			workspaceTypes: input.workspaceTypes,
+			role: input.role,
+			sessionId,
+			jti: uuid(),
+		});
+
+		return {
+			accessToken: token,
+			expiresIn: JWT_EXPIRATION_SECONDS,
+			sessionWarningAt: JWT_EXPIRATION_SECONDS - SESSION_WARNING_SECONDS,
+		};
+	}
+
 	// use JwtService to sign token with claims + expiration
 	// use to generate JWT after successful login or password change
 	private signToken(claims: Omit<JwtPayload, 'iat' | 'exp'>): string {
@@ -505,7 +621,7 @@ export class AuthService {
 			{
 				sub: claims.sub,
 				workspaceId: claims.workspaceId,
-				workspaceType: claims.workspaceType,
+				workspaceTypes: claims.workspaceTypes,
 				role: claims.role,
 				sessionId: claims.sessionId,
 				jti: claims.jti,
@@ -514,5 +630,17 @@ export class AuthService {
 				expiresIn: JWT_EXPIRATION_SECONDS,
 			},
 		);
+	}
+
+	private async getWorkspaceTypes(workspaceId: string): Promise<string[]> {
+		if (typeof this.workspaceRepository.findTypesByWorkspaceId !== 'function') {
+			throw new Error('Workspace type lookup is not available');
+		}
+		const types =
+			await this.workspaceRepository.findTypesByWorkspaceId(workspaceId);
+		if (types.length === 0) {
+			throw new Error(`Workspace ${workspaceId} has no configured types`);
+		}
+		return types;
 	}
 }

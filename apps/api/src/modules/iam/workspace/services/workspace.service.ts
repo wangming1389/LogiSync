@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import {
 	ConflictException,
+	ForbiddenException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -15,6 +16,10 @@ import { SessionRegistryService } from '../../../../core/session/session-registr
 import { DatabaseService } from '../../../../infrastructure/database/database.service';
 import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import { UserRepository } from '../../auth/repositories/user.repository';
+import {
+	type RoleScopedWorkspaceType,
+	WORKSPACE_ROLES_BY_TYPE,
+} from '../constants/workspace-role.constants';
 import type {
 	EnableRoleDto,
 	RegisterWorkspaceDto,
@@ -41,6 +46,7 @@ export class WorkspaceService {
 	) {}
 
 	async register(dto: RegisterWorkspaceDto, ipAddress: string) {
+		const workspaceTypes = this.resolveWorkspaceTypes(dto.types);
 		const existingTax = await this.workspaceRepository.findByTaxId(dto.taxId);
 		if (existingTax) {
 			throw new ConflictException('Tax ID already registered');
@@ -65,7 +71,6 @@ export class WorkspaceService {
 				{
 					name: dto.name,
 					slug: dto.slug,
-					type: dto.type,
 					taxId: dto.taxId,
 					status: 'pending',
 					registeredIpAddress: ipAddress,
@@ -82,9 +87,21 @@ export class WorkspaceService {
 					passwordHash,
 					firstName: dto.adminFirstName ?? null,
 					lastName: dto.adminLastName ?? null,
-					role: 'company_admin',
 					isActive: true,
 				},
+				tx,
+			);
+			await this.userRepository.assignRoles(
+				adminUser.id,
+				['company_admin'],
+				adminUser.id,
+				tx,
+			);
+
+			await this.workspaceRepository.setTypes(
+				workspace.id,
+				workspaceTypes,
+				adminUser.id,
 				tx,
 			);
 
@@ -98,7 +115,7 @@ export class WorkspaceService {
 				changes: {
 					name: dto.name,
 					slug: dto.slug,
-					type: dto.type,
+					types: workspaceTypes,
 					taxId: dto.taxId,
 				},
 				ipAddress,
@@ -128,6 +145,10 @@ export class WorkspaceService {
 		}
 
 		return result;
+	}
+
+	private resolveWorkspaceTypes(types: readonly string[]): string[] {
+		return [...new Set(types)];
 	}
 
 	async findAll(filter: WorkspaceFilterDto) {
@@ -311,9 +332,18 @@ export class WorkspaceService {
 		workspaceId: string,
 		dto: EnableRoleDto,
 		actorId: string,
+		actorWorkspaceId: string,
 		ipAddress: string,
 	) {
 		await this.findById(workspaceId);
+		if (workspaceId !== actorWorkspaceId) {
+			throw new ForbiddenException(
+				'Company admin can only enable roles for their own workspace',
+			);
+		}
+		const workspaceTypes =
+			await this.workspaceRepository.findTypesByWorkspaceId(workspaceId);
+		this.assertRoleAllowedForWorkspaceTypes(dto.role, workspaceTypes);
 
 		const result = await this.workspaceRepository.enableRole(
 			workspaceId,
@@ -340,5 +370,33 @@ export class WorkspaceService {
 
 		this.logger.log(`Role "${dto.role}" enabled for workspace ${workspaceId}`);
 		return result.role;
+	}
+
+	private assertRoleAllowedForWorkspaceTypes(
+		role: string,
+		workspaceTypes: string[],
+	): void {
+		const supportedTypes = workspaceTypes.filter((workspaceType) =>
+			this.isRoleScopedWorkspaceType(workspaceType),
+		);
+		const allowedRoles: string[] = [
+			...new Set(
+				supportedTypes.flatMap(
+					(workspaceType) => WORKSPACE_ROLES_BY_TYPE[workspaceType],
+				),
+			),
+		];
+
+		if (allowedRoles.length === 0 || !allowedRoles.includes(role)) {
+			throw new ConflictException(
+				`Role "${role}" cannot be enabled for workspace types "${workspaceTypes.join(', ')}". Allowed roles: ${allowedRoles.join(', ')}`,
+			);
+		}
+	}
+
+	private isRoleScopedWorkspaceType(
+		workspaceType: string,
+	): workspaceType is RoleScopedWorkspaceType {
+		return Object.hasOwn(WORKSPACE_ROLES_BY_TYPE, workspaceType);
 	}
 }

@@ -60,6 +60,42 @@ export class UserRepository extends BaseRepository {
 		return user;
 	}
 
+	async assignRoles(
+		userId: string,
+		roles: readonly string[],
+		assignedBy?: string | null,
+		tx?: any,
+	) {
+		const runner = tx || this.db;
+		await runner
+			.delete(schema.userRoles)
+			.where(eq(schema.userRoles.userId, userId));
+
+		if (roles.length === 0) {
+			return [];
+		}
+
+		return runner
+			.insert(schema.userRoles)
+			.values(
+				[...new Set(roles)].map((role) => ({
+					userId,
+					role,
+					assignedBy: assignedBy ?? null,
+				})),
+			)
+			.returning();
+	}
+
+	async findRolesByUserId(userId: string, tx?: any): Promise<string[]> {
+		const runner = tx || this.db;
+		const rows = await runner
+			.select({ role: schema.userRoles.role })
+			.from(schema.userRoles)
+			.where(eq(schema.userRoles.userId, userId));
+		return rows.map((row: { role: string }) => row.role);
+	}
+
 	// Update user, enforcing workspace isolation.
 	async update(
 		id: string,
