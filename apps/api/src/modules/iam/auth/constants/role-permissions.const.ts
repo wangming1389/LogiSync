@@ -1,12 +1,13 @@
 import { UserRole } from '../enums/user-role.enum';
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-	[UserRole.PLATFORM_ADMIN]: ['*'],
+	[UserRole.PLATFORM_ADMIN]: [],
 	[UserRole.COMPANY_ADMIN]: [
 		'workspace:manage',
 		'workspace:approve',
 		'workspace:suspend',
 		'roles:enable',
+		'hr:manage',
 		'catalog:write',
 		'rfq:respond',
 		'rfq:create',

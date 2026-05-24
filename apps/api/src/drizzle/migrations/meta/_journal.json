@@ -71,6 +71,20 @@
       "when": 1778930584209,
       "tag": "0009_faulty_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779598277091,
+      "tag": "0010_admin_notifications_and_first_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779635159330,
+      "tag": "0011_flimsy_garia",
+      "breakpoints": true
     }
   ]
 }

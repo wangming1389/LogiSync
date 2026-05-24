@@ -173,6 +173,13 @@ async function seedSupplierUsers(
 			email: 'supplier.admin@logisync.local',
 			password: 'Supplier@123456',
 			firstName: 'Supplier',
+			lastName: 'Admin',
+			role: UserRole.COMPANY_ADMIN,
+		},
+		{
+			email: 'supplier.manager@logisync.local',
+			password: 'Supplier@123456',
+			firstName: 'Supplier',
 			lastName: 'Manager',
 			role: UserRole.SUPPLIER_MANAGER,
 		},
@@ -222,6 +229,13 @@ async function seedBuyerUsers(
 			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Admin',
+			role: UserRole.COMPANY_ADMIN,
+		},
+		{
+			email: 'buyer.manager@logisync.local',
+			password: 'Buyer@123456',
+			firstName: 'Buyer',
+			lastName: 'Manager',
 			role: UserRole.BUYER_MANAGER,
 		},
 		{
@@ -399,6 +413,37 @@ async function seedHRUsers(
 }
 
 // ─── Seed master data ───
+
+async function normalizeDemoWorkspaceAdmins(
+	db: ReturnType<typeof getDatabase>,
+) {
+	const adminUsers = [
+		{
+			email: 'supplier.admin@logisync.local',
+			firstName: 'Supplier',
+			lastName: 'Admin',
+		},
+		{
+			email: 'buyer.admin@logisync.local',
+			firstName: 'Buyer',
+			lastName: 'Admin',
+		},
+	] as const;
+
+	for (const user of adminUsers) {
+		await db
+			.update(schema.users)
+			.set({
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: UserRole.COMPANY_ADMIN,
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.users.email, user.email));
+
+		console.log(`Demo workspace admin normalized: ${user.email}`);
+	}
+}
 
 async function seedCatalogCategories(
 	db: ReturnType<typeof getDatabase>,
@@ -590,6 +635,7 @@ async function seed() {
 	await seedBuyerUsers(db, buyerWorkspaceId);
 	await seedCarrierUsers(db, carrierWorkspaceId);
 	await seedHRUsers(db, hrWorkspaceId);
+	await normalizeDemoWorkspaceAdmins(db);
 
 	// 3. Master data
 	console.log('\n── Master Data ──');

@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { PASSWORD_COMPLEXITY_REGEX } from '../../auth/constants/auth.constants';
 import {
 	WORKSPACE_ENABLEABLE_ROLES,
 	WORKSPACE_STATUSES,
@@ -7,8 +8,6 @@ import {
 } from '../enums/workspace.enums';
 
 const TAX_ID_REGEX = /^\d{10,13}$/;
-const PASSWORD_COMPLEXITY_REGEX =
-	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 export const RegisterWorkspaceSchema = z.object({
 	name: z

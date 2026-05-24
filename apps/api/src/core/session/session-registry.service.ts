@@ -212,7 +212,8 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 			MATCH: 'workspace:*:sessions',
 			COUNT: 100,
 		})) {
-			const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+			const scanned = keyOrKeys as string | string[];
+			const keys = Array.isArray(scanned) ? scanned : [scanned];
 			for (const key of keys) {
 				const match = /^workspace:(.+):sessions$/.exec(key);
 				if (!match) {

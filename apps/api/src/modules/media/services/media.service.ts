@@ -7,6 +7,18 @@ import {
 import { AuditStatus } from '../../../core/audit/enums/audit.enums';
 import { AuditLoggerService } from '../../../core/audit/services/audit-logger.service';
 import { ObjectStorageService } from '../../../infrastructure/object-storage/object-storage.service';
+import {
+	DOCUMENT_UPLOAD_LIMIT_BYTES,
+	DOCUMENT_UPLOAD_SIZE_MESSAGE,
+	IMAGE_EXTENSIONS,
+	IMAGE_MIME_TYPES,
+	IMAGE_UPLOAD_ALLOWED_TYPES_MESSAGE,
+	IMAGE_UPLOAD_FOLDERS,
+	IMAGE_UPLOAD_LIMIT_BYTES,
+	IMAGE_UPLOAD_SIZE_MESSAGE,
+	LEGAL_DOCUMENT_ALLOWED_TYPES_MESSAGE,
+	LEGAL_DOCUMENT_EXTENSIONS,
+} from '../constants/media.constants';
 
 export interface IMulterFile {
 	fieldname: string;
@@ -76,27 +88,43 @@ export class MediaService {
 		const isImage = file.mimetype.startsWith('image/');
 		const isDocument =
 			file.mimetype === 'application/pdf' || folder?.includes('legal');
-		const imageLimit = 5 * 1024 * 1024;
-		const documentLimit = 10 * 1024 * 1024;
+		const targetFolder = folder || 'media';
+		const lowerName = file.originalname.toLowerCase();
 
-		if (isImage && file.size > imageLimit) {
-			throw new BadRequestException('Images must not exceed 5MB');
+		if (
+			this.requiresImage(targetFolder) &&
+			(!this.includes(IMAGE_MIME_TYPES, file.mimetype) ||
+				!IMAGE_EXTENSIONS.some((extension) => lowerName.endsWith(extension)))
+		) {
+			throw new BadRequestException(IMAGE_UPLOAD_ALLOWED_TYPES_MESSAGE);
 		}
 
-		if (isDocument && file.size > documentLimit) {
-			throw new BadRequestException('Documents must not exceed 10MB');
+		if (isImage && file.size > IMAGE_UPLOAD_LIMIT_BYTES) {
+			throw new BadRequestException(IMAGE_UPLOAD_SIZE_MESSAGE);
+		}
+
+		if (isDocument && file.size > DOCUMENT_UPLOAD_LIMIT_BYTES) {
+			throw new BadRequestException(DOCUMENT_UPLOAD_SIZE_MESSAGE);
 		}
 
 		if (folder?.includes('legal')) {
-			const allowedExtensions = ['.pdf', '.jpg', '.png'];
-			const lowerName = file.originalname.toLowerCase();
 			if (
-				!allowedExtensions.some((extension) => lowerName.endsWith(extension))
+				!LEGAL_DOCUMENT_EXTENSIONS.some((extension) =>
+					lowerName.endsWith(extension),
+				)
 			) {
-				throw new BadRequestException(
-					'Legal documents must be .pdf, .jpg, or .png',
-				);
+				throw new BadRequestException(LEGAL_DOCUMENT_ALLOWED_TYPES_MESSAGE);
 			}
 		}
+	}
+
+	private requiresImage(folder: string): boolean {
+		return IMAGE_UPLOAD_FOLDERS.some(
+			(prefix) => folder === prefix || folder.startsWith(`${prefix}/`),
+		);
+	}
+
+	private includes(values: readonly string[], value: string): boolean {
+		return values.includes(value);
 	}
 }
