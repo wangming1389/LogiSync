@@ -26,7 +26,7 @@ export const LoginSchema = z.object({
 
 export class LoginDto extends createZodDto(LoginSchema) {}
 
-export const LoginResponseSchema = z.object({
+export const LoginAccessTokenResponseSchema = z.object({
 	accessToken: z.string(),
 	expiresIn: z.number().describe('Token expiration (seconds)'),
 	sessionWarningAt: z
@@ -34,7 +34,24 @@ export const LoginResponseSchema = z.object({
 		.describe('Time to show warning (seconds remaining)'),
 });
 
-export class LoginResponseDto extends createZodDto(LoginResponseSchema) {}
+export const LoginChangePasswordResponseSchema = z.object({
+	requiresPasswordChange: z.literal(true),
+	changeToken: z
+		.string()
+		.describe('Short-lived JWT scoped to POST /auth/complete-registration'),
+	expiresIn: z
+		.number()
+		.describe('Change token expiration in seconds (typically 900)'),
+});
+
+export const LoginResponseSchema = z.union([
+	LoginAccessTokenResponseSchema,
+	LoginChangePasswordResponseSchema,
+]);
+
+export class LoginResponseDto extends createZodDto(
+	LoginAccessTokenResponseSchema,
+) {}
 
 export const ChangePasswordSchema = z
 	.object({

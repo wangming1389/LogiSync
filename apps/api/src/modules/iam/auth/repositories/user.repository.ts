@@ -63,4 +63,37 @@ export class UserRepository extends BaseRepository {
 			.returning();
 		return updated;
 	}
+
+	// Find user by ID without workspace isolation. Reserved for flows
+	// (e.g. complete-registration via changeToken) where workspaceId is
+	// supplied explicitly by the caller after verifying a signed token.
+	async findByIdScoped(id: string, workspaceId: string, tx?: any) {
+		const runner = tx || this.db;
+		const [user] = await runner
+			.select()
+			.from(schema.users)
+			.where(
+				and(eq(schema.users.id, id), eq(schema.users.workspaceId, workspaceId)),
+			);
+		return user;
+	}
+
+	// Update user by (id, workspaceId) without relying on CLS state.
+	// Used by changeToken-backed flows that set workspaceId explicitly.
+	async updateByIdScoped(
+		id: string,
+		workspaceId: string,
+		data: Partial<typeof schema.users.$inferInsert>,
+		tx?: any,
+	) {
+		const runner = tx || this.db;
+		const [updated] = await runner
+			.update(schema.users)
+			.set({ ...data, updatedAt: new Date() })
+			.where(
+				and(eq(schema.users.id, id), eq(schema.users.workspaceId, workspaceId)),
+			)
+			.returning();
+		return updated;
+	}
 }
