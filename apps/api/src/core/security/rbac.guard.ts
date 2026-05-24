@@ -63,7 +63,9 @@ export class RbacGuard implements CanActivate {
 				);
 
 				if (!hasPermission) {
-					throw new ForbiddenException(`Permission denied: ${permission}`);
+					throw new ForbiddenException(
+						`Permission denied: ${permission} (role: ${user.role})`,
+					);
 				}
 			}
 		}

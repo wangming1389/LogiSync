@@ -67,6 +67,36 @@ describe('MediaService', () => {
 		await expect(
 			service.uploadFile(
 				createFile({
+					originalname: 'avatar.pdf',
+					mimetype: 'application/pdf',
+				}),
+				'employees/avatars',
+			),
+		).rejects.toThrow(BadRequestException);
+
+		await expect(
+			service.uploadFile(
+				createFile({
+					originalname: 'product.pdf',
+					mimetype: 'application/pdf',
+				}),
+				'products/product-1',
+			),
+		).rejects.toThrow(BadRequestException);
+
+		await expect(
+			service.uploadFile(
+				createFile({
+					originalname: 'avatar.svg',
+					mimetype: 'image/svg+xml',
+				}),
+				'employees/avatars',
+			),
+		).rejects.toThrow(BadRequestException);
+
+		await expect(
+			service.uploadFile(
+				createFile({
 					originalname: 'legal.exe',
 					mimetype: 'application/octet-stream',
 				}),
@@ -81,6 +111,16 @@ describe('MediaService', () => {
 					mimetype: 'application/pdf',
 				}),
 				'legal-documents',
+			),
+		).resolves.toEqual({ url: 'media/file.pdf' });
+
+		await expect(
+			service.uploadFile(
+				createFile({
+					originalname: 'avatar.png',
+					mimetype: 'image/png',
+				}),
+				'employees/avatars',
 			),
 		).resolves.toEqual({ url: 'media/file.pdf' });
 	});

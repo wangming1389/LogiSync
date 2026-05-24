@@ -27,6 +27,11 @@ import {
 import { RateLimitGuard } from '../../../../core/security/rate-limit.guard';
 import { SESSION_WARNING_SECONDS } from '../constants/auth.constants';
 import { ChangePasswordDto, type JwtPayload, LoginDto } from '../dtos/auth.dto';
+import {
+	type ChangeTokenPayload,
+	CompleteRegistrationDto,
+} from '../dtos/complete-registration.dto';
+import { CompleteRegistrationGuard } from '../guards/complete-registration.guard';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthService } from '../services/auth.service';
 
@@ -63,21 +68,38 @@ export class AuthController {
 	@ApiBody({ type: LoginDto })
 	@ApiResponse({
 		status: 200,
-		description: 'Login successful, return JWT',
+		description: `Login successful. Returns either:
+			- **Normal flow**: \`{ accessToken, expiresIn, sessionWarningAt }\`.
+			- **First-login flow** (when the account has \`mustChangePassword=true\`): \`{ requiresPasswordChange: true, changeToken, expiresIn }\`. Use the \`changeToken\` on \`POST /auth/complete-registration\` to set a new password.`,
 		schema: {
-			properties: {
-				accessToken: { type: 'string', description: 'JWT access token' },
-				expiresIn: {
-					type: 'number',
-					description: 'TTL (seconds)',
-					example: 1800,
+			oneOf: [
+				{
+					properties: {
+						accessToken: { type: 'string', description: 'JWT access token' },
+						expiresIn: {
+							type: 'number',
+							description: 'TTL (seconds)',
+							example: 1800,
+						},
+						sessionWarningAt: {
+							type: 'number',
+							description: 'Show warning when this many seconds remaining',
+							example: 1680,
+						},
+					},
 				},
-				sessionWarningAt: {
-					type: 'number',
-					description: 'Show warning when this many seconds remaining',
-					example: 1680,
+				{
+					properties: {
+						requiresPasswordChange: { type: 'boolean', example: true },
+						changeToken: {
+							type: 'string',
+							description:
+								'Short-lived JWT, only valid for complete-registration',
+						},
+						expiresIn: { type: 'number', example: 900 },
+					},
 				},
-			},
+			],
 		},
 	})
 	@ApiResponse({ status: 401, description: 'Email or password is incorrect' })
@@ -194,6 +216,53 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 		return this.authService.changePassword(
 			payload,
 			dto.currentPassword,
+			dto.newPassword,
+			ipAddress,
+			userAgent,
+		);
+	}
+
+	// POST /auth/complete-registration (changeToken)
+	@Post('complete-registration')
+	@HttpCode(HttpStatus.OK)
+	@RateLimit({
+		name: 'auth-complete-registration',
+		limit: 5,
+		windowMs: 60_000,
+		keyBy: 'ip',
+	})
+	@UseGuards(CompleteRegistrationGuard, RateLimitGuard)
+	@ApiOperation({
+		summary: 'Complete first-login by setting a new password',
+		description: `Consumes the short-lived \`changeToken\` returned by \`POST /auth/login\` when \`mustChangePassword=true\`. The token must be passed via the \`Authorization: Bearer <changeToken>\` header. On success returns a fresh access token; the change token is blacklisted in Redis so it cannot be reused.`,
+	})
+	@ApiBody({ type: CompleteRegistrationDto })
+	@ApiResponse({
+		status: 200,
+		description: 'Password updated, returns access token + session',
+		schema: {
+			properties: {
+				accessToken: { type: 'string' },
+				expiresIn: { type: 'number', example: 1800 },
+				sessionWarningAt: { type: 'number', example: 1680 },
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Change token is missing, invalid, expired, or already used',
+	})
+	@SkipGlobalAudit()
+	async completeRegistration(
+		@Body() dto: CompleteRegistrationDto,
+		@Req() req: Request,
+	) {
+		const payload = getRequestUser<ChangeTokenPayload>(req);
+		const ipAddress = getClientIp(req);
+		const userAgent = req.get('user-agent');
+
+		return this.authService.completeRegistration(
+			payload,
 			dto.newPassword,
 			ipAddress,
 			userAgent,
