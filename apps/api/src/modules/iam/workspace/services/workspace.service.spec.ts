@@ -43,7 +43,7 @@ describe('WorkspaceService', () => {
 	const dto = {
 		name: 'Acme Logistics',
 		slug: 'acme-logistics',
-		types: ['supplier'] as const,
+		types: ['supplier' as 'supplier' | 'buyer' | 'carrier'],
 		taxId: '0123456789',
 		acceptedTermsVersion: 'v1',
 		adminEmail: 'admin@acme.test',
