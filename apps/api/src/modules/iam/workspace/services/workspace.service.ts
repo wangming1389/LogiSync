@@ -13,6 +13,7 @@ import {
 import { AuditLoggerService } from '../../../../core/audit/services/audit-logger.service';
 import { SessionRegistryService } from '../../../../core/session/session-registry.service';
 import { DatabaseService } from '../../../../infrastructure/database/database.service';
+import { MessageQueueService } from '../../../../infrastructure/message-queue/message-queue.service';
 import { UserRepository } from '../../auth/repositories/user.repository';
 import type {
 	EnableRoleDto,
@@ -24,6 +25,8 @@ import type {
 } from '../dtos/workspace.dto';
 import { WorkspaceRepository } from '../repositories/workspace.repository';
 
+export const WORKSPACE_PENDING_QUEUE = 'workspace.pending';
+
 @Injectable()
 export class WorkspaceService {
 	private readonly logger = new Logger(WorkspaceService.name);
@@ -34,6 +37,7 @@ export class WorkspaceService {
 		private readonly workspaceRepository: WorkspaceRepository,
 		private readonly userRepository: UserRepository,
 		private readonly databaseService: DatabaseService,
+		private readonly messageQueueService: MessageQueueService,
 	) {}
 
 	async register(dto: RegisterWorkspaceDto, ipAddress: string) {
@@ -107,6 +111,22 @@ export class WorkspaceService {
 		this.logger.log(
 			`Workspace registered: ${result.name} (${result.id}) - status: pending`,
 		);
+
+		// Publish notification trigger AFTER the transaction commits so
+		// consumers cannot observe rows that never landed in the DB.
+		try {
+			await this.messageQueueService.publishMessage(WORKSPACE_PENDING_QUEUE, {
+				workspaceId: result.id,
+				workspaceName: result.name,
+				registeredAt: result.createdAt,
+			});
+		} catch (error) {
+			this.logger.error(
+				`Failed to publish workspace.pending for ${result.id}`,
+				error instanceof Error ? error.stack : String(error),
+			);
+		}
+
 		return result;
 	}
 

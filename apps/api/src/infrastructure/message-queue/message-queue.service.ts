@@ -83,6 +83,38 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 		});
 	}
 
+	/**
+	 * Publish a message to a durable queue wired with a dead-letter queue.
+	 *
+	 * `queue` is asserted with `x-dead-letter-exchange: ''` and
+	 * `x-dead-letter-routing-key: <dlqQueue>`, while the DLQ itself is a
+	 * separate durable queue. Use this only for queues that opt-in to DLQ
+	 * semantics — `publishMessage` remains unchanged to keep existing
+	 * queues (e.g. healthcheck) backward compatible.
+	 */
+	async publishWithDLQ(
+		queue: string,
+		message: unknown,
+		dlqQueue: string,
+	): Promise<void> {
+		if (!this.isConnected || !this.channel) {
+			throw new Error('RabbitMQ is not connected');
+		}
+
+		await this.channel.assertQueue(dlqQueue, { durable: true });
+		await this.channel.assertQueue(queue, {
+			durable: true,
+			arguments: {
+				'x-dead-letter-exchange': '',
+				'x-dead-letter-routing-key': dlqQueue,
+			},
+		});
+
+		this.channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)), {
+			persistent: true,
+		});
+	}
+
 	async consumeMessage(
 		queue: string,
 		callback: (message: unknown) => Promise<void>,
@@ -95,6 +127,48 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 		await channel.assertQueue(queue, { durable: true });
 		await channel.consume(queue, (message) => {
 			void this.handleConsumedMessage(channel, message, callback);
+		});
+	}
+
+	/**
+	 * Consume a queue with bounded retries and dead-letter routing.
+	 *
+	 * Each failed delivery increments the `x-retry-count` header. Up to
+	 * `maxRetries` retries, the message is republished onto the same
+	 * queue (the broker handles redelivery ordering); the original
+	 * delivery is acked so RabbitMQ stops the redelivery loop. After the
+	 * retry budget is exhausted, the payload is published to `dlqQueue`
+	 * and the original message is acked.
+	 */
+	async consumeWithRetry(
+		queue: string,
+		callback: (message: unknown) => Promise<void>,
+		maxRetries: number,
+		dlqQueue: string,
+	): Promise<void> {
+		if (!this.isConnected || !this.channel) {
+			throw new Error('RabbitMQ is not connected');
+		}
+
+		const channel = this.channel;
+		await channel.assertQueue(dlqQueue, { durable: true });
+		await channel.assertQueue(queue, {
+			durable: true,
+			arguments: {
+				'x-dead-letter-exchange': '',
+				'x-dead-letter-routing-key': dlqQueue,
+			},
+		});
+
+		await channel.consume(queue, (message) => {
+			void this.handleRetriableMessage(
+				channel,
+				message,
+				callback,
+				queue,
+				dlqQueue,
+				maxRetries,
+			);
 		});
 	}
 
@@ -118,6 +192,63 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
 		} catch (error) {
 			this.logger.error('Error processing message', error);
 			channel.nack(message, false, true);
+		}
+	}
+
+	private async handleRetriableMessage(
+		channel: Channel,
+		message: ConsumeMessage | null,
+		callback: (message: unknown) => Promise<void>,
+		queue: string,
+		dlqQueue: string,
+		maxRetries: number,
+	): Promise<void> {
+		if (!message) {
+			return;
+		}
+
+		const headers = (message.properties.headers ?? {}) as Record<
+			string,
+			unknown
+		>;
+		const rawRetryCount = headers['x-retry-count'];
+		const retryCount =
+			typeof rawRetryCount === 'number' && Number.isFinite(rawRetryCount)
+				? rawRetryCount
+				: 0;
+
+		try {
+			const content = JSON.parse(message.content.toString()) as unknown;
+			await callback(content);
+			channel.ack(message);
+		} catch (error) {
+			this.logger.error(
+				`Error processing message from "${queue}" (retry ${retryCount}/${maxRetries})`,
+				error instanceof Error ? error.stack : String(error),
+			);
+
+			if (retryCount >= maxRetries) {
+				channel.sendToQueue(dlqQueue, message.content, {
+					persistent: true,
+					headers: {
+						...headers,
+						'x-retry-count': retryCount,
+						'x-original-queue': queue,
+						'x-dead-lettered-at': new Date().toISOString(),
+					},
+				});
+				channel.ack(message);
+				return;
+			}
+
+			channel.sendToQueue(queue, message.content, {
+				persistent: true,
+				headers: {
+					...headers,
+					'x-retry-count': retryCount + 1,
+				},
+			});
+			channel.ack(message);
 		}
 	}
 }
