@@ -25,6 +25,12 @@ import {
 	SESSION_WARNING_SECONDS,
 } from '../constants/auth.constants';
 import { type JwtPayload } from '../dtos/auth.dto';
+import {
+	CHANGE_TOKEN_TTL_SECONDS,
+	CHANGE_TOKEN_TYPE,
+	type ChangeTokenPayload,
+} from '../dtos/complete-registration.dto';
+import { CHANGE_TOKEN_BLACKLIST_PREFIX } from '../guards/complete-registration.guard';
 import { UserRepository } from '../repositories/user.repository';
 
 /**
@@ -120,6 +126,21 @@ export class AuthService {
 
 		// 5. Record successful login (reset failed attempts + lockout)
 		await this.securityService.recordSuccessfulLogin(user.id);
+
+		// 5a. First-login flow: short-circuit with a scoped changeToken
+		//     instead of a full access token so the user must reset their
+		//     password before doing anything else.
+		if (user.mustChangePassword) {
+			const changeToken = this.signChangeToken(user.id, user.workspaceId);
+			this.logger.log(
+				`First-login flow triggered for user ${user.email} (id: ${user.id})`,
+			);
+			return {
+				requiresPasswordChange: true as const,
+				changeToken,
+				expiresIn: CHANGE_TOKEN_TTL_SECONDS,
+			};
+		}
 
 		// 6. Create session in Redis (TTL = 30 min = 1800 seconds)
 		const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
@@ -342,6 +363,141 @@ export class AuthService {
 
 	async hashPassword(password: string): Promise<string> {
 		return await bcrypt.hash(password, 12);
+	}
+
+	/**
+	 * Complete the first-login flow.
+	 *
+	 * Pre-conditions enforced by `CompleteRegistrationGuard`:
+	 *   - changeToken signature + expiry verified.
+	 *   - `payload.type === 'complete-registration'`.
+	 *   - `jti` not present in the Redis blacklist.
+	 *
+	 * This method:
+	 *   1. Loads the user by (sub, workspaceId) (bypassing CLS isolation
+	 *      because the changeToken supplies workspaceId directly).
+	 *   2. Verifies `mustChangePassword === true`.
+	 *   3. Hashes the new password, clears the `mustChangePassword` flag.
+	 *   4. Burns the changeToken via `change-token:used:<jti>` for the
+	 *      remaining TTL.
+	 *   5. Issues a fresh session + access token so the user can continue.
+	 */
+	async completeRegistration(
+		payload: ChangeTokenPayload,
+		newPassword: string,
+		ipAddress: string,
+		userAgent?: string,
+	) {
+		const user = await this.userRepository.findByIdScoped(
+			payload.sub,
+			payload.workspaceId,
+		);
+
+		if (!user || !user.isActive) {
+			await this.auditLoggerService.log({
+				actorId: payload.sub,
+				workspaceId: payload.workspaceId,
+				action: AuditAction.AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED,
+				resourceType: 'auth',
+				ipAddress,
+				userAgent,
+				status: AuditStatus.FAILURE,
+				errorMessage: 'User not found or inactive',
+			});
+			throw new UnauthorizedException('User not found or inactive');
+		}
+
+		if (!user.mustChangePassword) {
+			await this.auditLoggerService.log({
+				actorId: payload.sub,
+				workspaceId: payload.workspaceId,
+				action: AuditAction.AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED,
+				resourceType: 'auth',
+				ipAddress,
+				userAgent,
+				status: AuditStatus.FAILURE,
+				errorMessage: 'mustChangePassword=false; change token misused',
+			});
+			throw new UnauthorizedException(
+				'Password change is not required for this account',
+			);
+		}
+
+		const workspace = await this.workspaceRepository.findById(user.workspaceId);
+		if (!workspace || workspace.status !== 'active') {
+			throw new ForbiddenException(
+				'Workspace is not activated or has been suspended',
+			);
+		}
+
+		const newHash = await bcrypt.hash(newPassword, 12);
+
+		await this.userRepository.updateByIdScoped(
+			payload.sub,
+			payload.workspaceId,
+			{
+				passwordHash: newHash,
+				mustChangePassword: false,
+			},
+		);
+
+		await this.sessionRegistryService.setEx(
+			`${CHANGE_TOKEN_BLACKLIST_PREFIX}${payload.jti}`,
+			'1',
+			CHANGE_TOKEN_TTL_SECONDS,
+		);
+
+		const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
+		const sessionId = await this.sessionRegistryService.createSession({
+			userId: user.id,
+			workspaceId: user.workspaceId,
+			expiresAt,
+			ipAddress,
+			userAgent,
+		});
+
+		const jti = uuid();
+		const token = this.signToken({
+			sub: user.id,
+			workspaceId: user.workspaceId,
+			workspaceType: workspace.type,
+			role: user.role,
+			sessionId,
+			jti,
+		});
+
+		await this.auditLoggerService.log({
+			actorId: payload.sub,
+			workspaceId: payload.workspaceId,
+			action: AuditAction.AUTH_FIRST_LOGIN_PASSWORD_CHANGED,
+			resourceType: 'auth',
+			ipAddress,
+			userAgent,
+			status: AuditStatus.SUCCESS,
+		});
+
+		this.logger.log(
+			`First-login password change completed for user ${user.id} (session ${sessionId.slice(0, 8)}...)`,
+		);
+
+		return {
+			accessToken: token,
+			expiresIn: JWT_EXPIRATION_SECONDS,
+			sessionWarningAt: JWT_EXPIRATION_SECONDS - SESSION_WARNING_SECONDS,
+		};
+	}
+
+	private signChangeToken(userId: string, workspaceId: string): string {
+		const jti = uuid();
+		return this.jwtService.sign(
+			{
+				sub: userId,
+				workspaceId,
+				type: CHANGE_TOKEN_TYPE,
+				jti,
+			},
+			{ expiresIn: CHANGE_TOKEN_TTL_SECONDS },
+		);
 	}
 
 	// use JwtService to sign token with claims + expiration

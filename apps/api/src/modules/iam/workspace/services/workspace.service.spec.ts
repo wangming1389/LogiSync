@@ -31,6 +31,9 @@ describe('WorkspaceService', () => {
 			task(tx),
 		),
 	};
+	const messageQueueService = {
+		publishMessage: jest.fn().mockResolvedValue(undefined),
+	};
 
 	let service: WorkspaceService;
 
@@ -77,6 +80,7 @@ describe('WorkspaceService', () => {
 			workspaceRepository as never,
 			userRepository as never,
 			databaseService as never,
+			messageQueueService as never,
 		);
 	});
 
