@@ -223,6 +223,88 @@
           "refId": "D"
         }
       ]
+    },
+    {
+      "title": "Active Sessions by Workspace",
+      "description": "Current active Redis-backed sessions, grouped by workspace",
+      "type": "bargauge",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-GrYlRd" },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 25 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "expr": "logisync_active_sessions",
+          "legendFormat": "{{workspace_id}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Total Active Sessions",
+      "description": "Current active sessions across all workspaces",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 250 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(logisync_active_sessions)",
+          "legendFormat": "Active Sessions",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

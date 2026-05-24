@@ -127,6 +127,19 @@ await this.auditLoggerService.logInTx(tx, {
 ### 4.3. Test Traceability
 Every new feature or security rule MUST map directly to a Unit or E2E test case, tagged with a standard ID (e.g., `TC-ORD-12`). These mappings must be maintained in the module's `README.md`.
 
+### 4.4. Observability & Metrics Flow
+All application metrics MUST follow the existing Prometheus/Grafana flow.
+
+- Define technical metrics in `src/core/metrics/metrics.providers.ts`.
+- Define business KPI counters in `src/core/metrics/business-metrics.providers.ts`.
+- Register all metric providers in `src/core/metrics/metrics.module.ts`.
+- Use `@willsoto/nestjs-prometheus` providers (`makeCounterProvider`, `makeGaugeProvider`, `makeHistogramProvider`) instead of hand-rolling `/metrics` output.
+- Services may expose read-only methods for metrics collection, but metric registration and collection logic MUST stay in `MetricsModule` / metric providers.
+- Do not create custom metrics HTTP endpoints when the existing `/metrics` endpoint can expose the value.
+- When a metric should be visible by default, update Grafana provisioning under `docker/grafana/provisioning/dashboards/`.
+- Update Prometheus config under `docker/prometheus/` only when the scrape target, port, path, labels, or deployment topology changes.
+- Validate dashboard JSON after editing provisioning files.
+
 ---
 
 *By rigorously following these guidelines, the LogiSync Backend will remain scalable, maintainable, and highly secure against enterprise-level vulnerabilities.*
