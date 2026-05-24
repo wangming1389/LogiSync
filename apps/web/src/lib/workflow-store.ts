@@ -1,4 +1,8 @@
+'use client';
+
 import { useEffect, useState } from 'react';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import {
 	buyerComplaints,
 	buyerOrders,
@@ -126,28 +130,22 @@ export function createDemoWorkflowState(): WorkflowState {
 	};
 }
 
+// Demo-mode workflow store. Backed by `localStorage` via the `persist`
+// middleware. Used by sourcing/RFQ/negotiation/orders pages while the
+// workspace is in demo mode. State shape is `WorkflowState` directly,
+// with no in-store actions — callers use the helpers below.
+export const useWorkflowStore = create<WorkflowState>()(
+	persist(() => createEmptyWorkflowState(), {
+		name: STORAGE_KEY,
+		storage: createJSONStorage(() => localStorage),
+	}),
+);
+
 export function loadWorkflowState(): WorkflowState {
 	if (typeof window === 'undefined') {
 		return createEmptyWorkflowState();
 	}
-
-	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) return createEmptyWorkflowState();
-		const parsed = JSON.parse(raw) as Partial<WorkflowState>;
-		return {
-			...createEmptyWorkflowState(),
-			...parsed,
-			drivers: Array.isArray(parsed.drivers)
-				? parsed.drivers
-				: createEmptyWorkflowState().drivers,
-			vehicles: Array.isArray(parsed.vehicles)
-				? parsed.vehicles
-				: createEmptyWorkflowState().vehicles,
-		};
-	} catch {
-		return createEmptyWorkflowState();
-	}
+	return useWorkflowStore.getState();
 }
 
 export function useWorkflowState() {
@@ -155,11 +153,15 @@ export function useWorkflowState() {
 
 	useEffect(() => {
 		if (!isDemoWorkspaceSession()) {
+			useWorkflowStore.setState(createEmptyWorkflowState(), true);
 			setState(createEmptyWorkflowState());
 			return;
 		}
 
-		setState(loadWorkflowState());
+		setState(useWorkflowStore.getState());
+		return useWorkflowStore.subscribe((next) => {
+			setState(next);
+		});
 	}, []);
 
 	return [state, setState] as const;
@@ -167,19 +169,19 @@ export function useWorkflowState() {
 
 export function saveWorkflowState(nextState: WorkflowState) {
 	if (typeof window === 'undefined') return;
-	window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+	useWorkflowStore.setState(nextState, true);
 }
 
 export function updateWorkflowState(
 	updater: (currentState: WorkflowState) => WorkflowState,
 ) {
-	const nextState = updater(loadWorkflowState());
+	const nextState = updater(useWorkflowStore.getState());
 	saveWorkflowState(nextState);
 	return nextState;
 }
 
 export function getWorkflowClone() {
-	return loadWorkflowState();
+	return clone(useWorkflowStore.getState());
 }
 
 export function makeWorkflowId(prefix: string, existingIds: string[]) {
