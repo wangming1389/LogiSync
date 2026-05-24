@@ -78,9 +78,10 @@ export class NotificationRepository {
 				lastName: schema.users.lastName,
 			})
 			.from(schema.users)
+			.innerJoin(schema.userRoles, eq(schema.userRoles.userId, schema.users.id))
 			.where(
 				and(
-					eq(schema.users.role, 'platform_admin'),
+					eq(schema.userRoles.role, 'platform_admin'),
 					eq(schema.users.isActive, true),
 				),
 			);

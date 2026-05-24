@@ -8,9 +8,9 @@ export const createWorkspaceSchema = z.object({
 		.min(1, 'Workspace slug is required')
 		.max(255)
 		.regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
-	type: z.enum(['supplier', 'buyer', 'carrier'], {
-		errorMap: () => ({ message: 'Type must be supplier, buyer, or carrier' }),
-	}),
+	types: z
+		.array(z.enum(['supplier', 'buyer', 'carrier']))
+		.min(1, 'At least one workspace type is required'),
 });
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
@@ -79,7 +79,7 @@ export type PaginationInput = z.infer<typeof paginationSchema>;
 // Query Filters Schema
 export const workspaceFilterSchema = z.object({
 	search: z.string().optional(),
-	type: z.enum(['supplier', 'buyer', 'carrier']).optional(),
+	types: z.array(z.enum(['supplier', 'buyer', 'carrier'])).optional(),
 	isActive: z.boolean().optional(),
 	...paginationSchema.shape,
 });

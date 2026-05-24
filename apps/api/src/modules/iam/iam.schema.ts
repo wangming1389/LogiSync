@@ -19,7 +19,6 @@ export const workspaces = pgTable('workspaces', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	name: varchar('name', { length: 255 }).notNull(),
 	slug: varchar('slug', { length: 255 }).notNull().unique(),
-	type: varchar('type', { length: 50 }).notNull(),
 	taxId: varchar('tax_id', { length: 20 }).notNull(),
 	status: varchar('status', { length: 20 }).notNull().default('pending'),
 	registeredIpAddress: varchar('registered_ip_address', {
@@ -53,7 +52,6 @@ export const users = pgTable('users', {
 	phoneNumber: varchar('phone_number', { length: 30 }),
 	idCard: varchar('id_card', { length: 50 }),
 	avatarUrl: text('avatar_url'),
-	role: varchar('role', { length: 50 }).notNull(),
 	department: varchar('department', { length: 100 }),
 	dateOfBirth: date('date_of_birth'),
 	vehicleTypePreference: varchar('vehicle_type_preference', { length: 100 }),
@@ -84,9 +82,34 @@ export const workspaceEnabledRoles = pgTable('workspace_enabled_roles', {
 		.defaultNow(),
 });
 
+export const workspaceTypes = pgTable('workspace_types', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	workspaceId: uuid('workspace_id')
+		.notNull()
+		.references(() => workspaces.id),
+	type: varchar('type', { length: 50 }).notNull(),
+	enabledBy: uuid('enabled_by').references(() => users.id),
+	enabledAt: timestamp('enabled_at', { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
+export const userRoles = pgTable('user_roles', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('user_id')
+		.notNull()
+		.references(() => users.id),
+	role: varchar('role', { length: 50 }).notNull(),
+	assignedBy: uuid('assigned_by').references(() => users.id),
+	assignedAt: timestamp('assigned_at', { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
 	users: many(users),
 	enabledRoles: many(workspaceEnabledRoles),
+	types: many(workspaceTypes),
 	supplierCategories: many(supplierCategories),
 	products: many(products),
 	buyerRfqs: many(rfqs, { relationName: 'rfqBuyerWorkspace' }),
@@ -100,6 +123,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 	}),
 	auditLogs: many(auditLogs),
 	sessions: many(sessionRegistry),
+	roles: many(userRoles),
 }));
 
 export const workspaceEnabledRolesRelations = relations(
@@ -115,3 +139,25 @@ export const workspaceEnabledRolesRelations = relations(
 		}),
 	}),
 );
+
+export const workspaceTypesRelations = relations(workspaceTypes, ({ one }) => ({
+	workspace: one(workspaces, {
+		fields: [workspaceTypes.workspaceId],
+		references: [workspaces.id],
+	}),
+	enabledByUser: one(users, {
+		fields: [workspaceTypes.enabledBy],
+		references: [users.id],
+	}),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+	user: one(users, {
+		fields: [userRoles.userId],
+		references: [users.id],
+	}),
+	assignedByUser: one(users, {
+		fields: [userRoles.assignedBy],
+		references: [users.id],
+	}),
+}));

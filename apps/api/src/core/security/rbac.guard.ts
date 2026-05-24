@@ -60,6 +60,7 @@ export class RbacGuard implements CanActivate {
 					user.sub,
 					user.workspaceId,
 					permission,
+					user.role,
 				);
 
 				if (!hasPermission) {

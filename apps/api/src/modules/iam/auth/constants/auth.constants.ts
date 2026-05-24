@@ -11,3 +11,5 @@ export const PASSWORD_COMPLEXITY_REGEX =
 export const CHANGE_TOKEN_TYPE = 'complete-registration';
 export const CHANGE_TOKEN_TTL_SECONDS = 15 * 60;
 export const CHANGE_TOKEN_BLACKLIST_PREFIX = 'change-token:used:';
+export const ROLE_SELECTION_TOKEN_TYPE = 'role-selection';
+export const ROLE_SELECTION_TOKEN_TTL_SECONDS = 5 * 60;

@@ -11,6 +11,7 @@ export class PermissionService {
 		userId: string,
 		workspaceId: string,
 		action: string,
+		activeRole: string,
 	): Promise<boolean> {
 		const db = getDatabase();
 		const [user] = await db
@@ -32,18 +33,34 @@ export class PermissionService {
 
 		if (!user.isActive) {
 			this.logger.warn(
-				`Permission denied: inactive user (userId=${userId}, workspaceId=${workspaceId}, role=${user.role}, action=${action})`,
+				`Permission denied: inactive user (userId=${userId}, workspaceId=${workspaceId}, role=${activeRole}, action=${action})`,
+			);
+			return false;
+		}
+
+		const [role] = await db
+			.select({ role: schema.userRoles.role })
+			.from(schema.userRoles)
+			.where(
+				and(
+					eq(schema.userRoles.userId, userId),
+					eq(schema.userRoles.role, activeRole),
+				),
+			);
+		if (!role) {
+			this.logger.warn(
+				`Permission denied: role ${activeRole} is not assigned to user ${userId}`,
 			);
 			return false;
 		}
 
 		const permissions: string[] =
-			ROLE_PERMISSIONS[user.role as keyof typeof ROLE_PERMISSIONS] ?? [];
+			ROLE_PERMISSIONS[activeRole as keyof typeof ROLE_PERMISSIONS] ?? [];
 		const allowed = permissions.includes('*') || permissions.includes(action);
 
 		if (!allowed) {
 			this.logger.warn(
-				`Permission denied: action=${action}, userId=${userId}, workspaceId=${workspaceId}, role=${user.role}, permissions=[${permissions.join(', ')}]`,
+				`Permission denied: action=${action}, userId=${userId}, workspaceId=${workspaceId}, role=${activeRole}, permissions=[${permissions.join(', ')}]`,
 			);
 		}
 

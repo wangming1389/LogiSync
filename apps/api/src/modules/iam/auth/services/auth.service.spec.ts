@@ -25,9 +25,13 @@ describe('AuthService core security contract', () => {
 	const userRepository = {
 		findByEmailForAuth: jest.fn(),
 		findById: jest.fn(),
+		findRolesByUserId: jest.fn(),
 		update: jest.fn(),
 	};
-	const workspaceRepository = { findById: jest.fn() };
+	const workspaceRepository = {
+		findById: jest.fn(),
+		findTypesByWorkspaceId: jest.fn(),
+	};
 	const loginFailedCounter = { inc: jest.fn() };
 
 	let service: AuthService;
@@ -53,13 +57,14 @@ describe('AuthService core security contract', () => {
 			workspaceId: 'workspace-1',
 			email: 'buyer@logisync.test',
 			passwordHash: 'hashed-password',
-			role: 'buyer',
 			isActive: true,
 		});
 		workspaceRepository.findById.mockResolvedValue({
+			id: 'workspace-1',
 			status: 'active',
-			type: 'buyer',
 		});
+		workspaceRepository.findTypesByWorkspaceId.mockResolvedValue(['buyer']);
+		userRepository.findRolesByUserId.mockResolvedValue(['buyer']);
 		(bcrypt.compare as jest.Mock).mockResolvedValue(true);
 	});
 
@@ -112,7 +117,7 @@ describe('AuthService core security contract', () => {
 			{
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
-				workspaceType: 'buyer',
+				workspaceTypes: ['buyer'],
 				role: 'buyer',
 				sessionId: 'session-1',
 				jti: 'jwt-1',
@@ -148,7 +153,7 @@ describe('AuthService core security contract', () => {
 			{
 				sub: 'user-1',
 				workspaceId: 'workspace-1',
-				workspaceType: 'buyer',
+				workspaceTypes: ['buyer'],
 				role: 'buyer',
 				sessionId: 'session-1',
 				jti: expect.any(String),

@@ -22,9 +22,15 @@ export const RegisterWorkspaceSchema = z.object({
 			/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 			'Slug can only contain lowercase letters, numbers, and hyphens',
 		),
-	type: z.enum(WORKSPACE_TYPES, {
-		errorMap: () => ({ message: 'Type must be supplier, buyer, or carrier' }),
-	}),
+	types: z
+		.array(
+			z.enum(WORKSPACE_TYPES, {
+				errorMap: () => ({
+					message: 'Each type must be supplier, buyer, or carrier',
+				}),
+			}),
+		)
+		.min(1, 'At least one workspace type is required'),
 	taxId: z.string().regex(TAX_ID_REGEX, 'Invalid tax ID (10 to 13 digits)'),
 	acceptedTermsVersion: z.string().min(1, 'Must accept terms of service'),
 	// Admin user for new workspace

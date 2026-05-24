@@ -78,7 +78,8 @@ export class EmployeeService {
 		if (!workspace) {
 			throw new NotFoundException('Actor workspace does not exist');
 		}
-		this.assertRoleAllowedForWorkspaceType(dto.role, workspace.type);
+		const workspaceTypes = await this.getWorkspaceTypes(workspace.id);
+		this.assertRoleAllowedForWorkspaceTypes(dto.role, workspaceTypes);
 
 		const existing = await this.userRepository.findByEmailInWorkspace(
 			dto.email,
@@ -141,7 +142,6 @@ export class EmployeeService {
 					phoneNumber: dto.phoneNumber,
 					idCard: dto.idCard,
 					avatarUrl: uploadedAvatar.url,
-					role: dto.role,
 					department: dto.department,
 					dateOfBirth: dto.dateOfBirth.toISOString().slice(0, 10),
 					vehicleTypePreference:
@@ -151,6 +151,12 @@ export class EmployeeService {
 					isActive: true,
 					mustChangePassword: true,
 				},
+				tx,
+			);
+			await this.userRepository.assignRoles(
+				created.id,
+				[dto.role],
+				actor.sub,
 				tx,
 			);
 
@@ -215,7 +221,7 @@ export class EmployeeService {
 			phoneNumber: newUser.phoneNumber,
 			idCard: newUser.idCard,
 			avatarUrl: newUser.avatarUrl,
-			role: newUser.role,
+			role: dto.role,
 			department: newUser.department,
 			dateOfBirth: newUser.dateOfBirth,
 			vehicleTypePreference: newUser.vehicleTypePreference,
@@ -244,21 +250,31 @@ export class EmployeeService {
 		};
 	}
 
-	private assertRoleAllowedForWorkspaceType(
+	private assertRoleAllowedForWorkspaceTypes(
 		role: string,
-		workspaceType: string,
+		workspaceTypes: string[],
 	): void {
-		if (!this.isEmployeeCreatableWorkspaceType(workspaceType)) {
+		const supportedTypes = workspaceTypes.filter((workspaceType) =>
+			this.isEmployeeCreatableWorkspaceType(workspaceType),
+		);
+
+		if (supportedTypes.length === 0) {
 			throw new BadRequestException(
-				`Workspace type "${workspaceType}" cannot create employees`,
+				`Workspace types "${workspaceTypes.join(', ')}" cannot create employees`,
 			);
 		}
 
-		const allowedRoles =
-			EMPLOYEE_CREATABLE_ROLES_BY_WORKSPACE_TYPE[workspaceType];
+		const allowedRoles = [
+			...new Set(
+				supportedTypes.flatMap(
+					(workspaceType) =>
+						EMPLOYEE_CREATABLE_ROLES_BY_WORKSPACE_TYPE[workspaceType],
+				),
+			),
+		];
 		if (!this.includes(allowedRoles, role)) {
 			throw new BadRequestException(
-				`Role "${role}" cannot be created in a "${workspaceType}" workspace. Allowed roles: ${allowedRoles.join(', ')}`,
+				`Role "${role}" cannot be created in workspace types "${supportedTypes.join(', ')}". Allowed roles: ${allowedRoles.join(', ')}`,
 			);
 		}
 	}
@@ -274,6 +290,12 @@ export class EmployeeService {
 
 	private includes(values: readonly string[], value: string): boolean {
 		return values.includes(value);
+	}
+
+	private async getWorkspaceTypes(workspaceId: string): Promise<string[]> {
+		const types =
+			await this.workspaceRepository.findTypesByWorkspaceId(workspaceId);
+		return types;
 	}
 
 	private generateTempPassword(): string {
