@@ -2,6 +2,7 @@
 import * as bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
+import { UserRole } from '../../modules/iam/auth/enums/user-role.enum';
 import { getDatabase, initializeDatabase, schema } from './index';
 
 // ─── Seed data constants ───
@@ -153,7 +154,7 @@ async function seedPlatformAdmin(
 		passwordHash: hashedPassword,
 		firstName: 'Platform',
 		lastName: 'Admin',
-		role: 'platform_admin',
+		role: UserRole.PLATFORM_ADMIN,
 		isActive: true,
 	});
 
@@ -173,14 +174,14 @@ async function seedSupplierUsers(
 			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Manager',
-			role: 'supplier',
+			role: UserRole.SUPPLIER_MANAGER,
 		},
 		{
 			email: 'supplier.staff@logisync.local',
 			password: 'Supplier@123456',
 			firstName: 'Supplier',
 			lastName: 'Staff',
-			role: 'supplier_staff',
+			role: UserRole.SUPPLIER_STAFF,
 		},
 	];
 
@@ -221,14 +222,14 @@ async function seedBuyerUsers(
 			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Admin',
-			role: 'buyer',
+			role: UserRole.BUYER_MANAGER,
 		},
 		{
 			email: 'buyer.staff@logisync.local',
 			password: 'Buyer@123456',
 			firstName: 'Buyer',
 			lastName: 'Staff',
-			role: 'buyer_staff',
+			role: UserRole.BUYER_STAFF,
 		},
 	];
 
@@ -297,7 +298,7 @@ async function seedCarrierUsers(
 			password: 'Carrier@123456',
 			firstName: 'Carrier',
 			lastName: 'Manager',
-			role: 'carrier',
+			role: UserRole.CARRIER_DISPATCHER,
 		},
 	];
 
@@ -366,7 +367,7 @@ async function seedHRUsers(
 			password: 'HR@123456',
 			firstName: 'HR',
 			lastName: 'Manager',
-			role: 'hr',
+			role: UserRole.HR_MANAGER,
 		},
 	];
 

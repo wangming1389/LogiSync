@@ -12,7 +12,6 @@ pnpm prepare
 ### 2. Database & Infrastructure
 
 ```bash
-pnpm db:up
 pnpm db:setup:local
 pnpm db:studio
 ```

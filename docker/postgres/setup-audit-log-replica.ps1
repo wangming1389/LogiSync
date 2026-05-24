@@ -1,5 +1,5 @@
 param(
-	[string]$EnvFile = ".env",
+	[string]$EnvFile = "",
 	[string]$PrimaryContainer = "logisync-db",
 	[string]$ReplicaContainer = "logisync-db-replica",
 	[string]$PublicationName = "logisync_audit_logs_pub",
@@ -7,6 +7,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Resolve-Path "$ScriptDir/../.."
+
+if (-not $EnvFile) {
+	$EnvFile = Join-Path $ProjectRoot ".env"
+}
 
 function Read-DotEnv($Path) {
 	if (-not (Test-Path $Path)) {
