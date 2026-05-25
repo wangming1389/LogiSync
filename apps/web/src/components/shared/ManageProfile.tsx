@@ -321,7 +321,8 @@ export function ManageProfile() {
 												color: '#1B6B3A',
 											}}
 										>
-											<CheckCircle className="w-4 h-4" /> Password updated successfully. You will be signed out on other devices.
+											<CheckCircle className="w-4 h-4" /> Password updated
+											successfully. You will be signed out on other devices.
 										</div>
 									)}
 									<h4 className="mb-4" style={{ color: '#191C1E' }}>

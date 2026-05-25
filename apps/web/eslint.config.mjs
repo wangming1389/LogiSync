@@ -1,16 +1,10 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { FlatCompat } from '@eslint/eslintrc';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({
-	baseDirectory: __dirname,
-});
+// Flat ESLint config for the Next.js web app.
+// Uses the native flat config exports of `eslint-config-next` v16+
+// instead of the deprecated `FlatCompat` bridge.
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
 const eslintConfig = [
-	// Khai báo các folder cần bỏ qua
 	{
 		ignores: [
 			'.next/**',
@@ -21,16 +15,8 @@ const eslintConfig = [
 			'node_modules/**',
 		],
 	},
-
-	// Kế thừa cấu hình của Next.js
-	...compat.extends('next/core-web-vitals', 'next/typescript'),
-
-	// Cấu hình riêng cho project (Nếu cần)
-	{
-		rules: {
-			// Ví dụ: "no-unused-vars": "warn"
-		},
-	},
+	...nextCoreWebVitals,
+	...nextTypescript,
 ];
 
 export default eslintConfig;
