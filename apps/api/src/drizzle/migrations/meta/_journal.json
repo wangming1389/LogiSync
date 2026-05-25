@@ -71,6 +71,41 @@
       "when": 1778930584209,
       "tag": "0009_faulty_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779598277091,
+      "tag": "0010_admin_notifications_and_first_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779635159330,
+      "tag": "0011_flimsy_garia",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779643499963,
+      "tag": "0012_powerful_warpath",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779644018863,
+      "tag": "0013_previous_dragon_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779644924184,
+      "tag": "0014_busy_puppet_master",
+      "breakpoints": true
     }
   ]
 }

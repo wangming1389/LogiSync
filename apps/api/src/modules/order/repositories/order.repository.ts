@@ -250,15 +250,16 @@ export class OrderRepository extends BaseRepository {
 		const [user] = await runner
 			.select()
 			.from(schema.users)
+			.innerJoin(schema.userRoles, eq(schema.userRoles.userId, schema.users.id))
 			.where(
 				and(
 					eq(schema.users.id, userId),
 					eq(schema.users.workspaceId, workspaceId),
 					eq(schema.users.isActive, true),
-					inArray(schema.users.role, roles),
+					inArray(schema.userRoles.role, roles),
 				),
 			);
-		return user;
+		return user?.users;
 	}
 
 	listForExport(

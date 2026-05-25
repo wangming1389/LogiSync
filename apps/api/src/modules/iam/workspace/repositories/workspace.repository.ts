@@ -59,6 +59,18 @@ export class WorkspaceRepository extends BaseRepository {
 		return workspace;
 	}
 
+	async findTypesByWorkspaceId(
+		workspaceId: string,
+		tx?: any,
+	): Promise<string[]> {
+		const runner = tx || this.db;
+		const rows = await runner
+			.select({ type: schema.workspaceTypes.type })
+			.from(schema.workspaceTypes)
+			.where(eq(schema.workspaceTypes.workspaceId, workspaceId));
+		return rows.map((row: { type: string }) => row.type);
+	}
+
 	// Find all workspaces with filters.
 	async findAll(
 		filter: { status?: string; page: number; limit: number },
@@ -141,5 +153,33 @@ export class WorkspaceRepository extends BaseRepository {
 			.returning();
 
 		return { existing: false, role: enabledRole };
+	}
+
+	async setTypes(
+		workspaceId: string,
+		types: readonly string[],
+		actorId?: string,
+		tx?: any,
+	) {
+		const runner = tx || this.db;
+
+		await runner
+			.delete(schema.workspaceTypes)
+			.where(eq(schema.workspaceTypes.workspaceId, workspaceId));
+
+		if (types.length === 0) {
+			return [];
+		}
+
+		return runner
+			.insert(schema.workspaceTypes)
+			.values(
+				types.map((type) => ({
+					workspaceId,
+					type,
+					enabledBy: actorId ?? null,
+				})),
+			)
+			.returning();
 	}
 }

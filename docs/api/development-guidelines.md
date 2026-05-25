@@ -50,6 +50,13 @@ To prevent painful technical debt, developers MUST avoid the following anti-patt
 - **Unexpressive Naming**: Variables must be descriptive (`calculateTotalOrderValue()` instead of `calcVal()`).
 - **Direct DB Calls**: NEVER call `db.select()` inside a `.service.ts` or `.controller.ts`. Always use Repositories.
 
+### 2.5. Constants vs Enums Placement
+- **Enums** are for closed domain value sets that model business states or roles (e.g., `UserRole`, `WorkspaceStatus`, `AuditAction`). Keep them in `enums/*.enum.ts` or `enums/*.enums.ts`.
+- **Constants** are for reusable runtime values, policy values, regexes, queue names, Redis key prefixes, TTLs, limits, and config-like strings (e.g., `CHANGE_TOKEN_TTL_SECONDS`, `PASSWORD_COMPLEXITY_REGEX`). Keep them in `constants/*.constants.ts` or a module-level `*.const.ts`.
+- **DTO files must not export business/security constants.** DTOs should define request/response schemas and DTO classes only. They may use imported constants for validation, but shared values must live in the module's `constants/` folder.
+- **Avoid duplicating validation constants.** If the same regex, min/max, TTL, or message key is used by more than one schema/service/guard, promote it to a constants file before reuse.
+- **Do not put constants in enum files** unless the value is genuinely part of the enum's closed value set. This prevents mixing policy/configuration with domain taxonomy.
+
 ---
 
 ## 3. The Standard Development Flow
@@ -139,6 +146,14 @@ All application metrics MUST follow the existing Prometheus/Grafana flow.
 - When a metric should be visible by default, update Grafana provisioning under `docker/grafana/provisioning/dashboards/`.
 - Update Prometheus config under `docker/prometheus/` only when the scrape target, port, path, labels, or deployment topology changes.
 - Validate dashboard JSON after editing provisioning files.
+
+### 4.5. File Upload Validation
+- File upload endpoints MUST validate both file size and file type on the backend. Client-side checks are only UX helpers.
+- Image-only fields such as employee avatars, product images, and gallery images MUST reject non-image MIME types before upload to object storage.
+- Image uploads MUST use an explicit MIME type and extension allowlist, such as `.jpg`, `.jpeg`, `.png`, and `.webp`. Do not accept arbitrary `image/*` files.
+- Document upload endpoints MUST define their own explicit allowlist (for example `.pdf`, `.jpg`, `.jpeg`, `.png`) and size limit.
+- Do not store user-supplied `avatarUrl` or product image URLs for upload flows. Upload the file through the backend and store the resulting object key or managed URL.
+- Return `400 Bad Request` with a field-relevant message when a file is missing, too large, or has the wrong type so the frontend can show an inline error.
 
 ---
 

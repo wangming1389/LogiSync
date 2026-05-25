@@ -60,10 +60,13 @@ export class RbacGuard implements CanActivate {
 					user.sub,
 					user.workspaceId,
 					permission,
+					user.role,
 				);
 
 				if (!hasPermission) {
-					throw new ForbiddenException(`Permission denied: ${permission}`);
+					throw new ForbiddenException(
+						`Permission denied: ${permission} (role: ${user.role})`,
+					);
 				}
 			}
 		}

@@ -1,18 +1,27 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-
-const PASSWORD_COMPLEXITY_REGEX =
-	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+import { PASSWORD_COMPLEXITY_REGEX } from '../constants/auth.constants';
 
 export interface JwtPayload {
 	sub: string; // userId
 	workspaceId: string;
-	workspaceType: string;
+	workspaceTypes: string[];
 	role: string;
 	sessionId: string;
 	jti: string; // jwtId used for blacklist on logout
 	iat: number; // issued at
 	exp: number;
+}
+
+export interface RoleSelectionTokenPayload {
+	sub: string;
+	workspaceId: string;
+	workspaceTypes: string[];
+	roles: string[];
+	type: string;
+	jti: string;
+	iat?: number;
+	exp?: number;
 }
 
 export const LoginSchema = z.object({
@@ -26,7 +35,7 @@ export const LoginSchema = z.object({
 
 export class LoginDto extends createZodDto(LoginSchema) {}
 
-export const LoginResponseSchema = z.object({
+export const LoginAccessTokenResponseSchema = z.object({
 	accessToken: z.string(),
 	expiresIn: z.number().describe('Token expiration (seconds)'),
 	sessionWarningAt: z
@@ -34,7 +43,32 @@ export const LoginResponseSchema = z.object({
 		.describe('Time to show warning (seconds remaining)'),
 });
 
-export class LoginResponseDto extends createZodDto(LoginResponseSchema) {}
+export const LoginChangePasswordResponseSchema = z.object({
+	requiresPasswordChange: z.literal(true),
+	changeToken: z
+		.string()
+		.describe('Short-lived JWT scoped to POST /auth/complete-registration'),
+	expiresIn: z
+		.number()
+		.describe('Change token expiration in seconds (typically 900)'),
+});
+
+export const LoginRoleSelectionResponseSchema = z.object({
+	requiresRoleSelection: z.literal(true),
+	roleSelectionToken: z.string(),
+	roles: z.array(z.string()).min(1),
+	expiresIn: z.number().describe('Role selection token expiration in seconds'),
+});
+
+export const LoginResponseSchema = z.union([
+	LoginAccessTokenResponseSchema,
+	LoginChangePasswordResponseSchema,
+	LoginRoleSelectionResponseSchema,
+]);
+
+export class LoginResponseDto extends createZodDto(
+	LoginAccessTokenResponseSchema,
+) {}
 
 export const ChangePasswordSchema = z
 	.object({
@@ -54,6 +88,13 @@ export const ChangePasswordSchema = z
 
 export class ChangePasswordDto extends createZodDto(ChangePasswordSchema) {}
 
+export const SelectRoleSchema = z.object({
+	roleSelectionToken: z.string().min(1, 'Role selection token is required'),
+	role: z.string().min(1, 'Role is required'),
+});
+
+export class SelectRoleDto extends createZodDto(SelectRoleSchema) {}
+
 // Me (Current User)
 export const MeResponseSchema = z.object({
 	id: z.string().uuid(),
@@ -61,6 +102,7 @@ export const MeResponseSchema = z.object({
 	firstName: z.string().nullable(),
 	lastName: z.string().nullable(),
 	role: z.string(),
+	roles: z.array(z.string()).min(1),
 	workspaceId: z.string().uuid(),
 	lastLoginAt: z.string().nullable(),
 });

@@ -22,6 +22,20 @@ export class UserRepository extends BaseRepository {
 		return user;
 	}
 
+	async findByEmailInWorkspace(email: string, workspaceId: string, tx?: any) {
+		const runner = tx || this.db;
+		const [user] = await runner
+			.select()
+			.from(schema.users)
+			.where(
+				and(
+					eq(schema.users.email, email),
+					eq(schema.users.workspaceId, workspaceId),
+				),
+			);
+		return user;
+	}
+
 	// Find user by ID, enforcing workspace isolation.
 	async findById(id: string, tx?: any) {
 		const workspaceId = this.getRequiredWorkspaceId();
@@ -46,6 +60,42 @@ export class UserRepository extends BaseRepository {
 		return user;
 	}
 
+	async assignRoles(
+		userId: string,
+		roles: readonly string[],
+		assignedBy?: string | null,
+		tx?: any,
+	) {
+		const runner = tx || this.db;
+		await runner
+			.delete(schema.userRoles)
+			.where(eq(schema.userRoles.userId, userId));
+
+		if (roles.length === 0) {
+			return [];
+		}
+
+		return runner
+			.insert(schema.userRoles)
+			.values(
+				[...new Set(roles)].map((role) => ({
+					userId,
+					role,
+					assignedBy: assignedBy ?? null,
+				})),
+			)
+			.returning();
+	}
+
+	async findRolesByUserId(userId: string, tx?: any): Promise<string[]> {
+		const runner = tx || this.db;
+		const rows = await runner
+			.select({ role: schema.userRoles.role })
+			.from(schema.userRoles)
+			.where(eq(schema.userRoles.userId, userId));
+		return rows.map((row: { role: string }) => row.role);
+	}
+
 	// Update user, enforcing workspace isolation.
 	async update(
 		id: string,
@@ -53,6 +103,39 @@ export class UserRepository extends BaseRepository {
 		tx?: any,
 	) {
 		const workspaceId = this.getRequiredWorkspaceId();
+		const runner = tx || this.db;
+		const [updated] = await runner
+			.update(schema.users)
+			.set({ ...data, updatedAt: new Date() })
+			.where(
+				and(eq(schema.users.id, id), eq(schema.users.workspaceId, workspaceId)),
+			)
+			.returning();
+		return updated;
+	}
+
+	// Find user by ID without workspace isolation. Reserved for flows
+	// (e.g. complete-registration via changeToken) where workspaceId is
+	// supplied explicitly by the caller after verifying a signed token.
+	async findByIdScoped(id: string, workspaceId: string, tx?: any) {
+		const runner = tx || this.db;
+		const [user] = await runner
+			.select()
+			.from(schema.users)
+			.where(
+				and(eq(schema.users.id, id), eq(schema.users.workspaceId, workspaceId)),
+			);
+		return user;
+	}
+
+	// Update user by (id, workspaceId) without relying on CLS state.
+	// Used by changeToken-backed flows that set workspaceId explicitly.
+	async updateByIdScoped(
+		id: string,
+		workspaceId: string,
+		data: Partial<typeof schema.users.$inferInsert>,
+		tx?: any,
+	) {
 		const runner = tx || this.db;
 		const [updated] = await runner
 			.update(schema.users)

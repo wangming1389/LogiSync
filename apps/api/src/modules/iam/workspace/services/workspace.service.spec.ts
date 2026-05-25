@@ -20,6 +20,9 @@ describe('WorkspaceService', () => {
 		findById: jest.fn(),
 		create: jest.fn(),
 		update: jest.fn(),
+		setTypes: jest.fn(),
+		findTypesByWorkspaceId: jest.fn(),
+		enableRole: jest.fn(),
 	};
 	const userRepository = {
 		findByEmailForAuth: jest.fn(),
@@ -31,13 +34,16 @@ describe('WorkspaceService', () => {
 			task(tx),
 		),
 	};
+	const messageQueueService = {
+		publishMessage: jest.fn().mockResolvedValue(undefined),
+	};
 
 	let service: WorkspaceService;
 
 	const dto = {
 		name: 'Acme Logistics',
 		slug: 'acme-logistics',
-		type: 'supplier' as const,
+		types: ['supplier' as 'supplier' | 'buyer' | 'carrier'],
 		taxId: '0123456789',
 		acceptedTermsVersion: 'v1',
 		adminEmail: 'admin@acme.test',
@@ -63,6 +69,12 @@ describe('WorkspaceService', () => {
 			id: 'workspace-1',
 			status: 'suspended',
 		});
+		workspaceRepository.setTypes.mockResolvedValue([]);
+		workspaceRepository.findTypesByWorkspaceId.mockResolvedValue(['supplier']);
+		workspaceRepository.enableRole.mockResolvedValue({
+			existing: false,
+			role: { id: 'role-1' },
+		});
 		userRepository.findByEmailForAuth.mockResolvedValue(null);
 		userRepository.create.mockResolvedValue({ id: 'admin-1' });
 		auditLoggerService.log.mockResolvedValue(undefined);
@@ -77,6 +89,7 @@ describe('WorkspaceService', () => {
 			workspaceRepository as never,
 			userRepository as never,
 			databaseService as never,
+			messageQueueService as never,
 		);
 	});
 

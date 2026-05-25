@@ -26,7 +26,17 @@ import {
 } from '../../../../common/utils/request.utils';
 import { RateLimitGuard } from '../../../../core/security/rate-limit.guard';
 import { SESSION_WARNING_SECONDS } from '../constants/auth.constants';
-import { ChangePasswordDto, type JwtPayload, LoginDto } from '../dtos/auth.dto';
+import {
+	ChangePasswordDto,
+	type JwtPayload,
+	LoginDto,
+	SelectRoleDto,
+} from '../dtos/auth.dto';
+import {
+	type ChangeTokenPayload,
+	CompleteRegistrationDto,
+} from '../dtos/complete-registration.dto';
+import { CompleteRegistrationGuard } from '../guards/complete-registration.guard';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthService } from '../services/auth.service';
 
@@ -63,21 +73,51 @@ export class AuthController {
 	@ApiBody({ type: LoginDto })
 	@ApiResponse({
 		status: 200,
-		description: 'Login successful, return JWT',
+		description: `Login successful. Returns either:
+			- **Normal flow**: \`{ accessToken, expiresIn, sessionWarningAt }\`.
+			- **First-login flow** (when the account has \`mustChangePassword=true\`): \`{ requiresPasswordChange: true, changeToken, expiresIn }\`. Use the \`changeToken\` on \`POST /auth/complete-registration\` to set a new password.
+			- **Multi-role flow**: \`{ requiresRoleSelection: true, roleSelectionToken, roles, expiresIn }\`. Use \`POST /auth/select-role\` with the selected role to receive the access token.`,
 		schema: {
-			properties: {
-				accessToken: { type: 'string', description: 'JWT access token' },
-				expiresIn: {
-					type: 'number',
-					description: 'TTL (seconds)',
-					example: 1800,
+			oneOf: [
+				{
+					properties: {
+						accessToken: { type: 'string', description: 'JWT access token' },
+						expiresIn: {
+							type: 'number',
+							description: 'TTL (seconds)',
+							example: 1800,
+						},
+						sessionWarningAt: {
+							type: 'number',
+							description: 'Show warning when this many seconds remaining',
+							example: 1680,
+						},
+					},
 				},
-				sessionWarningAt: {
-					type: 'number',
-					description: 'Show warning when this many seconds remaining',
-					example: 1680,
+				{
+					properties: {
+						requiresPasswordChange: { type: 'boolean', example: true },
+						changeToken: {
+							type: 'string',
+							description:
+								'Short-lived JWT, only valid for complete-registration',
+						},
+						expiresIn: { type: 'number', example: 900 },
+					},
 				},
-			},
+				{
+					properties: {
+						requiresRoleSelection: { type: 'boolean', example: true },
+						roleSelectionToken: { type: 'string' },
+						roles: {
+							type: 'array',
+							items: { type: 'string' },
+							example: ['company_admin', 'supplier_manager'],
+						},
+						expiresIn: { type: 'number', example: 300 },
+					},
+				},
+			],
 		},
 	})
 	@ApiResponse({ status: 401, description: 'Email or password is incorrect' })
@@ -93,6 +133,51 @@ export class AuthController {
 		return this.authService.login(
 			dto.email,
 			dto.password,
+			ipAddress,
+			userAgent,
+		);
+	}
+
+	// POST /auth/select-role (Public, roleSelectionToken)
+	@Post('select-role')
+	@HttpCode(HttpStatus.OK)
+	@RateLimit({
+		name: 'auth-select-role',
+		limit: 20,
+		windowMs: 60_000,
+		keyBy: 'ip',
+	})
+	@UseGuards(RateLimitGuard)
+	@ApiOperation({
+		summary: 'Select active role',
+		description:
+			'Consumes the short-lived roleSelectionToken returned by login/complete-registration for multi-role users and issues an access token with the selected active role.',
+	})
+	@ApiBody({ type: SelectRoleDto })
+	@ApiResponse({
+		status: 200,
+		description: 'Role selected, access token issued',
+		schema: {
+			properties: {
+				accessToken: { type: 'string' },
+				expiresIn: { type: 'number', example: 1800 },
+				sessionWarningAt: { type: 'number', example: 1680 },
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Role selection token is invalid or expired',
+	})
+	@ApiResponse({ status: 403, description: 'Selected role is not assigned' })
+	@SkipGlobalAudit()
+	async selectRole(@Body() dto: SelectRoleDto, @Req() req: Request) {
+		const ipAddress = getClientIp(req);
+		const userAgent = req.get('user-agent');
+
+		return this.authService.selectRole(
+			dto.roleSelectionToken,
+			dto.role,
 			ipAddress,
 			userAgent,
 		);
@@ -200,6 +285,53 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 		);
 	}
 
+	// POST /auth/complete-registration (changeToken)
+	@Post('complete-registration')
+	@HttpCode(HttpStatus.OK)
+	@RateLimit({
+		name: 'auth-complete-registration',
+		limit: 5,
+		windowMs: 60_000,
+		keyBy: 'ip',
+	})
+	@UseGuards(CompleteRegistrationGuard, RateLimitGuard)
+	@ApiOperation({
+		summary: 'Complete first-login by setting a new password',
+		description: `Consumes the short-lived \`changeToken\` returned by \`POST /auth/login\` when \`mustChangePassword=true\`. The token must be passed via the \`Authorization: Bearer <changeToken>\` header. On success returns a fresh access token; the change token is blacklisted in Redis so it cannot be reused.`,
+	})
+	@ApiBody({ type: CompleteRegistrationDto })
+	@ApiResponse({
+		status: 200,
+		description: 'Password updated, returns access token + session',
+		schema: {
+			properties: {
+				accessToken: { type: 'string' },
+				expiresIn: { type: 'number', example: 1800 },
+				sessionWarningAt: { type: 'number', example: 1680 },
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Change token is missing, invalid, expired, or already used',
+	})
+	@SkipGlobalAudit()
+	async completeRegistration(
+		@Body() dto: CompleteRegistrationDto,
+		@Req() req: Request,
+	) {
+		const payload = getRequestUser<ChangeTokenPayload>(req);
+		const ipAddress = getClientIp(req);
+		const userAgent = req.get('user-agent');
+
+		return this.authService.completeRegistration(
+			payload,
+			dto.newPassword,
+			ipAddress,
+			userAgent,
+		);
+	}
+
 	// GET /auth/me (Authenticated)
 	@Get('me')
 	@UseGuards(JwtAuthGuard)
@@ -218,6 +350,7 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 				firstName: { type: 'string', nullable: true },
 				lastName: { type: 'string', nullable: true },
 				role: { type: 'string' },
+				roles: { type: 'array', items: { type: 'string' } },
 				workspaceId: { type: 'string', format: 'uuid' },
 				lastLoginAt: { type: 'string', nullable: true },
 			},
@@ -226,6 +359,6 @@ Frontend calls this endpoint when user clicks "Extend Session" in the final 2-mi
 	@ApiResponse({ status: 401, description: 'Token is invalid' })
 	async getMe(@Req() req: Request) {
 		const payload = getRequestUser<JwtPayload>(req);
-		return this.authService.getMe(payload.sub);
+		return this.authService.getMe(payload.sub, payload.role);
 	}
 }
