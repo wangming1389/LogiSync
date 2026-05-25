@@ -1,5 +1,19 @@
+import Cookies from 'js-cookie';
+
 export const ACCESS_TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
+
+// Auth tokens are stored exclusively in browser cookies.
+// They cannot be HttpOnly because the SPA reads them client-side
+// to attach an Authorization header. We still rely on `Secure` (in
+// production) and `SameSite=Lax` to mitigate CSRF and downgrade attacks.
+const SEVEN_DAYS = 7;
+const BASE_COOKIE_OPTIONS: Cookies.CookieAttributes = {
+	path: '/',
+	sameSite: 'lax',
+	secure:
+		typeof window !== 'undefined' && window.location.protocol === 'https:',
+};
 
 export type AuthClaims = {
 	role?: string;
@@ -10,66 +24,37 @@ export type AuthClaims = {
 	[key: string]: unknown;
 };
 
-function setCookie(name: string, value: string, maxAgeSeconds: number) {
-	if (typeof document === 'undefined') return;
-	document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`;
-}
-
-function clearCookie(name: string) {
-	if (typeof document === 'undefined') return;
-	document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
-}
-
-function getCookieValue(name: string) {
-	if (typeof document === 'undefined') return undefined;
-	const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const match = document.cookie.match(
-		new RegExp(`(?:^|; )${escapedName}=([^;]*)`),
-	);
-	return match ? decodeURIComponent(match[1]) : undefined;
-}
-
 export function setAuthSession(accessToken: string, refreshToken?: string) {
 	if (typeof window === 'undefined') return;
 
-	localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-	setCookie(ACCESS_TOKEN_KEY, accessToken, 60 * 60 * 24 * 7);
+	Cookies.set(ACCESS_TOKEN_KEY, accessToken, {
+		...BASE_COOKIE_OPTIONS,
+		expires: SEVEN_DAYS,
+	});
 
 	if (refreshToken) {
-		localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-		setCookie(REFRESH_TOKEN_KEY, refreshToken, 60 * 60 * 24 * 7);
+		Cookies.set(REFRESH_TOKEN_KEY, refreshToken, {
+			...BASE_COOKIE_OPTIONS,
+			expires: SEVEN_DAYS,
+		});
 	}
 }
 
 export function clearAuthSession() {
 	if (typeof window === 'undefined') return;
 
-	localStorage.removeItem(ACCESS_TOKEN_KEY);
-	localStorage.removeItem(REFRESH_TOKEN_KEY);
-	clearCookie(ACCESS_TOKEN_KEY);
-	clearCookie(REFRESH_TOKEN_KEY);
+	Cookies.remove(ACCESS_TOKEN_KEY, { path: '/' });
+	Cookies.remove(REFRESH_TOKEN_KEY, { path: '/' });
 }
 
 export function getStoredAccessToken() {
 	if (typeof window === 'undefined') return undefined;
-	// Prefer canonical key, but accept legacy keys used in older builds or tests.
-	const candidates = [
-		ACCESS_TOKEN_KEY,
-		'logisync.access-token',
-		'logisync.accessToken',
-		'accessToken',
-	];
-	for (const k of candidates) {
-		const v = localStorage.getItem(k);
-		if (v) return v;
-	}
+	return Cookies.get(ACCESS_TOKEN_KEY);
+}
 
-	for (const k of candidates) {
-		const v = getCookieValue(k);
-		if (v) return v;
-	}
-
-	return undefined;
+export function getStoredRefreshToken() {
+	if (typeof window === 'undefined') return undefined;
+	return Cookies.get(REFRESH_TOKEN_KEY);
 }
 
 export function parseJwtClaims(token: string): AuthClaims | null {

@@ -98,10 +98,10 @@ const NAV_CONFIG: Record<
 				icon: <FileText className="w-5 h-5" />,
 			},
 			{
-            label: 'Orders',                          // ← thêm mới
-            path: '/supplier/orders',
-            icon: <ClipboardList className="w-5 h-5" />,
-        	},
+				label: 'Orders', // ← thêm mới
+				path: '/supplier/orders',
+				icon: <ClipboardList className="w-5 h-5" />,
+			},
 			// {
 			// 	label: 'Pricing & Credit',
 			// 	path: '/supplier/pricing',
@@ -137,25 +137,25 @@ const NAV_CONFIG: Record<
 		],
 	},
 	buyer: {
-    label: 'Buyer/Shipper',
-    items: [
-        {
-            label: 'Sourcing/Procurement',
-            path: '/buyer/sourcing',
-            icon: <ShoppingCart className="w-5 h-5" />,
-        },
-        {
-            label: 'Negotiation',
-            path: '/buyer/negotiation',
-            icon: <MessageSquare className="w-5 h-5" />,
-        },
-        {
-            label: 'Orders Tracking',
-            path: '/buyer/orders',
-            icon: <MapPin className="w-5 h-5" />,
-        },
-    ],
-},
+		label: 'Buyer/Shipper',
+		items: [
+			{
+				label: 'Sourcing/Procurement',
+				path: '/buyer/sourcing',
+				icon: <ShoppingCart className="w-5 h-5" />,
+			},
+			{
+				label: 'Negotiation',
+				path: '/buyer/negotiation',
+				icon: <MessageSquare className="w-5 h-5" />,
+			},
+			{
+				label: 'Orders Tracking',
+				path: '/buyer/orders',
+				icon: <MapPin className="w-5 h-5" />,
+			},
+		],
+	},
 	hr: {
 		label: 'HR Team',
 		items: [
