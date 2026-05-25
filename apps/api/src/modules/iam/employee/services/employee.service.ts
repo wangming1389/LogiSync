@@ -68,10 +68,6 @@ export class EmployeeService {
 		ipAddress: string,
 		userAgent?: string,
 	) {
-		if (!avatar) {
-			throw new BadRequestException('Avatar is required');
-		}
-
 		const workspace = await this.workspaceRepository.findById(
 			actor.workspaceId,
 		);
@@ -125,10 +121,9 @@ export class EmployeeService {
 			dto.firstName,
 			dto.lastName,
 		);
-		const uploadedAvatar = await this.mediaService.uploadFile(
-			avatar,
-			'employees/avatars',
-		);
+		const uploadedAvatar = avatar
+			? await this.mediaService.uploadFile(avatar, 'employees/avatars')
+			: null;
 
 		const newUser = await this.databaseService.withTransaction(async (tx) => {
 			const created = await this.userRepository.create(
@@ -141,7 +136,7 @@ export class EmployeeService {
 					lastName,
 					phoneNumber: dto.phoneNumber,
 					idCard: dto.idCard,
-					avatarUrl: uploadedAvatar.url,
+					avatarUrl: uploadedAvatar?.url ?? null,
 					department: dto.department,
 					dateOfBirth: dto.dateOfBirth.toISOString().slice(0, 10),
 					vehicleTypePreference:
@@ -172,7 +167,7 @@ export class EmployeeService {
 					role: dto.role,
 					phoneNumber: dto.phoneNumber,
 					idCard: dto.idCard,
-					avatarUrl: uploadedAvatar.url,
+					avatarUrl: uploadedAvatar?.url ?? null,
 					department: dto.department,
 					dateOfBirth: dto.dateOfBirth.toISOString().slice(0, 10),
 					vehicleTypePreference:

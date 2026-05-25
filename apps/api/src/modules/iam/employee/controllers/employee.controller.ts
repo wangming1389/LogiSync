@@ -56,7 +56,6 @@ export class EmployeeController {
 				'email',
 				'phoneNumber',
 				'idCard',
-				'avatar',
 				'role',
 				'department',
 				'dateOfBirth',
@@ -88,7 +87,7 @@ export class EmployeeController {
 	@ApiResponse({ status: 403, description: 'Missing hr:manage permission' })
 	async addEmployee(
 		@Body() dto: AddEmployeeDto,
-		@UploadedFile() avatar: IMulterFile,
+		@UploadedFile() avatar: IMulterFile | undefined,
 		@Req() req: Request,
 	) {
 		const actor = getRequestUser<JwtPayload>(req);
