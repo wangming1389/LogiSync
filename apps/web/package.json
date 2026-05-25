@@ -6,19 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@logisync/api-client": "workspace:*",
-    "@logisync/session": "workspace:*",
-    "@logisync/shared-types": "workspace:*",
-    "@logisync/storage": "workspace:*",
-    "@logisync/ui": "workspace:*",
     "@radix-ui/react-slot": "^1.2.4",
     "@tanstack/react-query": "^5.83.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^1.14.0",
     "next": "16.2.1",
     "react": "19.2.4",
@@ -27,10 +24,12 @@
     "recharts": "^3.8.1",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.6.0",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

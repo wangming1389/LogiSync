@@ -3,7 +3,7 @@ import {
 	isAllowedPathForClaims,
 	parseJwtClaims,
 	resolveAuthDestination,
-} from './src/lib/auth';
+} from './lib/auth';
 
 const PUBLIC_PATHS = ['/login', '/register'];
 const PROTECTED_PREFIXES = [
@@ -26,7 +26,7 @@ function clearAuthCookies(response: NextResponse) {
 	});
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 	const token = request.cookies.get('access_token')?.value;
 	const isPublicPath = PUBLIC_PATHS.includes(pathname);
