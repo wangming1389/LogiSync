@@ -132,7 +132,7 @@ export function ManageProfile() {
 								fontWeight: 500,
 							}}
 						>
-							{user?.currentRole?.replace('_', ' ').toUpperCase()}
+							{(user?.currentRole ?? '').replace('_', ' ').toUpperCase()}
 						</div>
 						<p
 							style={{

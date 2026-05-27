@@ -250,11 +250,6 @@ export default function SupplierCatalogClient() {
 				getUnitsOfMeasure(),
 			]);
 
-		console.log(
-			'catalog-categories raw:',
-			JSON.stringify(catalogCategoryResult),
-		);
-
 		const categoryItems =
 			categoryResult.status === 'fulfilled'
 				? toArray<SupplierCategory>(categoryResult.value)
@@ -265,19 +260,6 @@ export default function SupplierCatalogClient() {
 				: [];
 		const uomItems =
 			uomResult.status === 'fulfilled' ? toArray<Uom>(uomResult.value) : [];
-
-		if (categoryResult.status === 'rejected') {
-			console.error('Error loading supplier categories', categoryResult.reason);
-		}
-		if (catalogCategoryResult.status === 'rejected') {
-			console.error(
-				'Error loading master catalog categories',
-				catalogCategoryResult.reason,
-			);
-		}
-		if (uomResult.status === 'rejected') {
-			console.error('Error loading units of measure', uomResult.reason);
-		}
 
 		setSupplierCategories(categoryItems);
 		setCatalogCategories(catalogCategoryItems);
@@ -328,8 +310,7 @@ export default function SupplierCatalogClient() {
 					};
 				}),
 			);
-		} catch (error) {
-			console.error('Error loading supplier catalog', error);
+		} catch {
 			setLoadError('Không tải được dữ liệu Supplier từ database.');
 		} finally {
 			setIsLoading(false);
