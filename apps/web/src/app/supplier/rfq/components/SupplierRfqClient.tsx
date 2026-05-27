@@ -3,7 +3,11 @@
 import { ChevronLeft, FileText, Save, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { getStoredAccessToken, parseJwtClaims } from '@/lib/auth';
+import {
+	getClaimsWorkspaceTypes,
+	getStoredAccessToken,
+	parseJwtClaims,
+} from '@/lib/auth';
 import { saveWorkflowState, useWorkflowState } from '@/lib/workflow-store';
 
 type BackendRfqItem = {
@@ -75,13 +79,13 @@ function getAuthDebugClaims() {
 	return {
 		role: claims?.role ?? claims?.userRole,
 		workspaceId: claims?.workspaceId,
-		workspaceType: claims?.workspaceType ?? claims?.workspace_type,
+		workspaceTypes: getClaimsWorkspaceTypes(claims),
 	};
 }
 
 function isSupplierCompanyAdminSession() {
 	const claims = getAuthDebugClaims();
-	return claims.role === 'company_admin' && claims.workspaceType === 'supplier';
+	return claims.role === 'company_admin' && claims.workspaceTypes.includes('supplier');
 }
 
 function formatBuyerLabel(rfq: BackendRfqDetail) {
