@@ -18,6 +18,7 @@ const BASE_COOKIE_OPTIONS: Cookies.CookieAttributes = {
 export type AuthClaims = {
 	role?: string;
 	userRole?: string;
+	workspaceTypes?: string[];
 	workspaceType?: string;
 	workspace_type?: string;
 	workspace?: { type?: string };
@@ -82,9 +83,22 @@ export function getClaimsWorkspaceType(claims: AuthClaims | null | undefined) {
 	);
 }
 
+export function getClaimsWorkspaceTypes(claims: AuthClaims | null | undefined) {
+	if (
+		Array.isArray(claims?.workspaceTypes) &&
+		claims.workspaceTypes.length > 0
+	) {
+		return claims.workspaceTypes;
+	}
+
+	const legacyType = getClaimsWorkspaceType(claims);
+	return typeof legacyType === 'string' ? [legacyType] : [];
+}
+
 export function resolveAuthDestination(claims: AuthClaims | null | undefined) {
 	const role = getClaimsRole(claims);
-	const workspaceType = getClaimsWorkspaceType(claims);
+	const workspaceTypes = getClaimsWorkspaceTypes(claims);
+	const primaryWorkspaceType = workspaceTypes[0];
 
 	switch (role) {
 		case 'platform_admin':
@@ -106,7 +120,7 @@ export function resolveAuthDestination(claims: AuthClaims | null | undefined) {
 		case 'hr_manager':
 			return '/hr/management';
 		case 'company_admin':
-			switch (workspaceType) {
+			switch (primaryWorkspaceType) {
 				case 'supplier':
 					return '/supplier';
 				case 'buyer':
@@ -126,16 +140,25 @@ export function isAllowedPathForClaims(
 	claims: AuthClaims | null | undefined,
 ) {
 	const role = getClaimsRole(claims);
-	const workspaceType = getClaimsWorkspaceType(claims);
+	const workspaceTypes = getClaimsWorkspaceTypes(claims);
 
 	if (!role) return false;
 
 	if (role === 'company_admin') {
 		if (pathname.startsWith('/company-admin')) return true;
 
-		if (workspaceType === 'supplier') return pathname.startsWith('/supplier');
-		if (workspaceType === 'buyer') return pathname.startsWith('/buyer');
-		if (workspaceType === 'carrier') return pathname.startsWith('/carrier');
+		if (
+			workspaceTypes.includes('supplier') &&
+			pathname.startsWith('/supplier')
+		) {
+			return true;
+		}
+		if (workspaceTypes.includes('buyer') && pathname.startsWith('/buyer')) {
+			return true;
+		}
+		if (workspaceTypes.includes('carrier') && pathname.startsWith('/carrier')) {
+			return true;
+		}
 
 		return false;
 	}

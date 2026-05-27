@@ -5,7 +5,12 @@ import {
 	resolveAuthDestination,
 } from './lib/auth';
 
-const PUBLIC_PATHS = ['/login', '/register'];
+const PUBLIC_PATHS = [
+	'/login',
+	'/register',
+	'/complete-registration',
+	'/select-role',
+];
 const PROTECTED_PREFIXES = [
 	'/platform-admin',
 	'/company-admin',

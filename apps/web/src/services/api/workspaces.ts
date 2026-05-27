@@ -4,7 +4,7 @@ export type RegisterWorkspacePayload = {
 	name: string;
 	slug: string;
 	taxId: string;
-	type: 'supplier' | 'buyer' | 'carrier';
+	types: ('supplier' | 'buyer' | 'carrier')[];
 	adminEmail: string;
 	adminPassword: string;
 	acceptedTermsVersion: string;

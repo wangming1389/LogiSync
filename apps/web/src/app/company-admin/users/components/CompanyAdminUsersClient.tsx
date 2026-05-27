@@ -10,11 +10,24 @@ import {
 	User,
 	X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { employees, kpiData } from '@/app/data/mockData';
+import { getApiErrorMessage } from '@/lib/api';
+import {
+	getClaimsWorkspaceTypes,
+	getStoredAccessToken,
+	parseJwtClaims,
+} from '@/lib/auth';
+import { getEmployeeRoleOptions, getRoleLabel } from '@/lib/roles';
 import { isDemoWorkspaceSession } from '@/lib/workspace-mode';
+import { addEmployee } from '@/services/api/employees';
 
-type Employee = (typeof employees)[0] & { status: string };
+type Employee = (typeof employees)[0] & {
+	status: string;
+	dateOfBirth?: string;
+	vehicleTypePreference?: string;
+	avatar?: File | null;
+};
 
 const deptColor: Record<string, string> = {
 	Sales: 'bg-green-100 text-green-700',
@@ -26,30 +39,33 @@ const deptColor: Record<string, string> = {
 
 export default function CompanyAdminUsersClient() {
 	const [demoEnabled, setDemoEnabled] = useState(false);
+	const [workspaceTypes, setWorkspaceTypes] = useState<string[]>([]);
 	const [tab, setTab] = useState<'employees' | 'kpi'>('employees');
-	const [empList, setEmpList] = useState<Employee[]>(employees);
+	const [empList, setEmpList] = useState<Employee[]>([]);
 	const [kpiList, setKpiList] = useState(kpiData);
 	const [showForm, setShowForm] = useState(false);
 	const [editEmp, setEditEmp] = useState<Partial<Employee> | null>(null);
+	const [employeeError, setEmployeeError] = useState('');
+	const [employeeSuccess, setEmployeeSuccess] = useState('');
+	const [employeeSaving, setEmployeeSaving] = useState(false);
 	const [deactivateModal, setDeactivateModal] = useState<string | null>(null);
 	const [deptFilter, setDeptFilter] = useState('All');
 	const [periodFilter, setPeriodFilter] = useState('Q1 2026');
 	const [showKPIForm, setShowKPIForm] = useState(false);
 
 	useEffect(() => {
-		if (isDemoWorkspaceSession()) setDemoEnabled(true);
+		const isDemo = isDemoWorkspaceSession();
+		setDemoEnabled(isDemo);
+		if (isDemo) setEmpList(employees as Employee[]);
+
+		const claims = parseJwtClaims(getStoredAccessToken() ?? '');
+		setWorkspaceTypes(getClaimsWorkspaceTypes(claims));
 	}, []);
 
-	if (!demoEnabled) {
-		return (
-			<div className="p-6">
-				<h1 className="text-2xl text-gray-900">User Management</h1>
-				<p className="mt-2 text-sm text-slate-500">
-					No sample user data is loaded for newly created workspaces.
-				</p>
-			</div>
-		);
-	}
+	const roleOptions = useMemo(
+		() => getEmployeeRoleOptions(workspaceTypes),
+		[workspaceTypes],
+	);
 
 	const depts = ['All', 'Sales', 'Accounting', 'Driver', 'Operations', 'HR'];
 	const filteredEmps =
@@ -72,6 +88,67 @@ export default function CompanyAdminUsersClient() {
 		setDeactivateModal(null);
 	}
 
+	async function handleAddEmployee() {
+		if (!editEmp) return;
+
+		setEmployeeError('');
+		setEmployeeSuccess('');
+
+		const role = editEmp.role ?? roleOptions[0]?.value;
+		const requiredFields = [
+			editEmp.name,
+			editEmp.email,
+			editEmp.phone,
+			editEmp.idCard,
+			role,
+			editEmp.department,
+			editEmp.dateOfBirth,
+		];
+		if (requiredFields.some((value) => !String(value ?? '').trim())) {
+			setEmployeeError('Please complete all required fields.');
+			return;
+		}
+
+		setEmployeeSaving(true);
+		try {
+			const created = await addEmployee({
+				fullName: editEmp.name?.trim() ?? '',
+				email: editEmp.email?.trim() ?? '',
+				phoneNumber: editEmp.phone?.trim() ?? '',
+				idCard: editEmp.idCard?.trim() ?? '',
+				role: role ?? '',
+				department: editEmp.department?.trim() ?? '',
+				dateOfBirth: editEmp.dateOfBirth ?? '',
+				vehicleTypePreference: editEmp.vehicleTypePreference,
+				avatar: editEmp.avatar ?? null,
+			});
+
+			setEmpList((current) => [
+				...current,
+				{
+					id: created.id,
+					name: created.fullName ?? created.email,
+					email: created.email,
+					phone: created.phoneNumber ?? '',
+					department: created.department ?? '',
+					role: getRoleLabel(created.role),
+					status: 'active',
+					idCard: created.idCard ?? '',
+					joinDate: new Date().toISOString().slice(0, 10),
+					dateOfBirth: created.dateOfBirth ?? undefined,
+					vehicleTypePreference: created.vehicleTypePreference ?? undefined,
+				} as Employee,
+			]);
+			setEmployeeSuccess('Employee account created. First-login email is being sent by the backend.');
+			setShowForm(false);
+			setEditEmp(null);
+		} catch (error) {
+			setEmployeeError(getApiErrorMessage(error, 'Failed to create employee.'));
+		} finally {
+			setEmployeeSaving(false);
+		}
+	}
+
 	const kpiStatusColor: Record<string, string> = {
 		exceeded: 'bg-green-100 text-green-700',
 		on_track: 'bg-blue-100 text-blue-700',
@@ -89,11 +166,15 @@ export default function CompanyAdminUsersClient() {
 								name: '',
 								email: '',
 								phone: '',
-								department: 'Sales',
-								role: 'Sales Staff',
+								department: 'Operations',
+								role: roleOptions[0]?.value ?? '',
 								status: 'active',
 								idCard: '',
+								dateOfBirth: '',
+								vehicleTypePreference: '',
 							});
+							setEmployeeError('');
+							setEmployeeSuccess('');
 							setShowForm(true);
 						}}
 						className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
@@ -125,6 +206,17 @@ export default function CompanyAdminUsersClient() {
 					</button>
 				))}
 			</div>
+
+			{employeeSuccess && (
+				<div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+					{employeeSuccess}
+				</div>
+			)}
+			{employeeError && !showForm && (
+				<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+					{employeeError}
+				</div>
+			)}
 
 			{tab === 'employees' && (
 				<>
@@ -162,6 +254,17 @@ export default function CompanyAdminUsersClient() {
 								</tr>
 							</thead>
 							<tbody>
+								{filteredEmps.length === 0 && (
+									<tr>
+										<td
+											colSpan={7}
+											className="px-4 py-8 text-center text-sm text-gray-500"
+										>
+											No employees loaded yet. Add an employee to create a real
+											account.
+										</td>
+									</tr>
+								)}
 								{filteredEmps.map((e, i) => (
 									<tr
 										key={e.id}
@@ -361,6 +464,11 @@ export default function CompanyAdminUsersClient() {
 								<X className="w-5 h-5 text-gray-400" />
 							</button>
 						</div>
+						{employeeError && (
+							<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+								{employeeError}
+							</div>
+						)}
 						<div className="space-y-3">
 							<div className="grid grid-cols-2 gap-3">
 								<div>
@@ -377,10 +485,10 @@ export default function CompanyAdminUsersClient() {
 								</div>
 								<div>
 									<label className="block text-xs text-gray-500 mb-1">
-										Department
+										Department *
 									</label>
 									<select
-										value={editEmp.department ?? 'Sales'}
+										value={editEmp.department ?? 'Operations'}
 										onChange={(e) =>
 											setEditEmp({ ...editEmp, department: e.target.value })
 										}
@@ -410,7 +518,7 @@ export default function CompanyAdminUsersClient() {
 								</div>
 								<div>
 									<label className="block text-xs text-gray-500 mb-1">
-										Phone
+										Phone *
 									</label>
 									<input
 										value={editEmp.phone ?? ''}
@@ -421,9 +529,47 @@ export default function CompanyAdminUsersClient() {
 									/>
 								</div>
 							</div>
+							<div className="grid grid-cols-2 gap-3">
+								<div>
+									<label className="block text-xs text-gray-500 mb-1">
+										Role *
+									</label>
+									<select
+										value={editEmp.role ?? roleOptions[0]?.value ?? ''}
+										onChange={(e) =>
+											setEditEmp({ ...editEmp, role: e.target.value })
+										}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-white"
+									>
+										{roleOptions.map((role) => (
+											<option key={role.value} value={role.value}>
+												{role.label}
+											</option>
+										))}
+									</select>
+									{roleOptions.length === 0 && (
+										<p className="mt-1 text-xs text-red-600">
+											No employee roles are available for this workspace.
+										</p>
+									)}
+								</div>
+								<div>
+									<label className="block text-xs text-gray-500 mb-1">
+										Date of Birth *
+									</label>
+									<input
+										type="date"
+										value={editEmp.dateOfBirth ?? ''}
+										onChange={(e) =>
+											setEditEmp({ ...editEmp, dateOfBirth: e.target.value })
+										}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+									/>
+								</div>
+							</div>
 							<div>
 								<label className="block text-xs text-gray-500 mb-1">
-									ID Card Number (CCCD)
+									ID Card Number *
 								</label>
 								<input
 									value={editEmp.idCard ?? ''}
@@ -435,62 +581,48 @@ export default function CompanyAdminUsersClient() {
 							</div>
 							<div>
 								<label className="block text-xs text-gray-500 mb-1">
-									ID Card Photos (front & back, ≤5MB each)
+									Avatar
 								</label>
-								<div className="grid grid-cols-2 gap-2">
-									{['Front', 'Back'].map((side) => (
-										<div
-											key={side}
-											className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center text-xs text-gray-400 cursor-pointer hover:border-purple-400"
-										>
-											{side}
-										</div>
-									))}
-								</div>
+								<input
+									type="file"
+									accept="image/*"
+									onChange={(e) =>
+										setEditEmp({
+											...editEmp,
+											avatar: e.target.files?.[0] ?? null,
+										})
+									}
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none"
+								/>
 							</div>
-							{editEmp.department === 'Driver' && (
+							{editEmp.role === 'driver' && (
 								<div className="border border-orange-200 bg-orange-50 rounded-lg p-3">
 									<p className="text-xs text-orange-700 mb-2">
 										Driver-specific fields:
 									</p>
-									<div className="grid grid-cols-2 gap-2">
-										<div>
-											<label className="block text-xs text-gray-500 mb-1">
-												License No.
-											</label>
-											<input className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none font-mono" />
-										</div>
-										<div>
-											<label className="block text-xs text-gray-500 mb-1">
-												License Expiry
-											</label>
-											<input
-												type="date"
-												className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none"
-											/>
-										</div>
-									</div>
+									<label className="block text-xs text-gray-500 mb-1">
+										Vehicle Type Preference
+									</label>
+									<input
+										value={editEmp.vehicleTypePreference ?? ''}
+										onChange={(e) =>
+											setEditEmp({
+												...editEmp,
+												vehicleTypePreference: e.target.value,
+											})
+										}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none"
+									/>
 								</div>
 							)}
 						</div>
 						<div className="flex gap-2 mt-5">
 							<button
-								onClick={() => {
-									if (editEmp.name) {
-										setEmpList([
-											...empList,
-											{
-												...editEmp,
-												id: 'EMP' + crypto.randomUUID().slice(0, 8),
-												joinDate: '2026-04-13',
-											} as Employee,
-										]);
-										setShowForm(false);
-									}
-								}}
-								className="flex-1 py-2.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
+								onClick={handleAddEmployee}
+								disabled={employeeSaving || roleOptions.length === 0}
+								className="flex-1 py-2.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-60"
 							>
-								Add Employee
+								{employeeSaving ? 'Adding...' : 'Add Employee'}
 							</button>
 							<button
 								onClick={() => setShowForm(false)}

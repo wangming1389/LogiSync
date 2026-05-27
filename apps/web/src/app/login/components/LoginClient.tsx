@@ -10,12 +10,22 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { api } from '@/lib/api';
+import {
+	clearPasswordChangeState,
+	clearRoleSelectionState,
+	savePasswordChangeState,
+	saveRoleSelectionState,
+} from '@/lib/auth-flow';
 import {
 	parseJwtClaims,
 	resolveAuthDestination,
 	setAuthSession,
 } from '@/lib/auth';
+import {
+	isPasswordChangeRequired,
+	isRoleSelectionRequired,
+	login,
+} from '@/services/api/auth';
 
 const MARITIME_SHADOW_LG = '0px 24px 64px rgba(15,76,138,0.22)';
 
@@ -89,16 +99,31 @@ export default function LoginClient() {
 		setLoading(true);
 		setError('');
 		try {
-			const res: any = await api.post('/auth/login', { email, password });
-			// Server responds with envelope { success, data, error, meta }
-			// apiFetch currently wraps response.json() into { data: json }
-			// so token may live at res.data.data.accessToken — handle all variants
-			const token =
-				res?.accessToken ??
-				res?.data?.accessToken ??
-				res?.data?.access_token ??
-				res?.data?.data?.accessToken ??
-				res?.data?.data?.access_token;
+			const res = await login({ email, password });
+			clearPasswordChangeState();
+			clearRoleSelectionState();
+
+			if (isPasswordChangeRequired(res)) {
+				savePasswordChangeState({
+					changeToken: res.changeToken,
+					expiresIn: res.expiresIn,
+					email,
+				});
+				router.push('/complete-registration');
+				return;
+			}
+
+			if (isRoleSelectionRequired(res)) {
+				saveRoleSelectionState({
+					roleSelectionToken: res.roleSelectionToken,
+					roles: res.roles,
+					expiresIn: res.expiresIn,
+				});
+				router.push('/select-role');
+				return;
+			}
+
+			const token = res.accessToken;
 			if (!token) {
 				throw new Error('No access token received from server');
 			}
