@@ -197,24 +197,28 @@ export default function AppLayout({
 	const [authReady, setAuthReady] = useState(false);
 
 	const navConfig = NAV_CONFIG[currentRole] || NAV_CONFIG['platform_admin'];
+	const currentToken = getStoredAccessToken();
+	const currentClaims = currentToken ? parseJwtClaims(currentToken) : null;
+	const currentPathAllowed =
+		!!currentToken &&
+		!!currentClaims &&
+		isAllowedPathForClaims(pathname ?? '', currentClaims);
 
 	useEffect(() => {
-		const token = getStoredAccessToken();
-		const claims = token ? parseJwtClaims(token) : null;
-
-		if (!token || !claims) {
+		setAuthReady(false);
+		if (!currentToken || !currentClaims) {
 			clearAuthSession();
 			router.replace('/login');
 			return;
 		}
 
-		if (!isAllowedPathForClaims(pathname ?? '', claims)) {
-			router.replace(resolveAuthDestination(claims) ?? '/login');
+		if (!currentPathAllowed) {
+			router.replace(resolveAuthDestination(currentClaims) ?? '/login');
 			return;
 		}
 
 		setAuthReady(true);
-	}, [pathname, router]);
+	}, [pathname, router, currentToken, currentPathAllowed]);
 
 	const handleLogout = async () => {
 		try {
@@ -226,7 +230,7 @@ export default function AppLayout({
 		router.replace('/login');
 	};
 
-	if (!authReady) {
+	if (!authReady || !currentPathAllowed) {
 		return (
 			<div
 				className="min-h-screen flex items-center justify-center text-sm"

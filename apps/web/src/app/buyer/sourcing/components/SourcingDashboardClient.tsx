@@ -385,14 +385,6 @@ export default function SourcingDashboardClient() {
 				})();
 			})
 			.catch((err: any) => {
-				try {
-					console.error(
-						'BuyerSourcing: products load error',
-						JSON.stringify(err),
-					);
-				} catch {
-					console.error('BuyerSourcing: products load error', err);
-				}
 				if (mounted) setProductsError(err?.message ?? String(err));
 			})
 			.finally(() => {
@@ -524,8 +516,13 @@ export default function SourcingDashboardClient() {
 						setSelectedRfqId(mapped[0].id);
 					}
 				}
-			} catch (error) {
-				console.error('BuyerSourcing: failed to load RFQs', error);
+			} catch {
+				if (mounted) {
+					setWorkflow((currentState) => ({
+						...currentState,
+						buyerRfqs: [],
+					}));
+				}
 			}
 		})();
 
