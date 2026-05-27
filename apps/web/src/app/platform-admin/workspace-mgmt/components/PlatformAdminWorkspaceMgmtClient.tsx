@@ -11,7 +11,8 @@ type Workspace = {
 	name: string;
 	company?: string;
 	slug: string;
-	type: string;
+	type?: string;
+	types?: string[];
 	status: string;
 	taxId: string;
 	adminEmail?: string;
@@ -23,13 +24,14 @@ type Workspace = {
 	approvedAt?: string;
 };
 
-function StatusChip({ status }: { status: string }) {
+function StatusChip({ status }: { status?: string }) {
 	const map: Record<string, { bg: string; color: string }> = {
 		active: { bg: '#C8F0D8', color: '#1B6B3A' },
 		suspended: { bg: '#FFEFC6', color: '#7A4F00' },
 		revoked: { bg: '#FFDAD6', color: '#BA1A1A' },
 	};
-	const s = map[status] ?? { bg: '#E0E4EB', color: '#191C1E' };
+	const normalizedStatus = status ?? 'unknown';
+	const s = map[normalizedStatus] ?? { bg: '#E0E4EB', color: '#191C1E' };
 	return (
 		<span
 			className="px-3 py-1 rounded-full"
@@ -41,7 +43,7 @@ function StatusChip({ status }: { status: string }) {
 				letterSpacing: '0.05em',
 			}}
 		>
-			{status.toUpperCase()}
+			{normalizedStatus.toUpperCase()}
 		</span>
 	);
 }
@@ -199,7 +201,7 @@ export default function PlatformAdminWorkspaceMgmtClient() {
 											letterSpacing: '0.05em',
 										}}
 									>
-										{w.type.toUpperCase()}
+										{(w.type ?? w.types?.join(', ') ?? 'unknown').toUpperCase()}
 									</span>
 								</td>
 								<td className="px-5 py-3">
