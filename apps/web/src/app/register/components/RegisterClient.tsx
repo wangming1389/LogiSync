@@ -29,8 +29,9 @@ export default function RegisterClient() {
 	const registerWorkspace = useRegisterWorkspaceMutation();
 	const [step, setStep] = useState<1 | 2>(1);
 	const [workspaceName, setWorkspaceName] = useState('');
-	const [workspaceType, setWorkspaceType] =
-		useState<RegisterWorkspaceFormValues['workspaceType']>('supplier');
+	const [workspaceTypes, setWorkspaceTypes] = useState<
+		RegisterWorkspaceFormValues['workspaceTypes']
+	>(['supplier']);
 	const [taxId, setTaxId] = useState('');
 	const [adminEmail, setAdminEmail] = useState('');
 	const [password, setPassword] = useState('');
@@ -44,7 +45,7 @@ export default function RegisterClient() {
 	const formValues = useMemo<RegisterWorkspaceFormValues>(
 		() => ({
 			workspaceName,
-			workspaceType,
+			workspaceTypes,
 			taxId,
 			adminEmail,
 			password,
@@ -53,7 +54,7 @@ export default function RegisterClient() {
 		}),
 		[
 			workspaceName,
-			workspaceType,
+			workspaceTypes,
 			taxId,
 			adminEmail,
 			password,
@@ -83,7 +84,7 @@ export default function RegisterClient() {
 
 		if (step === 1) {
 			const errors = showStepErrors();
-			if (errors.workspaceName || errors.workspaceType || errors.taxId) return;
+			if (errors.workspaceName || errors.workspaceTypes || errors.taxId) return;
 			setStep(2);
 			return;
 		}
@@ -98,7 +99,7 @@ export default function RegisterClient() {
 			name: parsed.data.workspaceName.trim(),
 			slug: slugify(parsed.data.workspaceName),
 			taxId: parsed.data.taxId.trim(),
-			type: parsed.data.workspaceType,
+			types: parsed.data.workspaceTypes,
 			adminEmail: parsed.data.adminEmail.trim(),
 			adminPassword: parsed.data.password,
 			acceptedTermsVersion: ACCEPTED_TERMS_VERSION,
@@ -208,22 +209,48 @@ export default function RegisterClient() {
 							</div>
 							<div>
 								<label className="block text-sm font-medium text-slate-600 mb-1.5">
-									Workspace Type
+									Workspace Types
 								</label>
-								<select
-									value={workspaceType}
-									onChange={(e) =>
-										setWorkspaceType(
-											e.target
-												.value as RegisterWorkspaceFormValues['workspaceType'],
-										)
-									}
-									className="w-full px-4 py-2 bg-slate-50 border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors"
-								>
-									<option value="supplier">Supplier</option>
-									<option value="buyer">Buyer</option>
-									<option value="carrier">Carrier</option>
-								</select>
+								<div className="grid grid-cols-3 gap-2">
+									{[
+										{ value: 'supplier', label: 'Supplier' },
+										{ value: 'buyer', label: 'Buyer' },
+										{ value: 'carrier', label: 'Carrier' },
+									].map((type) => {
+										const value =
+											type.value as RegisterWorkspaceFormValues['workspaceTypes'][number];
+										const selected = workspaceTypes.includes(value);
+										return (
+											<label
+												key={type.value}
+												className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+											>
+												<input
+													type="checkbox"
+													checked={selected}
+													onChange={(e) => {
+														setWorkspaceTypes((current) =>
+															e.target.checked
+																? [...current, value]
+																: current.filter((item) => item !== value),
+														);
+														setFieldErrors((current) => ({
+															...current,
+															workspaceTypes: undefined,
+														}));
+													}}
+													className="h-4 w-4 rounded border-slate-300"
+												/>
+												{type.label}
+											</label>
+										);
+									})}
+								</div>
+								{fieldErrors.workspaceTypes && (
+									<p className="mt-1 text-xs text-red-600">
+										{fieldErrors.workspaceTypes}
+									</p>
+								)}
 							</div>
 						</div>
 					)}

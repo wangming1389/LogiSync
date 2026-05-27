@@ -15,6 +15,16 @@ export const api = {
 			{ method: 'POST', body: JSON.stringify(body) },
 			baseOptions,
 		),
+	postWithBearer: <T>(path: string, body: unknown, token: string) =>
+		apiFetch<T>(
+			path,
+			{
+				method: 'POST',
+				body: JSON.stringify(body),
+				headers: { Authorization: `Bearer ${token}` },
+			},
+			{ baseUrl: env.NEXT_PUBLIC_API_BASE_URL },
+		),
 	put: <T>(path: string, body: unknown) =>
 		apiFetch<T>(
 			path,

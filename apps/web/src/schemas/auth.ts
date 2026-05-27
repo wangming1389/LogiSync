@@ -5,7 +5,9 @@ export const WorkspaceTypeSchema = z.enum(['supplier', 'buyer', 'carrier']);
 export const RegisterWorkspaceSchema = z
 	.object({
 		workspaceName: z.string().trim().min(1, 'Workspace name is required.'),
-		workspaceType: WorkspaceTypeSchema,
+		workspaceTypes: z
+			.array(WorkspaceTypeSchema)
+			.min(1, 'Select at least one workspace type.'),
 		taxId: z
 			.string()
 			.trim()
