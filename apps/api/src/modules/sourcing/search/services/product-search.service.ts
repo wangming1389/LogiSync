@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { SessionRegistryService } from '../../../../core/session/session-registry.service';
+import { ObjectStorageService } from '../../../../infrastructure/object-storage/object-storage.service';
 import type { ProductSearchQueryDto } from '../dtos/product-search.dto';
 import { ProductSearchRepository } from '../repositories/product-search.repository';
 
@@ -15,6 +16,7 @@ export class ProductSearchService {
 	constructor(
 		private readonly productSearchRepo: ProductSearchRepository,
 		private readonly sessionRegistry: SessionRegistryService,
+		private readonly objectStorageService: ObjectStorageService,
 	) {}
 
 	async search(
@@ -54,10 +56,18 @@ export class ProductSearchService {
 		});
 
 		const itemsWithReputation = await Promise.all(
-			result.items.map(async (item: any) => ({
-				...item,
-				reputationScore: await this.loadReputationScore(item.workspaceId),
-			})),
+			result.items.map(async (item: any) => {
+				const [reputationScore, imageUrls] = await Promise.all([
+					this.loadReputationScore(item.workspaceId),
+					this.resolveImageUrls(item.imageUrls),
+				]);
+
+				return {
+					...item,
+					imageUrls,
+					reputationScore,
+				};
+			}),
 		);
 
 		// Apply reputation-based ordering when requested, using cached scores only
@@ -87,5 +97,35 @@ export class ProductSearchService {
 		if (raw === null) return null;
 		const parsed = Number(raw);
 		return Number.isFinite(parsed) ? parsed : null;
+	}
+
+	private async resolveImageUrls(imageUrls: unknown): Promise<string[]> {
+		if (!Array.isArray(imageUrls)) return [];
+
+		const urls = imageUrls.filter(
+			(url): url is string => typeof url === 'string' && url.trim().length > 0,
+		);
+
+		if (!this.objectStorageService.isReady()) {
+			return urls.filter((url) => this.isPublicImageUrl(url));
+		}
+
+		return Promise.all(
+			urls.map(async (url) =>
+				this.isPublicImageUrl(url)
+					? url
+					: this.objectStorageService.generateSignedUrl(url, 60 * 60),
+			),
+		);
+	}
+
+	private isPublicImageUrl(url: string): boolean {
+		return (
+			url.startsWith('http://') ||
+			url.startsWith('https://') ||
+			url.startsWith('/') ||
+			url.startsWith('data:') ||
+			url.startsWith('blob:')
+		);
 	}
 }
