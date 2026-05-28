@@ -78,6 +78,10 @@ export class WorkspaceService {
 				},
 				tx,
 			);
+			const workspaceId = this.requireNonEmptyString(
+				workspace.id,
+				'workspace.id',
+			);
 
 			const adminUser = await this.userRepository.create(
 				{
@@ -91,27 +95,30 @@ export class WorkspaceService {
 				},
 				tx,
 			);
+			const adminUserId = this.requireNonEmptyString(
+				adminUser.id,
+				'adminUser.id',
+			);
 			await this.userRepository.assignRoles(
-				adminUser.id,
+				adminUserId,
 				['company_admin'],
-				adminUser.id,
+				adminUserId,
 				tx,
 			);
 
 			await this.workspaceRepository.setTypes(
-				workspace.id,
+				workspaceId,
 				workspaceTypes,
-				adminUser.id,
+				adminUserId,
 				tx,
 			);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			await this.auditLoggerService.logInTx(tx, {
-				actorId: adminUser.id,
-				workspaceId: workspace.id,
+				actorId: adminUserId,
+				workspaceId,
 				action: AuditAction.WORKSPACE_REGISTER_SUCCESS,
 				resourceType: 'workspace',
-				resourceId: workspace.id,
+				resourceId: workspaceId,
 				changes: {
 					name: dto.name,
 					slug: dto.slug,
@@ -149,6 +156,14 @@ export class WorkspaceService {
 
 	private resolveWorkspaceTypes(types: readonly string[]): string[] {
 		return [...new Set(types)];
+	}
+
+	private requireNonEmptyString(value: unknown, field: string): string {
+		if (typeof value !== 'string' || value.length === 0) {
+			throw new Error(`Expected non-empty string for ${field}`);
+		}
+
+		return value;
 	}
 
 	async findAll(filter: WorkspaceFilterDto) {
