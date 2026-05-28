@@ -111,7 +111,7 @@ export class ProductSearchService {
 		}
 
 		return Promise.all(
-			urls.map((url) =>
+			urls.map(async (url) =>
 				this.isPublicImageUrl(url)
 					? url
 					: this.objectStorageService.generateSignedUrl(url, 60 * 60),
