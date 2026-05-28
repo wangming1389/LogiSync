@@ -7,6 +7,11 @@ import { useAuditLogsQuery } from '@/services/queries/useAuditQueries';
 
 const SHADOW = '0px 8px 24px rgba(15,76,138,0.08)';
 const STATUS_FILTERS = ['All', 'Success', 'Failure'] as const;
+const ID_CELL_STYLE = {
+	fontFamily: 'monospace',
+	fontSize: 12,
+	color: 'rgba(25,28,30,0.72)',
+} as const;
 
 function toDate(value: string) {
 	const next = new Date(value);
@@ -250,10 +255,10 @@ export default function PlatformAdminAuditLogClient() {
 									>
 										{formatDateTime(log.timestamp)}
 									</td>
-									<td className="px-4 py-3" style={{ fontSize: 13 }}>
+									<td className="px-4 py-3" style={ID_CELL_STYLE}>
 										{log.actorId}
 									</td>
-									<td className="px-4 py-3" style={{ fontSize: 13 }}>
+									<td className="px-4 py-3" style={ID_CELL_STYLE}>
 										{log.workspaceId}
 									</td>
 									<td className="px-4 py-3">
