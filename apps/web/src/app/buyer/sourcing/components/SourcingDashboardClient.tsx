@@ -32,6 +32,7 @@ type BuyerProduct = (typeof buyerProducts)[number] & {
 	workspaceId?: string;
 	uomId?: string | null;
 	sku?: string | null;
+	imageUrls?: string[];
 };
 
 type BuyerSearchProduct = {
@@ -48,6 +49,7 @@ type BuyerSearchProduct = {
 	uomName?: string | null;
 	catalogCategoryName?: string | null;
 	reputationScore?: number | null;
+	imageUrls?: string[] | string | null;
 };
 
 type UomOption = {
@@ -161,6 +163,25 @@ function formatUomLabel(uom?: UomOption | null) {
 	return uom.code ? uom.code.toUpperCase() : uom.name;
 }
 
+function normalizeImageUrls(imageUrls?: BuyerSearchProduct['imageUrls']) {
+	const isRenderableUrl = (url: string) =>
+		url.startsWith('http://') ||
+		url.startsWith('https://') ||
+		url.startsWith('/') ||
+		url.startsWith('data:') ||
+		url.startsWith('blob:');
+
+	if (Array.isArray(imageUrls)) {
+		return imageUrls.filter(
+			(url): url is string => typeof url === 'string' && isRenderableUrl(url),
+		);
+	}
+	if (typeof imageUrls === 'string' && isRenderableUrl(imageUrls)) {
+		return [imageUrls];
+	}
+	return [];
+}
+
 function toBuyerProduct(
 	product: BuyerSearchProduct,
 	uomMap: Map<string, UomOption> = new Map(),
@@ -181,6 +202,7 @@ function toBuyerProduct(
 		workspaceId: product.workspaceId,
 		uomId: product.uomId ?? undefined,
 		sku: product.sku ?? undefined,
+		imageUrls: normalizeImageUrls(product.imageUrls),
 	};
 }
 
@@ -206,6 +228,10 @@ function formatSupplierLabel(workspaceId?: string | null) {
 function productDisplayName(product?: { name?: string; sku?: string | null }) {
 	if (!product) return undefined;
 	return product.sku ? `${product.name} (${product.sku})` : product.name;
+}
+
+function getProductImageUrl(product: BuyerProduct) {
+	return product.imageUrls?.find((url) => url.trim().length > 0);
 }
 
 function mapBackendStatus(status?: string): 'draft' | 'submitted' {
@@ -1090,89 +1116,120 @@ export default function SourcingDashboardClient() {
 						</select>
 					</div>
 					<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-						{filteredProducts.map((product) => (
-							<div
-								key={product.id}
-								className="rounded-xl p-5 transition-all"
-								style={{
-									background: '#FFFFFF',
-									boxShadow: '0px 8px 24px rgba(15,76,138,0.08)',
-								}}
-							>
-								<div className="flex items-start justify-between mb-3">
-									<div>
-										<p
-											className="text-[15px] font-semibold"
-											style={{ color: '#191C1E' }}
-										>
-											{product.name}
-										</p>
-										<p className="text-xs mt-0.5 text-slate-500">
-											{product.supplier}
-										</p>
-									</div>
-									<div
-										className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-										style={{ background: '#FFEFC6' }}
-									>
-										<Star className="w-3 h-3" style={{ color: '#7A4F00' }} />
-										<span
-											className="text-xs font-medium"
-											style={{ color: '#7A4F00' }}
-										>
-											{product.supplierScore}
-										</span>
-									</div>
-								</div>
-								<span
-									className="px-3 py-1 rounded-full"
+						{filteredProducts.map((product) => {
+							const imageUrl = getProductImageUrl(product);
+							return (
+								<div
+									key={product.id}
+									className="rounded-xl overflow-hidden transition-all"
 									style={{
-										background: '#D3E4F5',
-										color: '#0F4C8A',
-										fontSize: 11,
-										fontWeight: 500,
-										letterSpacing: '0.05em',
+										background: '#FFFFFF',
+										boxShadow: '0px 8px 24px rgba(15,76,138,0.08)',
 									}}
 								>
-									{product.category.toUpperCase()}
-								</span>
-								<div className="mt-3 flex items-center justify-between gap-3">
-									<div>
-										<p
-											className="text-[15px] font-semibold"
-											style={{ color: '#0F4C8A' }}
-										>
-											{formatCurrency(product.basePrice)}
-										</p>
-										<p className="text-xs text-slate-500">
-											/{product.unit} · Min {product.minQty} {product.unit}
-										</p>
-									</div>
-									<button
-										onClick={() => addToCart(product.id)}
-										className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-white transition-all"
+									<div
+										className="aspect-[16/9] w-full bg-slate-100"
 										style={{
-											background: cart.includes(product.id)
-												? '#C8F0D8'
-												: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
-											color: cart.includes(product.id) ? '#1B6B3A' : '#FFFFFF',
-											fontSize: 12,
-											fontWeight: 500,
+											background: imageUrl
+												? undefined
+												: 'linear-gradient(135deg, #F2F4F7 0%, #D3E4F5 100%)',
 										}}
 									>
-										{cart.includes(product.id) ? (
-											<>
-												<CheckCircle className="w-3.5 h-3.5" /> Added
-											</>
+										{imageUrl ? (
+											<img
+												src={imageUrl}
+												alt={product.name}
+												className="h-full w-full object-cover"
+												loading="lazy"
+											/>
 										) : (
-											<>
-												<Plus className="w-3.5 h-3.5" /> ADD TO RFQ
-											</>
+											<div className="flex h-full items-center justify-center px-4 text-center text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+												{product.category}
+											</div>
 										)}
-									</button>
+									</div>
+									<div className="p-5">
+										<div className="flex items-start justify-between mb-3">
+											<div>
+												<p
+													className="text-[15px] font-semibold"
+													style={{ color: '#191C1E' }}
+												>
+													{product.name}
+												</p>
+												<p className="text-xs mt-0.5 text-slate-500">
+													{product.supplier}
+												</p>
+											</div>
+											<div
+												className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+												style={{ background: '#FFEFC6' }}
+											>
+												<Star
+													className="w-3 h-3"
+													style={{ color: '#7A4F00' }}
+												/>
+												<span
+													className="text-xs font-medium"
+													style={{ color: '#7A4F00' }}
+												>
+													{product.supplierScore}
+												</span>
+											</div>
+										</div>
+										<span
+											className="px-3 py-1 rounded-full"
+											style={{
+												background: '#D3E4F5',
+												color: '#0F4C8A',
+												fontSize: 11,
+												fontWeight: 500,
+												letterSpacing: '0.05em',
+											}}
+										>
+											{product.category.toUpperCase()}
+										</span>
+										<div className="mt-3 flex items-center justify-between gap-3">
+											<div>
+												<p
+													className="text-[15px] font-semibold"
+													style={{ color: '#0F4C8A' }}
+												>
+													{formatCurrency(product.basePrice)}
+												</p>
+												<p className="text-xs text-slate-500">
+													/{product.unit} · Min {product.minQty} {product.unit}
+												</p>
+											</div>
+											<button
+												onClick={() => addToCart(product.id)}
+												className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-white transition-all"
+												style={{
+													background: cart.includes(product.id)
+														? '#C8F0D8'
+														: 'linear-gradient(135deg, #1A6EC4 0%, #00559F 100%)',
+													color: cart.includes(product.id)
+														? '#1B6B3A'
+														: '#FFFFFF',
+													fontSize: 12,
+													fontWeight: 500,
+												}}
+											>
+												{cart.includes(product.id) ? (
+													<>
+														<CheckCircle className="w-3.5 h-3.5" /> Added
+													</>
+												) : (
+													<>
+														<Plus className="w-3.5 h-3.5" /> ADD TO RFQ
+													</>
+												)}
+											</button>
+										</div>
+									</div>
 								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 					{cart.length > 0 && (
 						<button
