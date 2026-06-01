@@ -1,16 +1,36 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:9751'
+function ApiData { param($response) if ($response -and $response.data) { return $response.data }; return $response }
+function AccessToken { param($response) $data = ApiData $response; return $data.accessToken }
+function ResponseItems {
+	param($response)
+	$data = ApiData $response
+	if ($data -and $data.PSObject.Properties.Name -contains 'items') { return @($data.items) }
+	if ($response -and $response.PSObject.Properties.Name -contains 'items') { return @($response.items) }
+	return @($data)
+}
 
 Write-Output '1) Login as buyer'
 $bPayload = @{ email = 'buyer.staff@logisync.local'; password = 'Buyer@123456' }
 $bLogin = Invoke-RestMethod -Method Post -Uri "$base/auth/login" -ContentType 'application/json' -Body (ConvertTo-Json $bPayload -Depth 10)
-$buyerToken = $bLogin.accessToken
+$buyerToken = AccessToken $bLogin
+if (-not $buyerToken) { Write-Output "Buyer login failed: $($bLogin | ConvertTo-Json -Depth 4)"; exit 1 }
 Write-Output " buyer token length: $($buyerToken.Length)"
 
+Write-Output '1b) Login as supplier'
+$sPayload = @{ email = 'supplier.staff@logisync.local'; password = 'Supplier@123456' }
+$sLogin = Invoke-RestMethod -Method Post -Uri "$base/auth/login" -ContentType 'application/json' -Body (ConvertTo-Json $sPayload -Depth 10)
+$supToken = AccessToken $sLogin
+if (-not $supToken) { Write-Output "Supplier login failed: $($sLogin | ConvertTo-Json -Depth 4)"; exit 1 }
+$supplierMe = ApiData (Invoke-RestMethod -Uri "$base/auth/me" -Headers @{ Authorization = "Bearer $supToken" })
+$supplierWorkspaceId = $supplierMe.workspaceId
+if (-not $supplierWorkspaceId) { Write-Output "Cannot read supplier workspace: $($supplierMe | ConvertTo-Json -Depth 4)"; exit 1 }
+Write-Output " supplier token length: $($supToken.Length)"
+Write-Output " supplier workspace id: $supplierWorkspaceId"
+
 Write-Output '2) Search products'
-$p = Invoke-RestMethod -Uri "$base/products/search?limit=5" -Headers @{ Authorization = "Bearer $buyerToken" }
-$items = $null
-if ($p -and $p.data -and $p.data.items) { $items = $p.data.items } elseif ($p -and $p.data) { $items = $p.data } elseif ($p -and $p.items) { $items = $p.items } else { $items = $p }
+$p = Invoke-RestMethod -Uri "$base/products/search?limit=5&supplierWorkspaceIds=$supplierWorkspaceId" -Headers @{ Authorization = "Bearer $buyerToken" }
+$items = ResponseItems $p
 if (-not $items -or $items.Count -eq 0) { Write-Output 'No products found'; exit 1 }
 $prod = $items[0]
 $prodId = $prod.id
@@ -30,15 +50,11 @@ Write-Output '5) Submit RFQ (split to child RFQs)'
 $submit = Invoke-RestMethod -Method Post -Uri "$base/rfqs/$rfqId/submit" -Headers @{ Authorization = "Bearer $buyerToken" }
 Write-Output " submit response: $($submit | ConvertTo-Json -Depth 5)"
 
-Write-Output '6) Login as supplier'
-$sPayload = @{ email = 'supplier.staff@logisync.local'; password = 'Supplier@123456' }
-$sLogin = Invoke-RestMethod -Method Post -Uri "$base/auth/login" -ContentType 'application/json' -Body (ConvertTo-Json $sPayload -Depth 10)
-$supToken = $sLogin.accessToken
-Write-Output " supplier token length: $($supToken.Length)"
+Write-Output '6) Reuse supplier session'
 
 Write-Output '7) List RFQs for supplier (pending_response)'
 $list = Invoke-RestMethod -Uri "$base/rfqs?status=pending_response" -Headers @{ Authorization = "Bearer $supToken" }
-if ($list -and $list.data -and $list.data.items) { $listItems = $list.data.items } elseif ($list -and $list.items) { $listItems = $list.items } elseif ($list -and $list.data) { $listItems = $list.data } else { $listItems = $list }
+$listItems = ResponseItems $list
 if (-not $listItems -or $listItems.Count -eq 0) { Write-Output 'No child RFQs visible to supplier'; exit 1 }
 $child = $listItems[0]
 $childId = $child.id
@@ -46,7 +62,7 @@ Write-Output " child rfq id: $childId"
 
 Write-Output '8) Get child RFQ detail to obtain rfqItemId'
 $childDetail = Invoke-RestMethod -Uri "$base/rfqs/$childId" -Headers @{ Authorization = "Bearer $supToken" }
-if ($childDetail -and $childDetail.items) { $rfqItems = $childDetail.items } elseif ($childDetail -and $childDetail.data -and $childDetail.data.items) { $rfqItems = $childDetail.data.items } elseif ($childDetail -and $childDetail.data) { $rfqItems = $childDetail.data } else { $rfqItems = $childDetail }
+$rfqItems = ResponseItems $childDetail
 if (-not $rfqItems -or $rfqItems.Count -eq 0) { Write-Output 'No items on child RFQ'; exit 1 }
 $rfqItemId = $rfqItems[0].id
 Write-Output " rfqItemId: $rfqItemId"
@@ -67,3 +83,4 @@ Write-Output " select response: $($sel | ConvertTo-Json -Depth 5)"
 
 Write-Output 'SMOKE E2E completed'
 exit 0
+

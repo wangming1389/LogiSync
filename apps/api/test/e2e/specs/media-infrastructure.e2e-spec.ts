@@ -1,8 +1,8 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 
-import { ObjectStorageService } from '../src/infrastructure/object-storage/object-storage.service';
-import { MediaService } from '../src/modules/media/services/media.service';
-import { createE2eApp, unique } from './e2e-helpers';
+import { ObjectStorageService } from '../../../src/infrastructure/object-storage/object-storage.service';
+import { MediaService } from '../../../src/modules/media/services/media.service';
+import { createE2eApp, unique } from '../helpers/e2e-helpers';
 
 describe('Media infrastructure test cases from docs/api/media', () => {
 	let app: INestApplication;
