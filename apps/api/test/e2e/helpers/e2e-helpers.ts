@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
@@ -6,9 +6,13 @@ import { eq } from 'drizzle-orm';
 import { ZodValidationPipe } from 'nestjs-zod';
 import request from 'supertest';
 
-import { AppModule } from '../src/app.module';
-import { getDatabase, getPool, schema } from '../src/infrastructure/database';
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import { AppModule } from '../../../src/app.module';
+import {
+	getDatabase,
+	getPool,
+	schema,
+} from '../../../src/infrastructure/database';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
 
 const PASSWORD = 'Password1!';
 
@@ -16,7 +20,7 @@ let seq = 0;
 
 export function unique(prefix: string) {
 	seq += 1;
-	const randomStr = randomUUID().substring(0, 6); // Bốc thêm 6 ký tự ngẫu nhiên mã hóa cứng
+	const randomStr = randomUUID().substring(0, 6);
 	return `${prefix}-${Date.now()}-${seq}-${randomStr}`;
 }
 

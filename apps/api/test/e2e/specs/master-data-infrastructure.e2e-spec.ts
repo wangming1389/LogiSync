@@ -1,8 +1,8 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-import { MessageQueueService } from '../src/infrastructure/message-queue/message-queue.service';
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import { MessageQueueService } from '../../../src/infrastructure/message-queue/message-queue.service';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
 import {
 	bearer,
 	createE2eApp,
@@ -10,7 +10,7 @@ import {
 	createPlatformAdmin,
 	login,
 	unique,
-} from './e2e-helpers';
+} from '../helpers/e2e-helpers';
 
 describe('Master Data infrastructure test cases from docs/api/master-data', () => {
 	let app: INestApplication;

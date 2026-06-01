@@ -17,7 +17,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "jest --config ./test/e2e/jest-e2e.json",
     "infra:up": "docker compose -f ../../docker-compose.yml up -d",
     "wait:db": "powershell -ExecutionPolicy Bypass -Command \"while ((docker inspect -f '{{.State.Health.Status}}' logisync-db) -ne 'healthy') { Write-Host 'Waiting for postgres...'; Start-Sleep -Seconds 2 }\"",
     "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
@@ -26,7 +26,24 @@
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "db:studio": "dotenv -e ../../.env -- drizzle-kit studio",
     "db:replica:local": "powershell -ExecutionPolicy Bypass -File ../../docker/postgres/setup-audit-log-replica.ps1",
-    "db:setup:local": "pnpm infra:up && pnpm wait:db && pnpm db:setup && pnpm db:replica:local"
+    "db:setup:local": "pnpm infra:up && pnpm wait:db && pnpm db:setup && pnpm db:replica:local",
+    "smoke:e2e": "powershell -ExecutionPolicy Bypass -File test/smoke/smoke-e2e.ps1",
+    "smoke:e2e:direct": "powershell -ExecutionPolicy Bypass -File test/smoke/smoke-e2e-direct.ps1",
+    "smoke:e2e:curl": "powershell -ExecutionPolicy Bypass -File test/smoke/smoke-e2e-curl.ps1",
+    "k6:smoke": "pnpm k6:smoke:auth",
+    "k6:smoke:auth": "k6 run test/k6/smoke/auth.smoke.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=platform@logisync.local --env ADMIN_PASSWORD=Admin@123456",
+    "k6:smoke:order": "k6 run test/k6/smoke/order.smoke.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=buyer.manager@logisync.local --env ADMIN_PASSWORD=Buyer@123456",
+    "k6:smoke:catalog": "k6 run test/k6/smoke/catalog.smoke.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=supplier.manager@logisync.local --env ADMIN_PASSWORD=Supplier@123456",
+    "k6:smoke:rfq": "k6 run test/k6/smoke/rfq.smoke.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=buyer.manager@logisync.local --env ADMIN_PASSWORD=Buyer@123456",
+    "k6:load": "pnpm k6:load:all",
+    "k6:load:all": "pnpm k6:load:order && pnpm k6:load:catalog && pnpm k6:load:rfq",
+    "k6:load:order": "k6 run test/k6/load/order.load.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=buyer.manager@logisync.local --env ADMIN_PASSWORD=Buyer@123456",
+    "k6:load:catalog": "k6 run test/k6/load/catalog.load.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=supplier.manager@logisync.local --env ADMIN_PASSWORD=Supplier@123456",
+    "k6:load:rfq": "k6 run test/k6/load/rfq.load.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=buyer.manager@logisync.local --env ADMIN_PASSWORD=Buyer@123456",
+    "k6:scenario": "k6 run test/k6/scenarios/user-journey.scenario.js --env BASE_URL=http://localhost:9751 --env BUYER_EMAIL=buyer.manager@logisync.local --env BUYER_PASSWORD=Buyer@123456 --env SUPPLIER_EMAIL=supplier.manager@logisync.local --env SUPPLIER_PASSWORD=Supplier@123456",
+    "k6:stress": "k6 run test/k6/stress/auth-ratelimit.stress.js --env BASE_URL=http://localhost:9751",
+    "k6:soak": "k6 run test/k6/soak/core.soak.js --env BASE_URL=http://localhost:9751 --env ADMIN_EMAIL=buyer.manager@logisync.local --env ADMIN_PASSWORD=Buyer@123456",
+    "k6:security": "k6 run test/k6/security/cross-tenant.security.js --env BASE_URL=http://localhost:9751 --env WORKSPACE_A_EMAIL=buyer.manager@logisync.local --env WORKSPACE_A_PASSWORD=Buyer@123456 --env WORKSPACE_B_EMAIL=carrier.admin@logisync.local --env WORKSPACE_B_PASSWORD=Carrier@123456"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -104,7 +121,7 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "moduleNameMapper": {
-      "^uuid$": "<rootDir>/test/mocks/uuid.ts"
+      "^uuid$": "<rootDir>/test/e2e/mocks/uuid.ts"
     },
     "collectCoverageFrom": [
       "src/**/*.(t|j)s"

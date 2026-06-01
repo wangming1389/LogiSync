@@ -1,10 +1,10 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 
-import { schema } from '../src/infrastructure/database';
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
-import { QuotationService } from '../src/modules/sourcing/quotation/services/quotation.service';
+import { schema } from '../../../src/infrastructure/database';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
+import { QuotationService } from '../../../src/modules/sourcing/quotation/services/quotation.service';
 import {
 	bearer,
 	createE2eApp,
@@ -14,7 +14,7 @@ import {
 	db,
 	login,
 	unique,
-} from './e2e-helpers';
+} from '../helpers/e2e-helpers';
 
 describe('Sourcing infrastructure test cases from docs/api/sourcing', () => {
 	let app: INestApplication;

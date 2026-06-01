@@ -199,7 +199,26 @@ export class SessionRegistryService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	async getActiveSessionCount(workspaceId: string): Promise<number> {
-		return this.redisClient.sCard(`workspace:${workspaceId}:sessions`);
+		const key = `workspace:${workspaceId}:sessions`;
+		const sessionIds = await this.redisClient.sMembers(key);
+		let activeSessions = 0;
+		const staleSessionIds: string[] = [];
+
+		for (const sessionId of sessionIds) {
+			const session = await this.getSession(sessionId);
+			if (session?.workspaceId === workspaceId) {
+				activeSessions += 1;
+				continue;
+			}
+
+			staleSessionIds.push(sessionId);
+		}
+
+		if (staleSessionIds.length > 0) {
+			await this.redisClient.sRem(key, staleSessionIds);
+		}
+
+		return activeSessions;
 	}
 
 	async getActiveSessionCountsByWorkspace(): Promise<WorkspaceSessionCount[]> {
