@@ -226,7 +226,7 @@
     },
     {
       "title": "Active Sessions by Workspace",
-      "description": "Current active Redis-backed sessions, grouped by workspace",
+      "description": "Current Redis-backed active sessions, grouped by workspace",
       "type": "bargauge",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },

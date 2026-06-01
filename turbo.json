@@ -18,6 +18,15 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "smoke:e2e": {
+      "cache": false
+    },
+    "smoke:e2e:direct": {
+      "cache": false
+    },
+    "smoke:e2e:curl": {
+      "cache": false
+    },
     "db:generate": {
       "cache": true,
       "inputs": ["src/database/schema.ts", "drizzle.config.ts"],
@@ -50,6 +59,48 @@
       "dependsOn": ["^build"],
       "cache": true,
       "outputs": []
+    },
+    "k6:smoke": {
+      "cache": false
+    },
+    "k6:smoke:auth": {
+      "cache": false
+    },
+    "k6:smoke:order": {
+      "cache": false
+    },
+    "k6:smoke:catalog": {
+      "cache": false
+    },
+    "k6:smoke:rfq": {
+      "cache": false
+    },
+    "k6:load": {
+      "cache": false
+    },
+    "k6:load:all": {
+      "cache": false
+    },
+    "k6:load:order": {
+      "cache": false
+    },
+    "k6:load:catalog": {
+      "cache": false
+    },
+    "k6:load:rfq": {
+      "cache": false
+    },
+    "k6:scenario": {
+      "cache": false
+    },
+    "k6:stress": {
+      "cache": false
+    },
+    "k6:soak": {
+      "cache": false
+    },
+    "k6:security": {
+      "cache": false
     }
   }
 }

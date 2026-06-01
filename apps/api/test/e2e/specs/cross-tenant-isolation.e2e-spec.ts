@@ -1,9 +1,9 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 
-import { schema } from '../src/infrastructure/database';
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import { schema } from '../../../src/infrastructure/database';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
 import {
 	bearer,
 	createE2eApp,
@@ -11,7 +11,7 @@ import {
 	createProductFixture,
 	db,
 	login,
-} from './e2e-helpers';
+} from '../helpers/e2e-helpers';
 
 describe('Cross-tenant isolation', () => {
 	let app: INestApplication;

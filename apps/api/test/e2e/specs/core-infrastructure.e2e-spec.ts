@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
 import request from 'supertest';
@@ -9,13 +9,13 @@ jest.mock('nodemailer', () => ({
 	})),
 }));
 
-import { AuditStatus } from '../src/core/audit/enums/audit.enums';
-import { AuditLoggerService } from '../src/core/audit/services/audit-logger.service';
-import { HealthCheckService } from '../src/core/health/services/health-check.service';
-import { SessionRegistryService } from '../src/core/session/session-registry.service';
-import { schema } from '../src/infrastructure/database';
-import { ObjectStorageService } from '../src/infrastructure/object-storage/object-storage.service';
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import { AuditStatus } from '../../../src/core/audit/enums/audit.enums';
+import { AuditLoggerService } from '../../../src/core/audit/services/audit-logger.service';
+import { HealthCheckService } from '../../../src/core/health/services/health-check.service';
+import { SessionRegistryService } from '../../../src/core/session/session-registry.service';
+import { schema } from '../../../src/infrastructure/database';
+import { ObjectStorageService } from '../../../src/infrastructure/object-storage/object-storage.service';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
 import {
 	bearer,
 	createE2eApp,
@@ -24,7 +24,7 @@ import {
 	findAuditByResource,
 	login,
 	pool,
-} from './e2e-helpers';
+} from '../helpers/e2e-helpers';
 
 describe('Core infrastructure test cases from docs/api/core', () => {
 	let app: INestApplication;

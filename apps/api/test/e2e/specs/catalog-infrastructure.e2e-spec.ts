@@ -1,7 +1,7 @@
-import { INestApplication } from '@nestjs/common';
+﻿import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-import { UserRole } from '../src/modules/iam/auth/enums/user-role.enum';
+import { UserRole } from '../../../src/modules/iam/auth/enums/user-role.enum';
 import {
 	bearer,
 	createE2eApp,
@@ -9,7 +9,7 @@ import {
 	createProductFixture,
 	login,
 	unique,
-} from './e2e-helpers';
+} from '../helpers/e2e-helpers';
 
 describe('Catalog infrastructure test cases from docs/api/catalog', () => {
 	let app: INestApplication;
